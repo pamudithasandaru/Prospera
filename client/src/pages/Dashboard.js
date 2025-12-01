@@ -22,6 +22,7 @@ import {
   Notifications,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import Hero3D from '../components/Hero3D';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -39,39 +40,44 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="80%" sx={{ mt: 4, mb: 4 }}>
       {/* Welcome Section */}
-      <Paper elevation={3} sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar
-            sx={{ width: 70, height: 70, border: '3px solid white' }}
-            src={user?.profile?.profilePicture}
-          >
-            {user?.name?.charAt(0)}
-          </Avatar>
-          <Box>
-            <Typography variant="h4" fontWeight="bold">
-              Welcome back, {user?.name}!
-            </Typography>
-            <Typography variant="body1">
-              {user?.profile?.bio || 'Empowering Sri Lankan Agriculture'}
-            </Typography>
-            <Chip
-              label={user?.role?.toUpperCase()}
-              size="small"
-              sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
-            />
+        <Paper elevation={3} sx={{ p: 4, mb: 4, background: 'linear-gradient(135deg, black 0%, lightgreen 100%)', color: 'white' }}>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar
+          sx={{ width: 70, height: 70, border: '3px solid white' }}
+          src={user?.profile?.profilePicture}
+            >
+          {user?.name?.charAt(0)}
+            </Avatar>
+            <Box>
+          <Typography variant="h4" fontWeight="bold">
+            Welcome back, {user?.name}!
+          </Typography>
+          <Typography variant="body1">
+            {user?.profile?.bio || 'Empowering Sri Lankan Agriculture'}
+          </Typography>
+          <Chip
+            label={user?.role?.toUpperCase()}
+            size="small"
+            sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
+          />
+            </Box>
           </Box>
-        </Box>
-      </Paper>
+        </Paper>
 
-      {/* Quick Actions */}
-      <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
-        Quick Actions
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {filteredActions.map((action, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+        {/* Hero 3D slideshow */}
+        <Box sx={{ pt: 4 , pb:5}}>
+          <Hero3D height={450} />
+        </Box>
+
+        {/* Quick Actions */}
+          <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+            Quick Actions
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 4, width:'80%', margin: '0 auto' }}>
+            {filteredActions.map((action, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
             <Card
               sx={{
                 height: '100%',
@@ -80,34 +86,34 @@ const Dashboard = () => {
                 cursor: 'pointer',
                 transition: 'transform 0.2s',
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: 4,
+              transform: 'translateY(-5px)',
+              boxShadow: 4,
                 },
               }}
               onClick={() => navigate(action.path)}
             >
               <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
                 <Avatar
-                  sx={{
-                    width: 60,
-                    height: 60,
-                    margin: '0 auto',
-                    bgcolor: action.color,
-                    mb: 2,
-                  }}
+              sx={{
+                width: 60,
+                height: 60,
+                margin: '0 auto',
+                bgcolor: action.color,
+                mb: 2,
+              }}
                 >
-                  {action.icon}
+              {action.icon}
                 </Avatar>
                 <Typography variant="h6" fontWeight="bold">
-                  {action.title}
+              {action.title}
                 </Typography>
               </CardContent>
             </Card>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
 
-      {/* Stats Overview */}
+          {/* Stats Overview */}
       <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
         Overview
       </Typography>

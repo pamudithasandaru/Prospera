@@ -96,11 +96,13 @@ const Navbar = () => {
       onClick={toggleDrawer(false)}
       onKeyDown={toggleDrawer(false)}
     >
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Agriculture sx={{ fontSize: 32, color: 'primary.main' }} />
-        <Typography variant="h6" fontWeight="bold">
-          Prospera
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box
+          component="img"
+          src="/logo.png"
+          alt="Prospera Logo"
+          sx={{ height: 40 }}
+        />
       </Box>
       <Divider />
       <List>
@@ -114,7 +116,7 @@ const Navbar = () => {
             <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
               {item.icon}
             </ListItemIcon>
-            <ListItemText primary={item.title} />
+            <ListItemText primary={item.title} sx={{ color: 'black' }} />
           </ListItem>
         ))}
       </List>
@@ -123,83 +125,72 @@ const Navbar = () => {
 
   return (
     <>
-      <AppBar position="sticky">
+      <AppBar 
+        position="sticky"
+        sx={{
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+        }}
+      >
         <Container maxWidth="xl">
-          <Toolbar disableGutters>
+          <Toolbar disableGutters sx={{ minHeight: { xs: 56, sm: 64 } }}>
             {/* Mobile Menu Icon */}
-            {isMobile && (
-              <IconButton
-                size="large"
-                onClick={toggleDrawer(true)}
-                color="inherit"
-                sx={{ mr: 2 }}
-              >
-                <MenuIcon />
-              </IconButton>
-            )}
+                  {isMobile && (
+                    <IconButton
+                    size="large"
+                    onClick={toggleDrawer(true)}
+                    color="inherit"
+                    
+                    >
+                    <MenuIcon />
+                    </IconButton>
+                  )}
 
-            {/* Logo */}
-            <Agriculture sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-            <Typography
-              variant="h6"
-              noWrap
-              component="a"
-              href="/dashboard"
-              sx={{
-                mr: 2,
-                display: { xs: 'none', md: 'flex' },
-                fontWeight: 700,
-                color: 'inherit',
-                textDecoration: 'none',
-              }}
-            >
-              PROSPERA
-            </Typography>
-
-            {/* Mobile Logo */}
-            <Typography
-              variant="h6"
-              noWrap
-              component="a"
-              href="/dashboard"
-              sx={{
-                mr: 2,
-                display: { xs: 'flex', md: 'none' },
-                flexGrow: 1,
-                fontWeight: 700,
-                color: 'inherit',
-                textDecoration: 'none',
-              }}
-            >
-              PROSPERA
-            </Typography>
-
-            {/* Desktop Menu */}
-            {!isMobile && (
-              <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 3 }}>
-                {filteredMenuItems.slice(0, 6).map((item) => (
-                  <Button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
+                  {/* Logo */}
+                  <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="Prospera Logo"
                     sx={{
-                      my: 2,
-                      color: 'white',
-                      display: 'block',
-                      textTransform: 'none',
-                      borderBottom: location.pathname === item.path ? '2px solid white' : 'none',
+                    height: { xs: 40, sm: 50 },
+                  
+                    flexGrow: isMobile ? 1 : 0,
                     }}
-                  >
-                    {item.title}
-                  </Button>
-                ))}
-              </Box>
-            )}
+                  />
 
-            {/* User Menu */}
+                  
+                        {!isMobile && (
+                          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 3, justifyContent: 'center' }}>
+                          {filteredMenuItems.slice(0, 6).map((item) => (
+                            <Button
+                            key={item.path}
+                            onClick={() => navigate(item.path)}
+                            sx={{
+                              my: 1,
+                              color: 'black',
+                              display: 'block',
+                              textTransform: 'none',
+                              borderBottom: location.pathname === item.path ? '2px solid black' : 'none',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                              transform: 'translateY(-2px)',
+                              },
+                            }}
+                            >
+                            {item.title}
+                            </Button>
+                          ))}
+                          </Box>
+                        )}
+
+                        {/* User Menu */}
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt={user?.name} src={user?.profile?.profilePicture}>
+                  <Avatar alt={user?.name} src={user?.profile?.profilePicture} sx={{ width: 36, height: 36 }}>
                     {user?.name?.charAt(0)}
                   </Avatar>
                 </IconButton>
@@ -221,10 +212,10 @@ const Navbar = () => {
                 onClose={handleCloseUserMenu}
               >
                 <Box sx={{ px: 2, py: 1 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">
+                  <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'black' }}>
                     {user?.name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ color: 'black' }}>
                     {user?.email}
                   </Typography>
                 </Box>
@@ -233,13 +224,13 @@ const Navbar = () => {
                   <ListItemIcon>
                     <Person fontSize="small" />
                   </ListItemIcon>
-                  Profile
+                  <Typography sx={{ color: 'black' }}>Profile</Typography>
                 </MenuItem>
                 <MenuItem onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
                   <ListItemIcon>
                     <Logout fontSize="small" />
                   </ListItemIcon>
-                  Logout
+                  <Typography sx={{ color: 'black' }}>Logout</Typography>
                 </MenuItem>
               </Menu>
             </Box>
