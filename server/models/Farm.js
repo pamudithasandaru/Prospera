@@ -1,21 +1,3 @@
-New Message from Pamuditha Sandaru  Show  Ignore
-
-Skip to content
-Using Gmail with screen readers
-1 of 1,102
-(no subject)
-Inbox
-
-Pamuditha Sandaru
-12:07 PM (0 minutes ago)
-to me
-
-
-
-Pamuditha Sandaru
-12:07 PM (0 minutes ago)
-to me
-
 const mongoose = require('mongoose');
 
 const farmSchema = new mongoose.Schema({
@@ -176,12 +158,4 @@ farmSchema.virtual('totalProfit').get(function() {
 });
 
 module.exports = mongoose.model('Farm', farmSchema);
-
-
-
-On Wed, 21 Jan 2026 at 12:06, Pamuditha Sandaru <pamudithasandaru2002@gmail.com> wrote:
-
-
-
-
 
