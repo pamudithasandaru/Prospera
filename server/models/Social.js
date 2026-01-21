@@ -1,9 +1,34 @@
+const mongoose = require('mongoose');
 
+// Social Post Schema
+const postSchema = new mongoose.Schema({
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  content: {
+    text: {
+      type: String,
+      required: true,
       maxlength: 5000
     },
     images: [String],
     videos: [String],
     documents: [{
+      name: String,
+      url: String
+    }]
+  },
+  type: {
+    type: String,
+    enum: ['post', 'article', 'question', 'success-story', 'alert'],
+    default: 'post'
+  },
+  category: {
+    type: String,
+    enum: ['general', 'crop-management', 'livestock', 'technology', 'market-news', 'weather', 'other']
+  },
   tags: [String],
   likes: [{
     user: {
