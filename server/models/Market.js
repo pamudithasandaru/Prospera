@@ -1,19 +1,3 @@
-New Message from Pamuditha Sandaru  Show  Ignore
-
-Skip to content
-Using Gmail with screen readers
-1 of 1,102
-(no subject)
-Inbox
-
-Pamuditha Sandaru
-12:07 PM (3 minutes ago)
- 
-
-Pamuditha Sandaru
-12:07 PM (3 minutes ago)
-to me
-
 const mongoose = require('mongoose');
 
 const farmSchema = new mongoose.Schema({
