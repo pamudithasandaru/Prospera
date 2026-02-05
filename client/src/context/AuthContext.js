@@ -3,6 +3,13 @@ import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
+const defaultUser = {
+  name: 'Guest User',
+  email: 'guest@prospera.lk',
+  role: 'farmer',
+  language: 'EN',
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -16,37 +23,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
+    // Load stored user or fall back to a guest session
     const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    }
+    setUser(currentUser || defaultUser);
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
-    try {
-      const data = await authService.login(email, password);
-      setUser(data.user);
-      return data;
-    } catch (error) {
-      throw error;
-    }
+  const login = async () => {
+    // Auth flow removed: always fall back to guest user
+    setUser(defaultUser);
+    return { user: defaultUser };
   };
 
-  const register = async (userData) => {
-    try {
-      const data = await authService.register(userData);
-      setUser(data.user);
-      return data;
-    } catch (error) {
-      throw error;
-    }
+  const register = async () => {
+    // Registration removed: always fall back to guest user
+    setUser(defaultUser);
+    return { user: defaultUser };
   };
 
   const logout = () => {
     authService.logout();
-    setUser(null);
+    setUser(defaultUser);
   };
 
   const updateUser = (updatedUser) => {
@@ -61,7 +58,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    isAuthenticated: !!user,
+    defaultUser,
+    isAuthenticated: true,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

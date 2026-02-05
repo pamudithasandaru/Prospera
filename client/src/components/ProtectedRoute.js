@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
 
 const ProtectedRoute = ({ children, roles }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, defaultUser } = useAuth();
+  const activeUser = user || defaultUser;
 
   if (loading) {
     return (
@@ -19,11 +20,7 @@ const ProtectedRoute = ({ children, roles }) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !roles.includes(activeUser.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

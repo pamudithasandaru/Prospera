@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 // Social Post Schema
 const postSchema = new mongoose.Schema({
   author: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,KeyboardEvent
     ref: 'User',
     required: true
   },

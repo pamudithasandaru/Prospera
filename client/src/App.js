@@ -3,15 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import theme from './theme';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Unauthorized from './pages/Unauthorized';
 
@@ -46,16 +44,12 @@ import SupportCenter from './pages/support/SupportCenter';
 import FinTechDashboard from './pages/fintech/FinTechDashboard';
 
 function AppContent() {
-  const { user } = useAuth();
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {user && <Navbar />}
+      <Navbar />
       <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-          <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* Protected Routes */}
@@ -151,7 +145,7 @@ function AppContent() {
           />
 
           {/* Default Route */}
-          <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} />} />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Box>

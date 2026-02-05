@@ -8,8 +8,6 @@ import {
   Box,
   Card,
   CardContent,
-  CardActions,
-  Button,
   Avatar,
   Chip,
 } from '@mui/material';
@@ -40,34 +38,45 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="80%" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
       {/* Welcome Section */}
-        <Paper elevation={3} sx={{ p: 4, mb: 4, background: 'linear-gradient(135deg, black 0%, lightgreen 100%)', color: 'white' }}>
-          <Box display="flex" alignItems="center" gap={2}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, md: 4 },
+            mb: 4,
+            color: 'white',
+            background:
+              'linear-gradient(135deg, rgba(27,94,32,0.95) 0%, rgba(13,71,161,0.9) 100%)',
+            borderRadius: 4,
+            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.2)',
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2.5} flexWrap="wrap">
             <Avatar
-          sx={{ width: 70, height: 70, border: '3px solid white' }}
-          src={user?.profile?.profilePicture}
+              sx={{ width: 72, height: 72, border: '2px solid rgba(255,255,255,0.6)' }}
+              src={user?.profile?.profilePicture}
             >
-          {user?.name?.charAt(0)}
+              {user?.name?.charAt(0)}
             </Avatar>
             <Box>
-          <Typography variant="h4" fontWeight="bold">
-            Welcome back, {user?.name}!
-          </Typography>
-          <Typography variant="body1">
-            {user?.profile?.bio || 'Empowering Sri Lankan Agriculture'}
-          </Typography>
-          <Chip
-            label={user?.role?.toUpperCase()}
-            size="small"
-            sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
-          />
+              <Typography variant="h4" fontWeight="bold">
+                Welcome back, {user?.name}!
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                {user?.profile?.bio || 'Empowering Sri Lankan Agriculture'}
+              </Typography>
+              <Chip
+                label={user?.role?.toUpperCase()}
+                size="small"
+                sx={{ mt: 1.5, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
+              />
             </Box>
           </Box>
         </Paper>
 
         {/* Hero 3D slideshow */}
-        <Box sx={{ pt: 4 , pb:5}}>
+        <Box sx={{ pt: 2, pb: 5 }}>
           <Hero3D height={450} />
         </Box>
 
@@ -75,7 +84,7 @@ const Dashboard = () => {
           <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
             Quick Actions
           </Typography>
-          <Grid container spacing={3} sx={{ mb: 4, width:'80%', margin: '0 auto' }}>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
             {filteredActions.map((action, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
             <Card
@@ -84,10 +93,10 @@ const Dashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 cursor: 'pointer',
-                transition: 'transform 0.2s',
+                transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
               transform: 'translateY(-5px)',
-              boxShadow: 4,
+              boxShadow: '0 18px 40px rgba(15, 23, 42, 0.16)',
                 },
               }}
               onClick={() => navigate(action.path)}
@@ -100,12 +109,16 @@ const Dashboard = () => {
                 margin: '0 auto',
                 bgcolor: action.color,
                 mb: 2,
+                boxShadow: '0 10px 20px rgba(15, 23, 42, 0.2)',
               }}
                 >
               {action.icon}
                 </Avatar>
                 <Typography variant="h6" fontWeight="bold">
               {action.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Jump into the latest tools and insights.
                 </Typography>
               </CardContent>
             </Card>
@@ -121,7 +134,7 @@ const Dashboard = () => {
         {user?.role === 'farmer' && (
           <>
             <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, bgcolor: '#e8f5e9' }}>
+              <Paper sx={{ p: 3, bgcolor: '#e8f5e9', borderRadius: 3, border: '1px solid rgba(27,94,32,0.12)' }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="h4" fontWeight="bold" color="success.main">
@@ -136,7 +149,7 @@ const Dashboard = () => {
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, bgcolor: '#e3f2fd' }}>
+              <Paper sx={{ p: 3, bgcolor: '#e3f2fd', borderRadius: 3, border: '1px solid rgba(13,71,161,0.12)' }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="h4" fontWeight="bold" color="primary.main">
@@ -153,7 +166,7 @@ const Dashboard = () => {
           </>
         )}
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, bgcolor: '#fff3e0' }}>
+          <Paper sx={{ p: 3, bgcolor: '#fff3e0', borderRadius: 3, border: '1px solid rgba(237,108,2,0.12)' }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Box>
                 <Typography variant="h4" fontWeight="bold" color="warning.main">
@@ -168,7 +181,7 @@ const Dashboard = () => {
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, bgcolor: '#f3e5f5' }}>
+          <Paper sx={{ p: 3, bgcolor: '#f3e5f5', borderRadius: 3, border: '1px solid rgba(156,39,176,0.12)' }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Box>
                 <Typography variant="h4" fontWeight="bold" color="secondary.main">
@@ -189,7 +202,7 @@ const Dashboard = () => {
         <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
           Recent Activity
         </Typography>
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(15,23,42,0.08)' }}>
           <Box display="flex" alignItems="center" gap={2}>
             <Notifications color="action" />
             <Typography variant="body1" color="text.secondary">

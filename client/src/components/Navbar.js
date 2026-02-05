@@ -14,16 +14,15 @@ import {
   MenuItem,
   Drawer,
   List,
-  ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
   Divider,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  Agriculture,
   Dashboard,
   Terrain,
   ShoppingCart,
@@ -38,6 +37,7 @@ import {
   Logout,
   Person,
 } from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
 
 const menuItems = [
@@ -59,7 +59,7 @@ const Navbar = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, defaultUser } = useAuth();
 
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -74,7 +74,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/dashboard');
   };
 
   const toggleDrawer = (open) => (event) => {
@@ -84,40 +84,47 @@ const Navbar = () => {
     setDrawerOpen(open);
   };
 
+  const currentUser = user || defaultUser;
+
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(
-    (item) => !item.roles || item.roles.includes(user?.role)
+    (item) => !item.roles || item.roles.includes(currentUser?.role)
   );
 
   const drawerContent = (
     <Box
-      sx={{ width: 250 }}
+      sx={{ width: 280, p: 1.5 }}
       role="presentation"
       onClick={toggleDrawer(false)}
       onKeyDown={toggleDrawer(false)}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1 }}>
         <Box
           component="img"
           src="/logo.png"
           alt="Prospera Logo"
-          sx={{ height: 40 }}
+          sx={{ height: 42 }}
         />
+        <Typography variant="subtitle1" fontWeight={700}>
+        </Typography>
       </Box>
       <Divider />
-      <List>
+      <List sx={{ mt: 1 }}>
         {filteredMenuItems.map((item) => (
-          <ListItem
-            button
+          <ListItemButton
             key={item.path}
             onClick={() => navigate(item.path)}
             selected={location.pathname === item.path}
+            sx={{
+              '& .MuiListItemIcon-root': {
+                color: location.pathname === item.path ? 'primary.main' : 'text.secondary',
+                minWidth: 40,
+              },
+            }}
           >
-            <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.title} sx={{ color: 'black' }} />
-          </ListItem>
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.title} />
+          </ListItemButton>
         ))}
       </List>
     </Box>
@@ -128,10 +135,9 @@ const Navbar = () => {
       <AppBar 
         position="sticky"
         sx={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-          border: '1px solid rgba(255, 255, 255, 0.18)',
+          backgroundColor: alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: 'blur(14px)',
+          borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
         }}
       >
         <Container maxWidth="xl">
@@ -149,16 +155,19 @@ const Navbar = () => {
                   )}
 
                   {/* Logo */}
-                  <Box
-                    component="img"
-                    src="/logo.png"
-                    alt="Prospera Logo"
-                    sx={{
-                    height: { xs: 40, sm: 50 },
-                  
-                    flexGrow: isMobile ? 1 : 0,
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexGrow: isMobile ? 1 : 0 }}>
+                    <Box
+                      component="img"
+                      src="/logo.png"
+                      alt="Prospera Logo"
+                      sx={{ height: { xs: 38, sm: 44 } }}
+                    />
+                    {!isMobile && (
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Prospera
+                      </Typography>
+                    )}
+                  </Box>
 
                   
                         {!isMobile && (
@@ -169,13 +178,13 @@ const Navbar = () => {
                             onClick={() => navigate(item.path)}
                             sx={{
                               my: 1,
-                              color: 'black',
+                              color: location.pathname === item.path ? 'primary.main' : 'text.primary',
                               display: 'block',
                               textTransform: 'none',
-                              borderBottom: location.pathname === item.path ? '2px solid black' : 'none',
+                              borderBottom: location.pathname === item.path ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
                               transition: 'all 0.3s ease',
                               '&:hover': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
                               transform: 'translateY(-2px)',
                               },
                             }}
@@ -190,8 +199,8 @@ const Navbar = () => {
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt={user?.name} src={user?.profile?.profilePicture} sx={{ width: 36, height: 36 }}>
-                    {user?.name?.charAt(0)}
+                  <Avatar alt={currentUser?.name} src={currentUser?.profile?.profilePicture} sx={{ width: 36, height: 36 }}>
+                    {currentUser?.name?.charAt(0)}
                   </Avatar>
                 </IconButton>
               </Tooltip>
@@ -212,11 +221,11 @@ const Navbar = () => {
                 onClose={handleCloseUserMenu}
               >
                 <Box sx={{ px: 2, py: 1 }}>
-                  <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'black' }}>
-                    {user?.name}
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    {currentUser?.name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ color: 'black' }}>
-                    {user?.email}
+                  <Typography variant="caption" color="text.secondary">
+                    {currentUser?.email}
                   </Typography>
                 </Box>
                 <Divider />
@@ -224,13 +233,13 @@ const Navbar = () => {
                   <ListItemIcon>
                     <Person fontSize="small" />
                   </ListItemIcon>
-                  <Typography sx={{ color: 'black' }}>Profile</Typography>
+                  <Typography>Profile</Typography>
                 </MenuItem>
                 <MenuItem onClick={() => { handleLogout(); handleCloseUserMenu(); }}>
                   <ListItemIcon>
                     <Logout fontSize="small" />
                   </ListItemIcon>
-                  <Typography sx={{ color: 'black' }}>Logout</Typography>
+                  <Typography>Logout</Typography>
                 </MenuItem>
               </Menu>
             </Box>

@@ -4,6 +4,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
+// Dev demo login config
+const DEMO_ENABLED = (process.env.DEMO_LOGIN_ENABLED === 'true') && (process.env.NODE_ENV !== 'production');
+const DEMO_EMAIL = process.env.DEMO_EMAIL || 'demo@prospera.lk';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Prospera123!';
+
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -72,6 +77,44 @@ router.post('/login', async (req, res) => {
         success: false,
         message: 'Please provide email and password'
       });
+    }
+
+    // Development-only: demo hardcoded login
+    if (DEMO_ENABLED && email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      try {
+        let demoUser = await User.findOne({ email: DEMO_EMAIL });
+        if (!demoUser) {
+          demoUser = await User.create({
+            name: 'Demo User',
+            email: DEMO_EMAIL,
+            password: DEMO_PASSWORD,
+            role: 'farmer',
+            profile: { bio: 'Demo account', language: 'en' }
+          });
+        }
+
+        demoUser.lastLogin = Date.now();
+        await demoUser.save();
+
+        const token = generateToken(demoUser._id);
+        return res.json({
+          success: true,
+          message: 'Login successful (demo)',
+          data: {
+            user: {
+              id: demoUser._id,
+              name: demoUser.name,
+              email: demoUser.email,
+              role: demoUser.role,
+              profile: demoUser.profile
+            },
+            token
+          }
+        });
+      } catch (demoErr) {
+        // Fall through to normal path on any demo flow issue
+        console.warn('Demo login failed, falling back to normal login:', demoErr.message || demoErr);
+      }
     }
 
     // Check for user
