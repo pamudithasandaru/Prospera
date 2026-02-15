@@ -23,27 +23,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load stored user or fall back to a guest session
+    // Load stored user on mount
     const currentUser = authService.getCurrentUser();
-    setUser(currentUser || defaultUser);
+    setUser(currentUser);
     setLoading(false);
   }, []);
 
-  const login = async () => {
-    // Auth flow removed: always fall back to guest user
-    setUser(defaultUser);
-    return { user: defaultUser };
+  const login = async (email, password) => {
+    try {
+      const data = await authService.login(email, password);
+      setUser(data.user);
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
-  const register = async () => {
-    // Registration removed: always fall back to guest user
-    setUser(defaultUser);
-    return { user: defaultUser };
+  const register = async (userData) => {
+    try {
+      const data = await authService.register(userData);
+      setUser(data.user);
+      return data;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
     authService.logout();
-    setUser(defaultUser);
+    setUser(null);
   };
 
   const updateUser = (updatedUser) => {
@@ -59,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     defaultUser,
-    isAuthenticated: true,
+    isAuthenticated: authService.isAuthenticated() && user !== null,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

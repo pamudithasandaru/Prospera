@@ -73,8 +73,9 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
+    handleCloseUserMenu();
     logout();
-    navigate('/dashboard');
+    navigate('/login');
   };
 
   const toggleDrawer = (open) => (event) => {

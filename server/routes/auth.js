@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const memoryDB = require('../utils/memoryDB');
+
+// Check if MongoDB is connected
+const isMongoConnected = () => {
+  return mongoose.connection.readyState === 1;
+};
 
 // Dev demo login config
 const DEMO_ENABLED = (process.env.DEMO_LOGIN_ENABLED === 'true') && (process.env.NODE_ENV !== 'production');
@@ -23,7 +30,44 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
 
-    // Check if user exists
+    // Use memory DB if MongoDB not connected
+    if (!isMongoConnected()) {
+      console.log('⚠️  Using in-memory storage (MongoDB not connected)');
+      
+      const existingUser = await memoryDB.findOne(email);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists with this email'
+        });
+      }
+
+      const user = await memoryDB.create({
+        name,
+        email,
+        password,
+        role: role || 'farmer',
+        phone
+      });
+
+      const token = generateToken(user._id);
+
+      return res.status(201).json({
+        success: true,
+        message: 'User registered successfully (in-memory mode)',
+        data: {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          },
+          token
+        }
+      });
+    }
+
+    // Normal MongoDB flow
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({
@@ -76,6 +120,43 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
+      });
+    }
+
+    // Use memory DB if MongoDB not connected
+    if (!isMongoConnected()) {
+      console.log('⚠️  Using in-memory storage (MongoDB not connected)');
+      
+      const user = await memoryDB.findOne(email);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      const isMatch = await memoryDB.matchPassword(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+
+      const token = generateToken(user._id);
+
+      return res.json({
+        success: true,
+        message: 'Login successful (in-memory mode)',
+        data: {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          },
+          token
+        }
       });
     }
 
