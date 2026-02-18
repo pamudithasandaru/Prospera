@@ -35,3 +35,9 @@ temp/
 models/*.h5
 models/*.pkl
 *.pth
+
+# Firebase Service Account
+service-account.json
+# Ignore any firebase-adminsdk json files
+*-firebase-adminsdk-*.json
+

@@ -1,141 +1,79 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const { isFirestoreEnabled } = require('./services/firestore');
+
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const compression = require('compression');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const compression = require('compression');
+const dns = require('dns');
+
+const authRoutes = require('./routes/auth');
+const socialRoutes = require('./routes/social');
+const weatherRoutes = require('./routes/weather');
+const supportRoutes = require('./routes/support');
+const marketRoutes = require('./routes/market');
+const marketplaceRoutes = require('./routes/marketplace');
+const governmentRoutes = require('./routes/government');
+const learningRoutes = require('./routes/learning');
+const fintechRoutes = require('./routes/fintech');
+const aiRoutes = require('./routes/ai');
+const farmRoutes = require('./routes/farm');
 
 const app = express();
-
-// Security Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
-// Body parser middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Compression middleware
-app.use(compression());
-
-// Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-
-// Database connection
-const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/prospera';
-if (!process.env.MONGODB_URI) {
-  console.warn('⚠️  MONGODB_URI not set in environment. Falling back to local MongoDB at mongodb://127.0.0.1:27017/prospera');
-}
-
-mongoose.connect(mongoUri)
-.then(() => console.log(`✅ MongoDB Connected Successfully (${mongoUri})`))
-.catch((err) => console.error('❌ MongoDB Connection Error:', err));
-
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/farm', require('./routes/farm'));
-app.use('/api/market', require('./routes/market'));
-app.use('/api/social', require('./routes/social'));
-app.use('/api/learning', require('./routes/learning'));
-app.use('/api/ai-tools', require('./routes/aiTools'));
-app.use('/api/marketplace', require('./routes/marketplace'));
-app.use('/api/government', require('./routes/government'));
-app.use('/api/weather', require('./routes/weather'));
-app.use('/api/support', require('./routes/support'));
-app.use('/api/fintech', require('./routes/fintech'));
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Prospera API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
-});
-
 const PORT = process.env.PORT || 5000;
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const MONGODB_URI = process.env.MONGODB_URI;
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Force reliable public DNS for SRV lookups (avoids local DNS issues)
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
+app.use(helmet());
+app.use(cors({ origin: [CLIENT_URL, 'http://localhost:3001'], credentials: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(compression());
+app.use(morgan('dev'));
+
+if (!isFirestoreEnabled) {
+  console.warn('Firestore is disabled. Check your service account credentials.');
+}
+
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: 'API is running' });
 });
 
-// Socket.io for real-time features
-const io = require('socket.io')(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
-  }
+app.use('/api/auth', authRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/government', governmentRoutes);
+app.use('/api/learning', learningRoutes);
+app.use('/api/fintech', fintechRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/farm', farmRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-
-  // Real-time price updates
-  socket.on('subscribe-prices', (data) => {
-    socket.join('price-updates');
-  });
-
-  // Disease alerts
-  socket.on('subscribe-alerts', (data) => {
-    socket.join(`alerts-${data.region}`);
-  });
-
-  // Chat/messaging
-  socket.on('send-message', (data) => {
-    io.to(data.receiverId).emit('receive-message', data);
-  });
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-// Make io accessible to routes
-app.set('io', io);
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    mongoose.connection.close(false, () => {
-      console.log('MongoDB connection closed');
-      process.exit(0);
+const startServer = async () => {
+  try {
+    app.listen(PORT, () => {
+      console.log(`API server listening on port ${PORT}`);
     });
-  });
-});
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+};
 
-module.exports = app;
+startServer();
