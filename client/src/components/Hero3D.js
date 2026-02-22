@@ -3,44 +3,44 @@ import PropTypes from 'prop-types';
 
 const slides = [
     {
-        image: '/images/slideshow/uni.jpg',
-        label: 'design',
-        title: 'University Of Saffron',
+        image: '/images/slideshow/28862.jpg',
+        label: 'MASTERPIECE OF AGRICULTURE',
+        title: 'Feeding today, sustaining tomorrow.',
         description:
-            'Saffron University, located in New York City, is one of the oldest and most prestigious universities in the United States, founded in 1754. It is part of the Ivy League and known for its rigorous academic programs, influential research, and prominent alumni, including U.S. presidents, Nobel laureates, and notable industry leaders.',
-        thumbTitle: 'University of Colombia',
+            'Reflects a balance between productivity and stewardship, where farmers grow nutritious food today using practices that preserve soil health, biodiversity, and natural resources. This vision emphasizes long-term resilience, ensuring that agriculture continues to support livelihoods, communities, and the planet for years to come.',
+        thumbTitle: '',
     },
     {
-        image: '/images/slideshow/math.jpg',
-        label: 'design',
-        title: 'Department of Mathematics',
+        image: '/images/slideshow/2148289389.jpg',
+        label: 'MASTERPIECE OF AGRICULTURE',
+        title: 'Where quality meets the harvest.',
         description:
-            'The Department of Mathematics at Saffron University is a prestigious academic unit renowned for its research and teaching excellence. It offers a range of undergraduate and graduate programs that delve into both pure and applied mathematics, preparing students for careers in academia, industry, and beyond.',
-        thumbTitle: 'Department of Mathematics',
+            'Every harvest is selected, handled, and traded with care, ensuring fair value for farmers and reliable quality for consumers. This slogan reflects a place where nature’s hard work is honored, and only the best of the harvest reaches the market.',
+        thumbTitle: '',
     },
     {
-        image: '/images/slideshow/physics.jpg',
-        label: 'design',
-        title: 'Department of Physics',
+        image: '/images/slideshow/12297.jpg',
+        label: 'MASTERPIECE OF AGRICULTURE',
+        title: 'Voices of the fields.',
         description:
-            'Saffron University\'s Department of Physics is a leading center for research and education, known for its contributions to theoretical and experimental physics. The department offers programs that allow students to work closely with distinguished faculty on groundbreaking research in areas like quantum mechanics, cosmology, and particle physics.',
-        thumbTitle: 'Department of Physics',
+            'Power of sharing real experiences, knowledge, and challenges directly from the people who work the land. By connecting agricultural voices, this concept promotes collaboration, knowledge exchange, fair opportunities, and collective problem-solving. It strengthens the agricultural community, amplifies grassroots innovation, and builds a more informed, inclusive, and resilient agricultural ecosystem for everyone involved.',
+        thumbTitle: '',
     },
     {
-        image: '/images/slideshow/biological sciences.jpg',
-        label: 'design',
-        title: 'Department of Biological Science',
+        image: '/images/slideshow/2151463023.jpg',
+        label: 'MASTERPIECE OF AGRICULTURE',
+        title: 'Seeds of knowledge.',
         description:
-            'Saffron University\'s Department of Biological Sciences is renowned for its research and education in molecular biology, genetics, neuroscience, and ecology.',
-        thumbTitle: 'Department of Biological Sciences',
+            'Every lesson in agriculture is a seed planted for future growth. In e-agricultural learning, knowledge is accessible anytime and anywhere, allowing farmers, students, and agripreneurs to continuously develop their skills.',
+        thumbTitle: '',
     },
     {
-        image: '/images/slideshow/law.jpg',
-        label: 'design',
-        title: 'Department of Law',
+        image: '/images/slideshow/2156677.jpg',
+        label: 'MASTERPIECE OF AGRICULTURE',
+        title: 'AI insights from soil to sky.',
         description:
-            'Saffron University\'s Department of Biological Sciences is renowned for its research and education in molecular biology, genetics, neuroscience, and ecology. The department fosters interdisciplinary research and collaboration, allowing students to work with leading scientists on pressing issues in health, genetics, and environmental biology.',
-        thumbTitle: 'Department of Law',
+            'By integrating ground-level data with aerial and atmospheric information, AI provides accurate predictions, early warnings for pests and diseases, optimized irrigation and fertilization plans, and improved yield forecasting',
+        thumbTitle: '',
     },
 ];
 
@@ -129,7 +129,7 @@ export default function Hero3D({ height = 450 }) {
                     text-shadow: 0 0 30px #000;
                 }
                 .slider .list .item .content h2{
-                    font-size: 100px;
+                    font-size: 70px;
                     margin: 0;
                     text-shadow: 0 0 30px #000;
                     color: lightblue;

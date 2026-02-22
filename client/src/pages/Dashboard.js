@@ -37,23 +37,13 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 0, mb: 6 }}>
-        {/* Hero 3D slideshow */}
-        <Box
-          sx={{
-            width: '100vw',
-            height: '100vh',
-            position: 'relative',
-            left: '50%',
-            right: '50%',
-            ml: '-50vw',
-            mr: '-50vw',
-            mb: 5,
-          }}
-        >
-          <Hero3D height="100vh" />
-        </Box>
+    <>
+      {/* Hero slideshow — outside Container so it matches navbar width exactly */}
+      <Box sx={{ width: '100%', height: '100vh', mb: 5 }}>
+        <Hero3D height="92vh" />
+      </Box>
 
+    <Container maxWidth="lg" sx={{ mb: 6 }}>
         {/* Quick Actions */}
           <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
             Quick Actions
@@ -186,6 +176,7 @@ const Dashboard = () => {
         </Paper>
       </Box>
     </Container>
+    </>
   );
 };
 
