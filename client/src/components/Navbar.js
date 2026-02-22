@@ -134,17 +134,17 @@ const Navbar = () => {
   return (
     <>
       <AppBar 
-        position="fixed"
+        position="sticky"
         elevation={0}
         sx={{
-          top: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: alpha(theme.palette.common.black, 0.16),
-          backdropFilter: 'blur(20px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-          borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.14)}`,
-          boxShadow: `0 8px 28px ${alpha(theme.palette.common.black, 0.14)}`,
+          color: theme.palette.text.primary,
+          background: `
+            radial-gradient(circle at 10% 20%, ${alpha(theme.palette.primary.light, 0.16)} 0%, ${alpha(theme.palette.primary.light, 0)} 40%),
+            radial-gradient(circle at 90% 80%, ${alpha(theme.palette.secondary.light, 0.12)} 0%, ${alpha(theme.palette.secondary.light, 0)} 45%),
+            linear-gradient(135deg, ${alpha(theme.palette.common.white, 0.96)} 0%, ${alpha(theme.palette.grey[50], 0.94)} 100%)
+          `,
+          borderBottom: `1px solid ${alpha(theme.palette.grey[300], 0.65)}`,
+          boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, 0.08)}`,
         }}
       >
         <Container maxWidth="xl">

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detection AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .blob {
+            position: absolute;
+            background: radial-gradient(circle at 20% 50%, #00ff88, #00ff88 20%, transparent 50%);
+            opacity: 0.7;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: blob 7s infinite;
+        }
+
+        .blob-1 { width: 300px; height: 300px; top: -10%; left: 10%; animation-delay: 0s; }
+        .blob-2 { width: 250px; height: 250px; bottom: -10%; right: 10%; animation-delay: 2s; }
+
+        @keyframes blob {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(20px, -50px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.9); }
+            75% { transform: translate(50px, 50px) scale(1.05); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 3.5em;
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #b0b0b0;
+            margin-bottom: 5px;
+        }
+
+        .tagline {
+            font-size: 0.95em;
+            color: #00ff88;
+            font-style: italic;
+        }
+
+        /* Main Content */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: rgba(20, 20, 40, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.8s ease-out 0.2s both;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: rgba(0, 255, 136, 0.8);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .upload-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #00ff88;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 3px dashed rgba(0, 255, 136, 0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .drop-zone:hover {
+            border-color: rgba(0, 255, 136, 0.9);
+            background: rgba(0, 255, 136, 0.1);
+            transform: scale(1.02);
+        }
+
+        .drop-zone.dragover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            transform: scale(1.02);
+        }
+
+        .drop-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .drop-zone p {
+            font-size: 1.1em;
+            color: #b0b0b0;
+            margin: 10px 0;
+        }
+
+        .drop-zone .highlight {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Image Preview */
+        .image-preview {
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+        }
+
+        .image-preview.active {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 15px;
+            border: 2px solid rgba(0, 255, 136, 0.4);
+            margin-bottom: 15px;
+        }
+
+        /* Button */
+        .btn {
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            color: #0f0c29;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Results Section */
+        .results-section {
+            background: rgba(20, 20, 40, 0.9);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.8s ease-out 0.4s both;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .results-content {
+            width: 100%;
+            display: none;
+        }
+
+        .results-content.active {
+            display: block;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            color: #00d4ff;
+        }
+
+        .prediction-box {
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 5px solid #00ff88;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .prediction-label {
+            font-size: 0.9em;
+            color: #b0b0b0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .prediction-result {
+            font-size: 2.5em;
+            color: #00ff88;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .confidence {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .confidence-value {
+            font-size: 1.5em;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .confidence-bar {
+            width: 150px;
+            height: 8px;
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 212, 255, 0.4);
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            width: 0%;
+            animation: fillBar 0.8s ease-out forwards;
+            border-radius: 10px;
+        }
+
+        @keyframes fillBar {
+            from {
+                width: 0%;
+            }
+            to {
+                width: var(--confidence);
+            }
+        }
+
+        /* All Predictions */
+        .all-predictions {
+            margin-top: 30px;
+        }
+
+        .all-predictions h3 {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            text-align: left;
+        }
+
+        .prediction-item {
+            background: rgba(0, 212, 255, 0.05);
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .prediction-item:hover {
+            border-left-color: #00ff88;
+            transform: translateX(5px);
+        }
+
+        .prediction-name {
+            flex: 1;
+            color: #b0b0b0;
+            font-weight: 600;
+        }
+
+        .prediction-bar-container {
+            flex: 1;
+            margin: 0 15px;
+            height: 6px;
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .prediction-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            border-radius: 10px;
+            animation: slideBarIn 0.6s ease-out forwards;
+        }
+
+        @keyframes slideBarIn {
+            from {
+                width: 0%;
+            }
+            to {
+                width: var(--percentage);
+            }
+        }
+
+        .prediction-percent {
+            color: #00ff88;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 255, 136, 0.2);
+            border-top: 4px solid #00ff88;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: #b0b0b0;
+            font-size: 1.05em;
+        }
+
+        /* Error */
+        .error {
+            background: rgba(255, 100, 100, 0.1);
+            border-left: 5px solid #ff6464;
+            padding: 15px;
+            border-radius: 10px;
+            color: #ff6464;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2em;
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .upload-section, .results-section {
+                padding: 30px 20px;
+            }
+
+            .prediction-result {
+                font-size: 2em;
+            }
+
+            .prediction-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .prediction-bar-container {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+
+        /* Success Animation */
+        @keyframes success {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .prediction-result.success {
+            animation: success 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🌿 Plant Disease Detection</h1>
+            <p class="subtitle">AI-Powered Plant Health Analysis</p>
+            <p class="tagline">Detect diseases in seconds with advanced deep learning</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2>Upload Image</h2>
+                
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-icon">📸</div>
+                    <p>Drop your plant image here</p>
+                    <p>or <span class="highlight">click to browse</span></p>
+                    <small style="color: #888; margin-top: 10px; display: block;">Supported: JPG, PNG (512x512 recommended)</small>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*">
+
+                <div class="image-preview" id="imagePreview">
+                    <img id="previewImage" class="preview-image" alt="Preview">
+                    <button class="btn" id="predictBtn">🔍 Analyze Plant</button>
+                    <button class="btn" style="background: rgba(0, 0, 0, 0.3); margin-top: 5px;" id="clearBtn">Clear Image</button>
+                </div>
+
+                <div class="error" id="errorMsg"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">📊</div>
+                    <p class="empty-text">Upload an image to see predictions</p>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Analyzing your plant...</p>
+                </div>
+
+                <div class="results-content" id="resultsContent">
+                    <h2>Analysis Result</h2>
+
+                    <div class="prediction-box">
+                        <div class="prediction-label">Primary Diagnosis</div>
+                        <div class="prediction-result" id="mainPrediction"></div>
+                        <div class="confidence">
+                            <span class="confidence-value" id="mainConfidence">0%</span>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidenceFill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="all-predictions">
+                        <h3>All Predictions</h3>
+                        <div id="allPredictions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const predictBtn = document.getElementById('predictBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const emptyState = document.getElementById('emptyState');
+        const loading = document.getElementById('loading');
+        const resultsContent = document.getElementById('resultsContent');
+        const errorMsg = document.getElementById('errorMsg');
+
+        let selectedFile = null;
+
+        // Drop zone handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                imagePreview.classList.add('active');
+                hideError();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clear image
+        clearBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            imagePreview.classList.remove('active');
+            resultsContent.classList.remove('active');
+            emptyState.style.display = 'block';
+            hideError();
+        });
+
+        // Predict
+        predictBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                showLoading();
+                const response = await fetch(`${API_URL}/api/predict`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Prediction failed');
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    hideLoading();
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+                hideLoading();
+            }
+        });
+
+        // Display results
+        function displayResults(data) {
+            hideLoading();
+            emptyState.style.display = 'none';
+            resultsContent.classList.add('active');
+
+            // Main prediction
+            const mainPred = document.getElementById('mainPrediction');
+            const mainConf = document.getElementById('mainConfidence');
+            const confFill = document.getElementById('confidenceFill');
+
+            const confidence = Math.round(data.confidence * 100);
+            mainPred.textContent = data.prediction;
+            mainPred.classList.add('success');
+
+            mainConf.textContent = confidence + '%';
+            confFill.style.setProperty('--confidence', confidence + '%');
+
+            // All predictions
+            const allPreds = document.getElementById('allPredictions');
+            allPreds.innerHTML = '';
+
+            Object.entries(data.all_predictions).forEach(([name, value], index) => {
+                const percent = Math.round(value * 100);
+                const item = document.createElement('div');
+                item.className = 'prediction-item';
+                item.style.animationDelay = `${index * 0.1}s`;
+                item.innerHTML = `
+                    <span class="prediction-name">${name}</span>
+                    <div class="prediction-bar-container">
+                        <div class="prediction-bar-fill" style="--percentage: ${percent}%"></div>
+                    </div>
+                    <span class="prediction-percent">${percent}%</span>
+                `;
+                allPreds.appendChild(item);
+            });
+        }
+
+        // UI Helpers
+        function showLoading() {
+            emptyState.style.display = 'none';
+            loading.classList.add('active');
+            resultsContent.classList.remove('active');
+            hideError();
+        }
+
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.add('active');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
