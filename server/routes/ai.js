@@ -1,36 +1,11 @@
 const express = require('express');
-const multer = require('multer');
+const upload = require('../middleware/upload');
 const { authenticate } = require('../middleware/auth');
+const { predictPlantDisease } = require('../controllers/predictionController');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-router.post('/disease-detection', authenticate, upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: 'Image is required' });
-  }
-
-  const sampleResult = {
-    disease: {
-      name: 'Leaf Blight',
-      severity: 'medium',
-      description: 'Fungal infection causing yellowing and brown lesions on leaves.',
-      symptoms: [
-        'Yellow spots on lower leaves',
-        'Brown lesions spreading upwards',
-        'Premature leaf drop',
-      ],
-    },
-    confidence: 92,
-    recommendations: [
-      'Remove heavily affected leaves',
-      'Apply copper-based fungicide in the evening',
-      'Improve field drainage to reduce humidity',
-      'Rotate crops to non-host species next season',
-    ],
-  };
-
-  return res.json({ success: true, data: sampleResult });
-});
+// Real ML-powered plant disease prediction (proxies to Python FastAPI service)
+router.post('/disease-detection', authenticate, upload.single('file'), predictPlantDisease);
 
 module.exports = router;

@@ -20,6 +20,9 @@ const learningRoutes = require('./routes/learning');
 const fintechRoutes = require('./routes/fintech');
 const aiRoutes = require('./routes/ai');
 const farmRoutes = require('./routes/farm');
+const { predictPlantDisease } = require('./controllers/predictionController');
+const upload = require('./middleware/upload');
+const { authenticate } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -54,6 +57,7 @@ app.use('/api/government', governmentRoutes);
 app.use('/api/learning', learningRoutes);
 app.use('/api/fintech', fintechRoutes);
 app.use('/api/ai', aiRoutes);
+app.post('/api/ml/predict', authenticate, upload.single('file'), predictPlantDisease);
 app.use('/api/farm', farmRoutes);
 
 app.use((req, res) => {
@@ -77,3 +81,4 @@ const startServer = async () => {
 };
 
 startServer();
+
