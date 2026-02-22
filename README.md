@@ -1,4 +1,6 @@
 # Prospera
+<img width="1024" height="289" alt="logo" src="https://github.com/user-attachments/assets/dcefe31b-895f-4b2b-9114-9e1134efdc7b" />
+
 
 Comprehensive agriculture platform with a MERN-based web app and optional Python ML service for plant disease prediction.
 
