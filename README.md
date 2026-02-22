@@ -1,182 +1,137 @@
-# 🌾 Prospera - Comprehensive Agriculture Platform
+# Prospera
 
-A full-featured agricultural management and marketplace platform connecting farmers, buyers, experts, and government organizations.
+Comprehensive agriculture platform with a MERN-based web app and optional Python ML service for plant disease prediction.
 
-## 🚀 Features
+## Current Modules
 
-### 1. Farm Management & Land Owner Portal
-- Smart Crop Planner with AI recommendations
-- Expense & Profit Tracking Dashboard
-- Fertilizer & Water Schedule Generator
-- Disease Alert System
+- Farm management (`/api/farm`)
+- Wholesale market (`/api/market`)
+- Social feed (`/api/social`)
+- Learning portal (`/api/learning`)
+- AI tools (`/api/ai` and `/api/ml/predict`)
+- Marketplace (`/api/marketplace`)
+- Government schemes (`/api/government`)
+- Weather dashboard (`/api/weather`)
+- Support center (`/api/support`)
+- FinTech (`/api/fintech`)
 
-### 2. Wholesale Market (Local + International)
-- Live Commodity Price Tracking
-- Verified Buyer System
-- Smart Contract Export System
+## Tech Stack
 
-### 3. Agriculture Social Network (AgriLink)
-- Knowledge Hub with articles, podcasts, videos
-- Community Groups
-- Ask Me Anything Sessions with experts
-- Success Stories
+- Frontend: React 19, MUI, React Router, Axios
+- Backend: Node.js, Express, JWT auth, Socket.io
+- Data: MongoDB (+ Firebase/Firestore fallback support in server)
+- Optional ML: FastAPI + TensorFlow (`ml-service`)
 
-### 4. Free Learning Portal
-- Agriculture courses and certifications
-- Career paths guidance
-- Skill tests with leaderboards
-- Multi-language support (English, Sinhala, Tamil)
+## Repository Structure
 
-### 5. AI Tools Lab
-- Crop Disease Identifier
-- Yield Prediction Tool
-- Fertilizer Optimization Tool
-- Market Price Prediction Model
-
-### 6. International Marketplace
-- Agricultural equipment and supplies
-- 3D & AR view of equipment
-- Seller ratings and verification
-- Logistics integration
-
-### 7. Government + NGO Collaboration Portal
-- Government advisories
-- Grant applications
-- Subsidy announcements
-- Crop insurance claims
-
-### 8. Weather & Climate Portal
-- Real-time weather updates
-- 10-day agricultural forecast
-- Monsoon, drought, and flood warnings
-- Best planting date calculator
-
-### 9. Farmers Community Support System
-- 24/7 AI chatbot
-- Volunteer expert network
-- Emergency hotline
-
-### 10. AgriFinTech
-- Micro-loans for farmers
-- Equipment leasing
-- Crop insurance advisor
-- Farm credit score system
-
-## 🛠️ Technology Stack
-
-### Backend
-- Node.js & Express.js
-- MongoDB with Mongoose
-- JWT Authentication
-- Socket.io for real-time features
-
-### Frontend
-- React.js
-- React Router
-- Axios for API calls
-- Material-UI / Tailwind CSS
-
-### AI/ML
-- TensorFlow.js for disease detection
-- Python microservices for predictions
-
-### Additional Services
-- Cloudinary for image storage
-- Stripe for payments
-- OpenWeather API
-- Email notifications
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js (v18 or higher)
-- MongoDB
-- npm or yarn
-
-### Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/pamudithasandaru/Prospera.git
-   cd Prospera
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm run install-all
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Start MongoDB**
-   ```bash
-   # Make sure MongoDB is running on your system
-   ```
-
-5. **Run the application**
-   ```bash
-   # Development mode
-   npm run dev
-
-   # Production mode
-   npm run build
-   npm start
-   ```
-
-6. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-
-## 📁 Project Structure
-
-```
+```text
 Prospera/
 ├── client/                 # React frontend
-│   ├── public/
-│   ├── src/
-│   │   ├── components/     # Reusable components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API services
-│   │   ├── context/        # React Context
-│   │   ├── utils/          # Utility functions
-│   │   └── App.js
-│   └── package.json
-├── server/                 # Express backend
-│   ├── models/             # Database models
-│   ├── routes/             # API routes
-│   ├── controllers/        # Route controllers
-│   ├── middleware/         # Custom middleware
-│   ├── utils/              # Helper functions
-│   ├── config/             # Configuration files
-│   └── index.js
-├── models/                 # AI/ML models
-├── uploads/                # File uploads
-├── .env.example
-├── .gitignore
-├── package.json
+├── server/                 # Express API
+├── ml-service/             # Optional Python ML service
+├── scripts/                # Utility scripts (Firebase, diagnostics)
+├── docs/                   # Additional setup docs
+├── API_DOCUMENTATION.md
+├── INSTALLATION.md
+├── QUICKSTART.md
 └── README.md
 ```
 
-## 🔐 API Documentation
+## Prerequisites
 
-API documentation will be available at `/api/docs` once the server is running.
+- Node.js 18+
+- npm 9+
+- MongoDB (local or Atlas)
+- Python 3.10+ (only if using `ml-service`)
 
-## 🤝 Contributing
+## Environment Setup
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Create `.env` in the project root from `.env.example`.
+2. Set safe values for your local environment (do not commit secrets).
+3. Recommended local defaults:
+   - `PORT=5000`
+   - `CLIENT_URL=http://localhost:3001`
+   - `MONGODB_URI=mongodb://127.0.0.1:27017/prospera`
+4. If using Firestore features, keep a Firebase Admin SDK JSON file in root or configure `FIREBASE_SERVICE_ACCOUNT_B64`.
 
-## 📄 License
+## Install Dependencies
 
-This project is licensed under the MIT License.
+From the project root:
 
-## 📧 Contact
+```bash
+npm run install-all
+```
 
-For questions or support, please contact the Prospera team.
+This installs both root and `client` dependencies.
+
+## Run in VS Code (Recommended)
+
+1. Open folder in VS Code: `D:\Prospera`
+2. Open terminal (`Ctrl+``)
+3. Run:
+
+```bash
+npm run dev
+```
+
+What starts:
+
+- Backend API: `http://localhost:5000`
+- Frontend UI: `http://localhost:3001`
+
+Health check:
+
+- `http://localhost:5000/api/health`
+
+### If you want separate terminals in VS Code
+
+Terminal 1 (backend):
+
+```bash
+npm run server
+```
+
+Terminal 2 (frontend):
+
+```bash
+npm run client
+```
+
+## Optional: Run Python ML Service
+
+From a new terminal:
+
+```bash
+cd ml-service
+pip install -r requirements.txt
+python app.py
+```
+
+Use this only when testing Python-based disease prediction flow.
+
+## Available Root Scripts
+
+- `npm run dev` - run backend + frontend together
+- `npm run server` - run backend with nodemon
+- `npm run client` - run frontend on port 3001
+- `npm run build` - build frontend production bundle
+- `npm start` - start backend in production mode
+- `npm run install-all` - install all dependencies
+- `npm run setup:firebase` - Firebase credential helper
+- `npm run test:firebase` - test Firestore connection
+
+## Notes
+
+- `npm run seed` is defined in `package.json` but currently points to a missing file (`server/seed.js`). Update or remove it before using.
+- Keep `.env` and credential files private.
+- For API details, see `API_DOCUMENTATION.md`.
+
+## Quick Troubleshooting
+
+- Port conflict: close conflicting process or change ports in `.env`
+- CORS issue: ensure `CLIENT_URL` matches frontend URL (`http://localhost:3001`)
+- API connection issue: verify frontend API base URL (`REACT_APP_API_URL`) if you changed backend port
 
 ---
 
-**Built with ❤️ for the farming community**
+If you want, I can next update `QUICKSTART.md` and `INSTALLATION.md` to match this README so all docs stay consistent.
