@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   Avatar,
-  Chip,
 } from '@mui/material';
 import {
   Terrain,
@@ -38,46 +37,21 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
-      {/* Welcome Section */}
-        <Paper
-          elevation={0}
+    <Container maxWidth="lg" sx={{ mt: 0, mb: 6 }}>
+        {/* Hero 3D slideshow */}
+        <Box
           sx={{
-            p: { xs: 3, md: 4 },
-            mb: 4,
-            color: 'white',
-            background:
-              'linear-gradient(135deg, rgba(27,94,32,0.95) 0%, rgba(13,71,161,0.9) 100%)',
-            borderRadius: 4,
-            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.2)',
+            width: '100vw',
+            height: '100vh',
+            position: 'relative',
+            left: '50%',
+            right: '50%',
+            ml: '-50vw',
+            mr: '-50vw',
+            mb: 5,
           }}
         >
-          <Box display="flex" alignItems="center" gap={2.5} flexWrap="wrap">
-            <Avatar
-              sx={{ width: 72, height: 72, border: '2px solid rgba(255,255,255,0.6)' }}
-              src={user?.profile?.profilePicture}
-            >
-              {user?.name?.charAt(0)}
-            </Avatar>
-            <Box>
-              <Typography variant="h4" fontWeight="bold">
-                Welcome back, {user?.name}!
-              </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                {user?.profile?.bio || 'Empowering Sri Lankan Agriculture'}
-              </Typography>
-              <Chip
-                label={user?.role?.toUpperCase()}
-                size="small"
-                sx={{ mt: 1.5, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
-              />
-            </Box>
-          </Box>
-        </Paper>
-
-        {/* Hero 3D slideshow */}
-        <Box sx={{ pt: 2, pb: 5 }}>
-          <Hero3D height={450} />
+          <Hero3D height="100vh" />
         </Box>
 
         {/* Quick Actions */}
@@ -85,8 +59,8 @@ const Dashboard = () => {
             Quick Actions
           </Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            {filteredActions.map((action, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
+            {filteredActions.map((action) => (
+              <Grid item xs={12} sm={6} md={3} key={action.title}>
             <Card
               sx={{
                 height: '100%',
