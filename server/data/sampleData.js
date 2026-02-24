@@ -11,6 +11,7 @@ const users = [
     email: process.env.DEMO_EMAIL || 'demo@prospera.lk',
     role: 'farmer',
     language: 'EN',
+    profile: { location: { district: 'Polonnaruwa' }, bio: 'Paddy and vegetable farmer.' },
     avatar: 'https://i.pravatar.cc/150?img=5',
     passwordHash: bcrypt.hashSync(demoPassword, 10),
   },
@@ -20,8 +21,49 @@ const users = [
     email: 'expert@prospera.lk',
     role: 'consultant',
     language: 'EN',
+    profile: { location: { district: 'Colombo' }, bio: 'Agricultural consultant.' },
     avatar: 'https://i.pravatar.cc/150?img=12',
     passwordHash: bcrypt.hashSync('ExpertPass123!', 10),
+  },
+  {
+    _id: 'user_sunil',
+    name: 'Sunil Bandara',
+    email: 'sunil@prospera.lk',
+    role: 'farmer',
+    language: 'SI',
+    profile: { location: { district: 'Anuradhapura' }, bio: 'Rice farmer, 15 years experience.' },
+    avatar: 'https://i.pravatar.cc/150?img=8',
+    passwordHash: bcrypt.hashSync('Sunil123!', 10),
+  },
+  {
+    _id: 'user_latha',
+    name: 'Latha Fernando',
+    email: 'latha@prospera.lk',
+    role: 'farmer',
+    language: 'SI',
+    profile: { location: { district: 'Nuwara Eliya' }, bio: 'Vegetable and tea farmer.' },
+    avatar: 'https://i.pravatar.cc/150?img=25',
+    passwordHash: bcrypt.hashSync('Latha123!', 10),
+  },
+  {
+    _id: 'user_rajith',
+    name: 'Rajith Kumar',
+    email: 'rajith@prospera.lk',
+    role: 'farmer',
+    language: 'EN',
+    profile: { location: { district: 'Kurunegala' }, bio: 'Dairy and coconut farmer.' },
+    avatar: 'https://i.pravatar.cc/150?img=15',
+    passwordHash: bcrypt.hashSync('Rajith123!', 10),
+  },
+  {
+    _id: 'user_kamala',
+    name: 'Kamala Jayasinghe',
+    email: 'kamala@prospera.lk',
+    role: 'farmer',
+    language: 'SI',
+    profile: { location: { district: 'Kandy' }, bio: 'Spice and fruit farmer.' },
+    avatar: 'https://i.pravatar.cc/150?img=20',
+    passwordHash: bcrypt.hashSync('Kamala123!', 10),
   },
 ];
 
@@ -414,6 +456,36 @@ const farms = [
   },
 ];
 
+const groups = [
+  {
+    _id: 'group_1',
+    name: 'Rice Farmers LK',
+    description: 'Community for rice farmers across Sri Lanka.',
+    category: 'crop-management',
+    memberCount: 12500,
+    image: '🌾',
+    createdAt: new Date('2023-06-01'),
+  },
+  {
+    _id: 'group_2',
+    name: 'Organic Farming',
+    description: 'Promoting sustainable and organic farming practices.',
+    category: 'technology',
+    memberCount: 8300,
+    image: '🌱',
+    createdAt: new Date('2023-07-15'),
+  },
+  {
+    _id: 'group_3',
+    name: 'Tea Growers',
+    description: 'Network for tea estate owners and workers.',
+    category: 'general',
+    memberCount: 6700,
+    image: '🍵',
+    createdAt: new Date('2023-08-20'),
+  },
+];
+
 module.exports = {
   users,
   socialPosts,
@@ -427,5 +499,6 @@ module.exports = {
   loans,
   creditScore,
   farms,
+  groups,
   generateId,
 };

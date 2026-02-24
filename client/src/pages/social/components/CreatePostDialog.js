@@ -44,6 +44,15 @@ const CreatePostDialog = ({
   setSelectedImage,
   onCreatePost,
 }) => {
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setSelectedImage(ev.target.result);
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
   const postTypes = [
     { value: 'post', label: 'General Post' },
     { value: 'question', label: 'Ask Question' },
@@ -217,7 +226,7 @@ const CreatePostDialog = ({
         >
           <IconButton color="primary" component="label">
             <ImageIcon />
-            <input type="file" hidden accept="image/*" />
+            <input type="file" hidden accept="image/*" onChange={handleImageChange} />
           </IconButton>
           <IconButton color="primary">
             <Videocam />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Paper,
   Typography,
@@ -19,6 +20,7 @@ import {
 } from '@mui/icons-material';
 
 const ProfileSidebar = ({ user }) => {
+  const navigate = useNavigate();
   return (
     <>
       {/* Profile Card */}
@@ -111,6 +113,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<People />} 
+          onClick={() => navigate('/social')}
           sx={{ 
             justifyContent: 'flex-start', 
             mb: 1,
@@ -124,6 +127,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<Groups />} 
+          onClick={() => navigate('/social')}
           sx={{ 
             justifyContent: 'flex-start', 
             mb: 1,
@@ -137,6 +141,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<Article />} 
+          onClick={() => navigate('/learning')}
           sx={{ 
             justifyContent: 'flex-start', 
             mb: 1,
@@ -150,6 +155,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<Event />} 
+          onClick={() => navigate('/learning')}
           sx={{ 
             justifyContent: 'flex-start',
             color: 'text.primary',

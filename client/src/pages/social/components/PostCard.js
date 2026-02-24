@@ -25,7 +25,8 @@ const PostCard = ({
   post, 
   user, 
   isLiked, 
-  onLike, 
+  onLike,
+  onShare,
   onPostMenu,
   isCommentsExpanded,
   onToggleComments,
@@ -182,6 +183,7 @@ const PostCard = ({
           fullWidth
           size="medium"
           startIcon={<Share />}
+          onClick={onShare}
           sx={{
             color: 'text.secondary',
             '&:hover': { bgcolor: alpha('#FF9800', 0.08) },

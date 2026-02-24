@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Avatar,
@@ -19,6 +19,16 @@ const CommentSection = ({
   onCommentChange, 
   onAddComment 
 }) => {
+  const [likedComments, setLikedComments] = useState({});
+  const [replyingTo, setReplyingTo] = useState(null);
+
+  const toggleCommentLike = (idx) => {
+    setLikedComments((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const toggleReply = (idx) => {
+    setReplyingTo((prev) => (prev === idx ? null : idx));
+  };
   return (
     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
       <Box mt={2}>
@@ -84,18 +94,22 @@ const CommentSection = ({
                   <Box display="flex" gap={2} mt={1}>
                     <Typography 
                       variant="caption" 
+                      onClick={() => toggleCommentLike(idx)}
                       sx={{ 
-                        color: 'text.secondary',
+                        color: likedComments[idx] ? 'primary.main' : 'text.secondary',
+                        fontWeight: likedComments[idx] ? 700 : 400,
                         cursor: 'pointer',
                         '&:hover': { textDecoration: 'underline' },
                       }}
                     >
-                      Like
+                      {likedComments[idx] ? 'Liked' : 'Like'}
                     </Typography>
                     <Typography 
                       variant="caption" 
+                      onClick={() => toggleReply(idx)}
                       sx={{ 
-                        color: 'text.secondary',
+                        color: replyingTo === idx ? 'primary.main' : 'text.secondary',
+                        fontWeight: replyingTo === idx ? 700 : 400,
                         cursor: 'pointer',
                         '&:hover': { textDecoration: 'underline' },
                       }}
@@ -107,6 +121,21 @@ const CommentSection = ({
                     </Typography>
                   </Box>
                 </Box>
+                {/* Inline reply input */}
+                {replyingTo === idx && (
+                  <Box display="flex" gap={1} mt={1} ml={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder={`Reply to ${comment.user?.name || 'User'}...`}
+                      variant="outlined"
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 50 } }}
+                    />
+                    <IconButton color="primary" size="small" onClick={() => toggleReply(idx)}>
+                      <Send fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
               </Box>
             ))}
           </Box>

@@ -32,6 +32,7 @@ const SocialFeed = () => {
   const [expandedComments, setExpandedComments] = useState({});
   const [commentText, setCommentText] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedPostId, setSelectedPostId] = useState(null);
 
   useEffect(() => {
     fetchPosts();
@@ -125,12 +126,43 @@ const SocialFeed = () => {
     });
   };
 
-  const handlePostMenu = (event) => {
+  const handleSharePost = async (postId) => {
+    const url = `${window.location.origin}/social?post=${postId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy'); // eslint-disable-line
+      el.remove();
+    }
+    // Increment share count locally
+    setPosts(posts.map(p =>
+      p._id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p
+    ));
+  };
+
+  const handlePostMenu = (event, postId) => {
     setAnchorEl(event.currentTarget);
+    setSelectedPostId(postId);
   };
 
   const handleCloseMenu = () => {
     setAnchorEl(null);
+    setSelectedPostId(null);
+  };
+
+  const handleDeletePost = async (postId) => {
+    try {
+      await api.delete(`/social/post/${postId}`);
+      setPosts(posts.filter(p => p._id !== postId));
+    } catch {
+      // remove locally even if server fails (for demo mode)
+      setPosts(posts.filter(p => p._id !== postId));
+    }
+    handleCloseMenu();
   };
 
   const isPostLiked = (post) => {
@@ -197,7 +229,8 @@ const SocialFeed = () => {
                 user={user}
                 isLiked={isPostLiked(post)}
                 onLike={() => handleLikePost(post._id)}
-                onPostMenu={handlePostMenu}
+                onShare={() => handleSharePost(post._id)}
+                onPostMenu={(e) => handlePostMenu(e, post._id)}
                 isCommentsExpanded={expandedComments[post._id]}
                 onToggleComments={() => toggleComments(post._id)}
                 commentText={commentText[post._id] || ''}
@@ -236,6 +269,10 @@ const SocialFeed = () => {
       <PostMenu 
         anchorEl={anchorEl}
         onClose={handleCloseMenu}
+        postId={selectedPostId}
+        currentUserId={user?._id}
+        posts={posts}
+        onDelete={handleDeletePost}
       />
     </Container>
   );

@@ -47,6 +47,9 @@ import SupportCenter from './pages/support/SupportCenter';
 // FinTech
 import FinTechDashboard from './pages/fintech/FinTechDashboard';
 
+// Profile
+import ProfilePage from './pages/profile/ProfilePage';
+
 function AppContent() {
   const location = useLocation();
   const hideNavbar = ['/login', '/register'].includes(location.pathname);
@@ -129,6 +132,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/weather"
             element={
               <ProtectedRoute roles={['farmer']}>
@@ -154,8 +165,8 @@ function AppContent() {
           />
 
           {/* Default Route */}
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </Box>
     </Box>

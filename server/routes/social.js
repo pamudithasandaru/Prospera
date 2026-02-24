@@ -1,5 +1,5 @@
 const express = require('express');
-const { socialPosts, users, generateId } = require('../data/sampleData');
+const { socialPosts, users, groups, generateId } = require('../data/sampleData');
 const { authenticate } = require('../middleware/auth');
 const { db, isFirestoreEnabled, admin } = require('../services/firestore');
 
@@ -8,10 +8,12 @@ const router = express.Router();
 const getUserFromRequest = (req) => req.user || users[0];
 
 router.get('/posts', async (req, res) => {
-  const { sortBy } = req.query;
+  const { sortBy, userId } = req.query;
 
   if (isFirestoreEnabled && db) {
-    const snap = await db.collection('socialPosts').orderBy('createdAt', 'desc').get();
+    let query = db.collection('socialPosts').orderBy('createdAt', 'desc');
+    if (userId) query = db.collection('socialPosts').where('user._id', '==', userId).orderBy('createdAt', 'desc');
+    const snap = await query.get();
     let data = snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
     if (sortBy === 'trending') {
       data = data.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
@@ -19,7 +21,9 @@ router.get('/posts', async (req, res) => {
     return res.json({ success: true, data });
   }
 
-  let data = [...socialPosts];
+  let data = userId
+    ? socialPosts.filter((p) => (p.user?._id || p.author?._id) === userId)
+    : [...socialPosts];
   if (sortBy === 'trending') {
     data = data.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
   } else {
@@ -123,6 +127,45 @@ router.post('/post/:id/comment', authenticate, async (req, res) => {
   };
   post.comments = [...(post.comments || []), comment];
   return res.status(201).json({ success: true, data: comment });
+});
+
+// GET suggested groups
+router.get('/groups', async (req, res) => {
+  if (isFirestoreEnabled && db) {
+    const snap = await db.collection('groups').orderBy('memberCount', 'desc').limit(10).get();
+    if (!snap.empty) {
+      const data = snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
+      return res.json({ success: true, data });
+    }
+    // Firestore enabled but no groups collection yet — seed it from sample data then return
+    const batch = db.batch();
+    groups.forEach((g) => {
+      const ref = db.collection('groups').doc(g._id);
+      batch.set(ref, g, { merge: true });
+    });
+    await batch.commit();
+    return res.json({ success: true, data: groups });
+  }
+  return res.json({ success: true, data: groups });
+});
+
+// GET suggested farmers (other registered users, farmers only)
+router.get('/farmers', authenticate, async (req, res) => {
+  const currentUserId = req.user._id;
+
+  if (isFirestoreEnabled && db) {
+    const snap = await db.collection('users').where('role', '==', 'farmer').limit(10).get();
+    const data = snap.docs
+      .map((doc) => ({ _id: doc.id, ...doc.data() }))
+      .filter((u) => u._id !== currentUserId)
+      .map(({ passwordHash, ...safe }) => safe);
+    return res.json({ success: true, data });
+  }
+
+  const data = users
+    .filter((u) => u.role === 'farmer' && u._id !== currentUserId)
+    .map(({ passwordHash, ...safe }) => safe);
+  return res.json({ success: true, data });
 });
 
 module.exports = router;

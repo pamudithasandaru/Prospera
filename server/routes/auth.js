@@ -100,19 +100,33 @@ router.get('/profile', authenticate, (req, res) => {
 });
 
 router.put('/profile', authenticate, async (req, res) => {
-  const updates = ['name', 'language', 'role'];
-  updates.forEach((field) => {
-    if (req.body[field]) {
-      req.user[field] = req.body[field];
-    }
+  const allowedFields = ['name', 'language', 'role', 'email'];
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) req.user[field] = req.body[field];
   });
 
-  if (isFirestoreEnabled && db) {
-    await db.collection('users').doc(req.user._id).update(req.user);
-    return res.json({ success: true, user: sanitizeUser(req.user) });
+  // Nested profile fields
+  if (!req.user.profile) req.user.profile = {};
+  const profileFields = ['bio', 'profilePicture', 'coverPhoto'];
+  profileFields.forEach((f) => {
+    if (req.body[f] !== undefined) req.user.profile[f] = req.body[f];
+  });
+  if (req.body.district !== undefined) {
+    if (!req.user.profile.location) req.user.profile.location = {};
+    req.user.profile.location.district = req.body.district;
   }
 
-  return res.json({ success: true, user: sanitizeUser(req.user) });
+  if (isFirestoreEnabled && db) {
+    await db.collection('users').doc(req.user._id).update({
+      name: req.user.name,
+      email: req.user.email,
+      language: req.user.language,
+      profile: req.user.profile,
+    });
+    return res.json({ success: true, data: sanitizeUser(req.user) });
+  }
+
+  return res.json({ success: true, data: sanitizeUser(req.user) });
 });
 
 router.put('/password', authenticate, async (req, res) => {
