@@ -215,10 +215,10 @@ const FarmDashboard = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Crop Name</TableCell>
-                  <TableCell>Variety</TableCell>
+                  <TableCell>Crop Names</TableCell>
+                  <TableCell>Varieties</TableCell>
                   <TableCell>Area (acres)</TableCell>
-                  <TableCell>Planted Date</TableCell>
+                  <TableCell>Planted Dates</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
@@ -280,7 +280,7 @@ const FarmDashboard = () => {
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight="bold" mb={2}>
-              Quick Actions
+              Quick Action
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
@@ -290,17 +290,17 @@ const FarmDashboard = () => {
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button variant="outlined" fullWidth sx={{ py: 2 }}>
-                  Record Revenue
+                  Record Revenues
                 </Button>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button variant="outlined" fullWidth sx={{ py: 2 }}>
-                  Report Disease
+                  Report Diseases
                 </Button>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Button variant="outlined" fullWidth sx={{ py: 2 }}>
-                  Schedule Task
+                  Schedule Tasks
                 </Button>
               </Grid>
             </Grid>
