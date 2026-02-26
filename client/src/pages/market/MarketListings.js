@@ -120,9 +120,9 @@ const MarketListings = () => {
             >
               <MenuItem value="all">All Categories</MenuItem>
               <MenuItem value="vegetables">Vegetables</MenuItem>
-              <MenuItem value="fruits">Fruits</MenuItem>
-              <MenuItem value="grains">Grains</MenuItem>
-              <MenuItem value="spices">Spices</MenuItem>
+              <MenuItem value="fruits">Fruit</MenuItem>
+              <MenuItem value="grains">Grain</MenuItem>
+              <MenuItem value="spices">Spice</MenuItem>
               <MenuItem value="dairy">Dairy</MenuItem>
             </TextField>
           </Grid>
