@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Auth Pages
@@ -53,6 +54,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 function AppContent() {
   const location = useLocation();
   const hideNavbar = ['/login', '/register'].includes(location.pathname);
+  const hideFooter = ['/login', '/register'].includes(location.pathname);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -169,6 +171,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </Box>
+      {!hideFooter && <Footer />}
     </Box>
   );
 }

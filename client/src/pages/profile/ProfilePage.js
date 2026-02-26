@@ -116,10 +116,10 @@ const ProfilePage = () => {
   const { user, updateUser } = useAuth();
   const [tab, setTab] = useState(0);
   const [posts, setPosts] = useState([]);
-  const [farmers, setFarmers] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
-  const [loadingFarmers, setLoadingFarmers] = useState(true);
+  const [loadingConnections, setLoadingConnections] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
 
   // Settings form state
@@ -142,17 +142,17 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!user) return;
-    // Fetch all posts for the feed
-    api.get('/social/posts')
+    // Fetch only this user's own posts
+    api.get('/social/posts', { params: { userId: user._id } })
       .then((r) => setPosts(r.data.data || []))
       .catch(() => setPosts([]))
       .finally(() => setLoadingPosts(false));
 
-    // Fetch suggested farmers (connections)
-    api.get('/social/farmers')
-      .then((r) => setFarmers(r.data.data || []))
-      .catch(() => setFarmers([]))
-      .finally(() => setLoadingFarmers(false));
+    // Fetch actual connections (enriched with otherUser profile)
+    api.get('/social/connections')
+      .then((r) => setConnections(r.data.data || []))
+      .catch(() => setConnections([]))
+      .finally(() => setLoadingConnections(false));
 
     // Fetch groups
     api.get('/social/groups')
@@ -354,7 +354,7 @@ const ProfilePage = () => {
                   <strong>{posts.length}</strong> Posts
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>{farmers.length}</strong> Connections
+                  <strong>{connections.length}</strong> Connections
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   <strong>{groups.length}</strong> Groups
@@ -455,22 +455,25 @@ const ProfilePage = () => {
         {tab === 1 && (
           <>
             <Typography variant="h6" fontWeight="bold" mb={2}>
-              Connections · <Typography component="span" color="text.secondary" variant="h6">{farmers.length}</Typography>
+              Connections · <Typography component="span" color="text.secondary" variant="h6">{connections.length}</Typography>
             </Typography>
-            {loadingFarmers ? (
+            {loadingConnections ? (
               <Box textAlign="center" py={4}><CircularProgress /></Box>
-            ) : farmers.length === 0 ? (
+            ) : connections.length === 0 ? (
               <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                 <People sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                 <Typography color="text.secondary">No connections yet.</Typography>
               </Paper>
             ) : (
               <Grid container spacing={2}>
-                {farmers.map((f) => (
-                  <Grid item xs={6} sm={4} md={3} key={f._id}>
-                    <ConnectionCard farmer={f} />
-                  </Grid>
-                ))}
+                {connections.map((conn) => {
+                  const other = conn.otherUser || {};
+                  return (
+                    <Grid item xs={6} sm={4} md={3} key={conn._id}>
+                      <ConnectionCard farmer={other} />
+                    </Grid>
+                  );
+                })}
               </Grid>
             )}
           </>
@@ -650,7 +653,7 @@ const ProfilePage = () => {
                   { label: 'Total Posts', value: posts.length, icon: <Article sx={{ color: 'primary.main' }} /> },
                   { label: 'Total Likes Received', value: posts.reduce((sum, p) => sum + (p.likes?.length || 0), 0), icon: <ThumbUp sx={{ color: 'secondary.main' }} /> },
                   { label: 'Total Comments', value: posts.reduce((sum, p) => sum + (p.comments?.length || 0), 0), icon: <ChatBubbleOutline sx={{ color: 'info.main' }} /> },
-                  { label: 'Connections', value: farmers.length, icon: <People sx={{ color: 'success.main' }} /> },
+                  { label: 'Connections', value: connections.length, icon: <People sx={{ color: 'success.main' }} /> },
                 ].map(({ label, value, icon }) => (
                   <Box key={label} display="flex" justifyContent="space-between" alignItems="center"
                     sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { border: 0 } }}>
