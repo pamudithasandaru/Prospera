@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Paper,
@@ -18,9 +18,21 @@ import {
   Verified,
   Message,
 } from '@mui/icons-material';
+import api from '../../../services/api';
 
 const ProfileSidebar = ({ user }) => {
   const navigate = useNavigate();
+  const [connections, setConnections] = useState([]);
+
+  useEffect(() => {
+    api.get('/social/connections')
+      .then((res) => setConnections(res.data.data || []))
+      .catch(() => setConnections([]));
+  }, []);
+
+  // Build a display list of recent connected users (need their names, but connections only store IDs)
+  const connectionCount = connections.length;
+
   return (
     <>
       {/* Profile Card */}
@@ -81,10 +93,10 @@ const ProfileSidebar = ({ user }) => {
           <Box sx={{ py: 1 }}>
             <Box display="flex" justifyContent="space-between" mb={1}>
               <Typography variant="caption" color="text.secondary">
-                Profile Viewers
+                Connections
               </Typography>
               <Typography variant="caption" fontWeight="bold" color="primary">
-                {Math.floor(Math.random() * 100) + 20}
+                {user?.connectionCount ?? connectionCount}
               </Typography>
             </Box>
             <Box display="flex" justifyContent="space-between">
@@ -175,29 +187,44 @@ const ProfileSidebar = ({ user }) => {
           borderColor: 'divider',
         }}
       >
-        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Recent Connections
-        </Typography>
-        <Box display="flex" flexDirection="column" gap={1.5} mt={1.5}>
-          {['Pradeep Silva', 'Nimal Perera', 'Kamala Jayasinghe'].map((name, idx) => (
-            <Box key={`connection-${name}`} display="flex" alignItems="center" gap={1.5}>
-              <Avatar sx={{ width: 32, height: 32 }}>
-                {name.charAt(0)}
-              </Avatar>
-              <Box flex={1}>
-                <Typography variant="caption" fontWeight="600" display="block">
-                  {name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                  Farmer
-                </Typography>
-              </Box>
-              <IconButton size="small">
-                <Message sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Box>
-          ))}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            My Connections
+          </Typography>
+          <Typography variant="caption" color="primary" fontWeight="bold">
+            {connectionCount}
+          </Typography>
         </Box>
+        {connectionCount === 0 ? (
+          <Typography variant="caption" color="text.secondary">
+            No connections yet. Connect with farmers!
+          </Typography>
+        ) : (
+          <Box display="flex" flexDirection="column" gap={1.5} mt={1.5}>
+            {connections.slice(0, 3).map((conn) => {
+              const other = conn.otherUser || {};
+              return (
+                <Box key={conn._id} display="flex" alignItems="center" gap={1.5}>
+                  <Avatar src={other.avatar} sx={{ width: 32, height: 32 }}>
+                    {other.name?.charAt(0)?.toUpperCase()}
+                  </Avatar>
+                  <Box flex={1}>
+                    <Typography variant="caption" fontWeight="600" display="block">
+                      {other.name || 'Farmer'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                      {other.role?.charAt(0)?.toUpperCase()}{other.role?.slice(1) || 'Farmer'}
+                      {other.profile?.location?.district ? ` • ${other.profile.location.district}` : ''}
+                    </Typography>
+                  </Box>
+                  <IconButton size="small">
+                    <Message sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
       </Paper>
     </>
   );

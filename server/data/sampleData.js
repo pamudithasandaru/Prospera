@@ -486,6 +486,13 @@ const groups = [
   },
 ];
 
+// In-memory connection data
+// { _id, senderId, senderName, senderAvatar, receiverId, status: 'pending'|'accepted'|'declined', createdAt }
+const connectionRequests = [];
+
+// { _id, users: [userId1, userId2], createdAt }
+const connections = [];
+
 module.exports = {
   users,
   socialPosts,
@@ -500,5 +507,7 @@ module.exports = {
   creditScore,
   farms,
   groups,
+  connectionRequests,
+  connections,
   generateId,
 };

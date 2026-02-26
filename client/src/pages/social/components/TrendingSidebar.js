@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   Paper,
   Typography,
@@ -8,14 +8,20 @@ import {
   Divider,
   IconButton,
   Skeleton,
+  Badge,
+  Chip,
   alpha,
 } from '@mui/material';
 import {
   TrendingUp,
   Message,
   PersonAdd,
+  Notifications,
+  Check,
+  Close,
 } from '@mui/icons-material';
 import api from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const SkeletonRows = ({ count, height }) =>
   Array.from({ length: count }).map((_, i) => (
@@ -36,14 +42,31 @@ const renderSection = (loading, emptyMsg, content) => {
 };
 
 const TrendingSidebar = () => {
+  const { user } = useAuth();
   const [joinedGroups, setJoinedGroups] = useState({});
-  const [connectedFarmers, setConnectedFarmers] = useState({});
+  // farmerId -> 'none' | 'sent' | 'received' | 'connected'
+  const [connectionStatus, setConnectionStatus] = useState({});
   const [groups, setGroups] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingFarmers, setLoadingFarmers] = useState(true);
   const [loadingTopics, setLoadingTopics] = useState(true);
+  const [loadingNotifs, setLoadingNotifs] = useState(true);
+  const [connectingId, setConnectingId] = useState(null);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/social/notifications');
+      setNotifications(res.data.data || []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     api.get('/social/groups')
@@ -52,7 +75,24 @@ const TrendingSidebar = () => {
       .finally(() => setLoadingGroups(false));
 
     api.get('/social/farmers')
-      .then((res) => setFarmers(res.data.data || []))
+      .then(async (res) => {
+        const fetchedFarmers = res.data.data || [];
+        // Fetch connection status for each farmer
+        const statuses = {};
+        await Promise.allSettled(
+          fetchedFarmers.map(async (f) => {
+            try {
+              const r = await api.get(`/social/connection-status/${f._id}`);
+              statuses[f._id] = r.data.status || 'none';
+            } catch {
+              statuses[f._id] = 'none';
+            }
+          })
+        );
+        setConnectionStatus(statuses);
+        // Only show farmers that are NOT already connected
+        setFarmers(fetchedFarmers.filter((f) => statuses[f._id] !== 'connected'));
+      })
       .catch(() => setFarmers([]))
       .finally(() => setLoadingFarmers(false));
 
@@ -76,13 +116,70 @@ const TrendingSidebar = () => {
       })
       .catch(() => setTrendingTopics([]))
       .finally(() => setLoadingTopics(false));
-  }, []);
+
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const toggleJoinGroup = (id) =>
     setJoinedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const toggleConnect = (id) =>
-    setConnectedFarmers((prev) => ({ ...prev, [id]: !prev[id] }));
+  const handleConnect = async (farmerId) => {
+    setConnectingId(farmerId);
+    try {
+      await api.post(`/social/connect/${farmerId}`);
+      setConnectionStatus((prev) => ({ ...prev, [farmerId]: 'sent' }));
+    } catch (err) {
+      const msg = err?.response?.data?.message || '';
+      if (msg === 'Already connected') {
+        // Remove from suggestions if already connected
+        setFarmers((prev) => prev.filter((f) => f._id !== farmerId));
+      } else if (msg === 'Request already sent') {
+        setConnectionStatus((prev) => ({ ...prev, [farmerId]: 'sent' }));
+      }
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  const handleAccept = async (senderId) => {
+    try {
+      await api.post(`/social/connect/${senderId}/accept`);
+      setNotifications((prev) => prev.filter((n) => n.senderId !== senderId));
+      // Remove from suggestions since now connected
+      setFarmers((prev) => prev.filter((f) => f._id !== senderId));
+      setConnectionStatus((prev) => ({ ...prev, [senderId]: 'connected' }));
+    } catch (err) {
+      console.error('Accept connection error:', err);
+    }
+  };
+
+  const handleDecline = async (senderId) => {
+    try {
+      await api.post(`/social/connect/${senderId}/decline`);
+      setNotifications((prev) => prev.filter((n) => n.senderId !== senderId));
+    } catch (err) {
+      console.error('Decline connection error:', err);
+    }
+  };
+
+  const getConnectLabel = (status, isLoading) => {
+    if (isLoading) return 'Sending...';
+    switch (status) {
+      case 'connected': return 'Connected ✓';
+      case 'sent':      return 'Requested';
+      case 'received':  return 'Accept Request';
+      default:          return 'Connect';
+    }
+  };
+
+  const getConnectVariant = (status) =>
+    status === 'connected' || status === 'received' ? 'contained' : 'outlined';
+
+  const getConnectColor = (status) => {
+    if (status === 'connected') return 'success';
+    if (status === 'received') return 'primary';
+    return 'inherit';
+  };
 
   const formatMembers = (count) => {
     if (count === undefined || count === null) return '';
@@ -137,7 +234,7 @@ const TrendingSidebar = () => {
             onClick={() => toggleJoinGroup(group._id)}
             sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600 }}
           >
-            {joinedGroups[group._id] ? 'Joined checkmark' : 'Join Group'}
+            {joinedGroups[group._id] ? '✓ Joined' : 'Join Group'}
           </Button>
           {index < groups.length - 1 && <Divider sx={{ mt: 2 }} />}
         </Box>
@@ -147,7 +244,10 @@ const TrendingSidebar = () => {
 
   const farmersContent = farmers.length > 0 && (
     <Box display="flex" flexDirection="column" gap={2} mt={2}>
-      {farmers.map((farmer, index) => (
+      {farmers.map((farmer, index) => {
+        const status = connectionStatus[farmer._id] || 'none';
+        const isLoading = connectingId === farmer._id;
+        return (
         <Box key={farmer._id}>
           <Box display="flex" alignItems="center" gap={1.5} mb={1}>
             <Avatar src={farmer.avatar} sx={{ width: 40, height: 40 }}>
@@ -169,13 +269,17 @@ const TrendingSidebar = () => {
             <Button
               fullWidth
               size="small"
-              variant={connectedFarmers[farmer._id] ? 'contained' : 'outlined'}
-              color={connectedFarmers[farmer._id] ? 'primary' : 'inherit'}
-              startIcon={<PersonAdd />}
-              onClick={() => toggleConnect(farmer._id)}
+              variant={getConnectVariant(status)}
+              color={getConnectColor(status)}
+              startIcon={status === 'none' || status === 'received' ? <PersonAdd /> : null}
+              onClick={() => {
+                if (status === 'received') handleAccept(farmer._id);
+                else if (status === 'none') handleConnect(farmer._id);
+              }}
+              disabled={isLoading || status === 'connected' || status === 'sent'}
               sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600, fontSize: '0.75rem' }}
             >
-              {connectedFarmers[farmer._id] ? 'Connected' : 'Connect'}
+              {getConnectLabel(status, isLoading)}
             </Button>
             <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }}>
               <Message sx={{ fontSize: 16 }} />
@@ -183,12 +287,72 @@ const TrendingSidebar = () => {
           </Box>
           {index < farmers.length - 1 && <Divider sx={{ mt: 2 }} />}
         </Box>
-      ))}
+        );
+      })}
     </Box>
   );
 
   return (
     <>
+      {/* Connection Requests Notification Panel */}
+      {!loadingNotifs && notifications.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{ p: 2, mb: 2, border: '2px solid', borderColor: 'warning.light', bgcolor: alpha('#FF9800', 0.04) }}
+        >
+          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+            <Badge badgeContent={notifications.length} color="error">
+              <Notifications sx={{ color: 'warning.main' }} />
+            </Badge>
+            <Typography variant="subtitle2" fontWeight="bold">
+              Connection Requests
+            </Typography>
+            <Chip label={notifications.length} size="small" color="warning" sx={{ ml: 'auto' }} />
+          </Box>
+          <Box display="flex" flexDirection="column" gap={1.5}>
+            {notifications.map((notif) => (
+              <Box key={notif._id}>
+                <Box display="flex" alignItems="center" gap={1.5} mb={0.75}>
+                  <Avatar src={notif.senderAvatar} sx={{ width: 36, height: 36 }}>
+                    {notif.senderName?.charAt(0)}
+                  </Avatar>
+                  <Box flex={1}>
+                    <Typography variant="caption" fontWeight="600" display="block">
+                      {notif.senderName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                      wants to connect with you
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box display="flex" gap={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    startIcon={<Check />}
+                    onClick={() => handleAccept(notif.senderId)}
+                    sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600, fontSize: '0.7rem', flex: 1 }}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="inherit"
+                    startIcon={<Close />}
+                    onClick={() => handleDecline(notif.senderId)}
+                    sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600, fontSize: '0.7rem', flex: 1 }}
+                  >
+                    Decline
+                  </Button>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+
       <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider' }}>
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <TrendingUp sx={{ color: 'primary.main' }} />
