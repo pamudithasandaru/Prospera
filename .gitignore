@@ -41,4 +41,4 @@ service-account.json
 # Ignore any firebase-adminsdk json files
 *-firebase-adminsdk-*.json
 
-.keras
+*.keras
