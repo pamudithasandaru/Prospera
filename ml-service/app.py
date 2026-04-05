@@ -1,10 +1,14 @@
 import os
+from pathlib import Path
+from typing import Annotated
 
 # Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Base directory of this script so paths work regardless of cwd
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.getenv('MODEL_PATH', os.path.join(BASE_DIR, 'plant_disease_model.keras'))
+MODEL_URL = os.getenv('MODEL_URL')
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,10 +17,35 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 import io
+import requests
 
 tf.get_logger().setLevel('ERROR')
 
 app = FastAPI(title="Plant Disease Detection API")
+
+
+def ensure_model_file():
+    model_file = Path(MODEL_PATH)
+    if model_file.exists():
+        return str(model_file)
+
+    if not MODEL_URL:
+        raise FileNotFoundError(
+            f"Model file not found at {MODEL_PATH} and MODEL_URL is not set."
+        )
+
+    model_file.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Downloading model from {MODEL_URL} to {MODEL_PATH}...")
+
+    with requests.get(MODEL_URL, stream=True, timeout=120) as response:
+        response.raise_for_status()
+        with open(model_file, 'wb') as output_file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    output_file.write(chunk)
+
+    print(f"Model downloaded to {MODEL_PATH}")
+    return str(model_file)
 
 # Add CORS middleware
 app.add_middleware(
@@ -34,14 +63,14 @@ app.add_middleware(
 )
 
 # Load model with proper error handling
-MODEL_PATH = os.path.join(BASE_DIR, 'plant_disease_model.keras')
 try:
-    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+    resolved_model_path = ensure_model_file()
+    model = tf.keras.models.load_model(resolved_model_path, compile=False)
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     print("✓ Model loaded successfully")
 except Exception as e:
     print(f"Error loading model: {e}")
-    print("Make sure plant_disease_model.keras is in the current directory")
+    print("Make sure MODEL_PATH exists locally or MODEL_URL points to a downloadable .keras file")
     model = None
 
 # Define class names (from your notebook training)
@@ -50,12 +79,8 @@ CLASS_NAMES = ['Healthy', 'Multiple_Diseases', 'Rust', 'Scab']
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    """Serve the frontend HTML"""
-    try:
-        with open('index.html', 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "<h1>Plant Disease Detection API</h1><p>Frontend not found. Make sure index.html is in the current directory.</p>"
+    """Serve a simple status page."""
+    return "<h1>Plant Disease Detection API</h1><p>Use /health and /api/predict.</p>"
 
 @app.get("/health")
 async def health_check():
@@ -67,7 +92,7 @@ async def health_check():
     }
 
 @app.post("/api/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: Annotated[UploadFile, File(...)]):
     """Predict plant disease from uploaded image"""
     try:
         if not model:
@@ -97,7 +122,7 @@ async def predict(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 @app.post("/predict")
-async def predict_legacy(file: UploadFile = File(...)):
+async def predict_legacy(file: Annotated[UploadFile, File(...)]):
     """Legacy endpoint for backward compatibility"""
     return await predict(file)
 
@@ -111,4 +136,8 @@ if __name__ == "__main__":
     print("📊 API: http://localhost:8000/api/predict")
     print("❤️  Health: http://localhost:8000/health")
     print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host=os.getenv('HOST', '127.0.0.1'),
+        port=int(os.getenv('PORT', '8000')),
+    )
