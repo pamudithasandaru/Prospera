@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { resolveAvatar } from '../../../utils/avatarUtils';
 import {
   Paper,
   Typography,
@@ -56,7 +57,7 @@ const ProfileSidebar = ({ user }) => {
         {/* Profile Info */}
         <Box sx={{ px: 2, pb: 2, mt: -5 }}>
           <Avatar
-            src={user?.profile?.profilePicture}
+            src={resolveAvatar(user)}
             sx={{ 
               width: 80, 
               height: 80, 
@@ -152,6 +153,20 @@ const ProfileSidebar = ({ user }) => {
         <Button 
           fullWidth 
           variant="text" 
+          startIcon={<Message />} 
+          onClick={() => navigate('/messages')}
+          sx={{ 
+            justifyContent: 'flex-start', 
+            mb: 1,
+            color: 'text.primary',
+            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
+          }}
+        >
+          Messages
+        </Button>
+        <Button 
+          fullWidth 
+          variant="text" 
           startIcon={<Article />} 
           onClick={() => navigate('/learning')}
           sx={{ 
@@ -205,7 +220,10 @@ const ProfileSidebar = ({ user }) => {
               const other = conn.otherUser || {};
               return (
                 <Box key={conn._id} display="flex" alignItems="center" gap={1.5}>
-                  <Avatar src={other.avatar} sx={{ width: 32, height: 32 }}>
+                  <Avatar 
+                    src={resolveAvatar(other)}
+                    sx={{ width: 32, height: 32 }}
+                  >
                     {other.name?.charAt(0)?.toUpperCase()}
                   </Avatar>
                   <Box flex={1}>
@@ -217,7 +235,7 @@ const ProfileSidebar = ({ user }) => {
                       {other.profile?.location?.district ? ` • ${other.profile.location.district}` : ''}
                     </Typography>
                   </Box>
-                  <IconButton size="small">
+                  <IconButton size="small" onClick={() => navigate(`/messages?user=${other._id}`)}>
                     <Message sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Box>

@@ -1,0 +1,401 @@
+/**
+ * MessagesPage.js
+ * Full private messaging UI: conversation list + chat window.
+ * Real-time messages via Socket.IO.
+ */
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  Avatar,
+  TextField,
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Divider,
+  Skeleton,
+  alpha,
+  Badge,
+  InputAdornment,
+  Chip,
+} from '@mui/material';
+import {
+  Send,
+  Search,
+  ArrowBack,
+  Circle,
+} from '@mui/icons-material';
+import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
+import api from '../../services/api';
+import { useSearchParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { resolveAvatar } from '../../utils/avatarUtils';
+
+const MessagesPage = () => {
+  const { user } = useAuth();
+  const { socket } = useSocket();
+  const [searchParams] = useSearchParams();
+
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showList, setShowList] = useState(true); // For mobile: toggle list/chat
+  const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+
+  // ── Load conversations ────────────────────────────────────────────────────
+  useEffect(() => {
+    api.get('/messages/conversations')
+      .then((res) => setConversations(res.data.data || []))
+      .catch(() => setConversations([]))
+      .finally(() => setLoadingConvs(false));
+  }, []);
+
+  // ── Open DM from URL param ?user=<userId> ─────────────────────────────────
+  useEffect(() => {
+    const targetUserId = searchParams.get('user');
+    if (targetUserId) {
+      openConversation(null, targetUserId);
+    }
+  }, []); // eslint-disable-line
+
+  const openConversation = useCallback(async (convId, userId) => {
+    try {
+      let conv;
+      if (userId) {
+        const res = await api.get(`/messages/conversation/${userId}`);
+        conv = res.data.data;
+      }
+      const id = convId || conv?._id;
+      if (!id) return;
+
+      setActiveConvId(id);
+      setShowList(false);
+      setLoadingMsgs(true);
+
+      if (!conversations.find((c) => c._id === id)) {
+        setConversations((prev) => [conv, ...prev]);
+      }
+
+      const res = await api.get(`/messages/${id}`);
+      setMessages(res.data.data || []);
+
+      // Join socket room
+      if (socket) socket.emit('join:conversation', id);
+    } catch (err) {
+      console.error('Open conversation error:', err);
+    } finally {
+      setLoadingMsgs(false);
+    }
+  }, [conversations, socket]);
+
+  // ── Socket.IO real-time events ────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('message:new', (msg) => {
+      if (msg.conversationId === activeConvId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+      // Update conversation preview
+      setConversations((prev) =>
+        prev.map((c) =>
+          c._id === msg.conversationId ? { ...c, lastMessage: msg.text || '📎 Media', lastMessageAt: msg.createdAt } : c
+        )
+      );
+    });
+
+    socket.on('typing:start', ({ userId: tid, conversationId }) => {
+      if (conversationId === activeConvId) {
+        setTypingUsers((prev) => ({ ...prev, [tid]: true }));
+      }
+    });
+
+    socket.on('typing:stop', ({ userId: tid }) => {
+      setTypingUsers((prev) => { const n = { ...prev }; delete n[tid]; return n; });
+    });
+
+    return () => {
+      socket.off('message:new');
+      socket.off('typing:start');
+      socket.off('typing:stop');
+    };
+  }, [socket, activeConvId]);
+
+  // Leave old room, join new room on conversation change
+  useEffect(() => {
+    if (!socket || !activeConvId) return;
+    socket.emit('join:conversation', activeConvId);
+    return () => socket.emit('leave:conversation', activeConvId);
+  }, [socket, activeConvId]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !activeConvId) return;
+    const text = newMessage.trim();
+    setNewMessage('');
+    try {
+      await api.post(`/messages/${activeConvId}`, { text });
+    } catch (err) {
+      console.error('Send message error:', err);
+    }
+  };
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    if (socket && activeConvId) {
+      socket.emit('typing:start', { conversationId: activeConvId });
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing:stop', { conversationId: activeConvId });
+      }, 1500);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const getOtherParticipant = (conv) => {
+    const otherId = conv.participants?.find((id) => id !== user?._id);
+    return otherId ? { _id: otherId, name: conv.otherUserName || otherId, avatar: conv.otherUserAvatar } : null;
+  };
+
+  const filtered = conversations.filter((c) => {
+    if (!searchQuery) return true;
+    const other = getOtherParticipant(c);
+    return other?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const activeConv = conversations.find((c) => c._id === activeConvId);
+  const otherUser = activeConv ? getOtherParticipant(activeConv) : null;
+  const isTyping = Object.keys(typingUsers).filter((id) => id !== user?._id).length > 0;
+
+  return (
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 80px)', gap: 0, bgcolor: 'background.default' }}>
+      {/* ── Conversation List ─────────────────────────────────────────────── */}
+      <Paper
+        elevation={0}
+        sx={{
+          width: { xs: showList ? '100%' : 0, md: 320 },
+          minWidth: { md: 320 },
+          borderRight: '1px solid',
+          borderColor: 'divider',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: 'width 0.2s',
+        }}
+      >
+        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="h6" fontWeight="bold" mb={1.5}>Messages</Typography>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><Search sx={{ fontSize: 18 }} /></InputAdornment>,
+            }}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 99 } }}
+          />
+        </Box>
+
+        <List sx={{ flex: 1, overflowY: 'auto', p: 0 }}>
+          {loadingConvs
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <ListItem key={i}>
+                  <ListItemAvatar><Skeleton variant="circular" width={44} height={44} /></ListItemAvatar>
+                  <ListItemText primary={<Skeleton width="60%" />} secondary={<Skeleton width="40%" />} />
+                </ListItem>
+              ))
+            : filtered.length === 0
+            ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">No conversations yet</Typography>
+                  <Typography variant="caption" color="text.secondary">Connect with farmers to start chatting</Typography>
+                </Box>
+              )
+            : filtered.map((conv) => {
+                const other = getOtherParticipant(conv);
+                const isActive = conv._id === activeConvId;
+                return (
+                  <React.Fragment key={conv._id}>
+                    <ListItem
+                      button
+                      selected={isActive}
+                      onClick={() => openConversation(conv._id)}
+                      sx={{
+                        py: 1.5,
+                        '&.Mui-selected': { bgcolor: alpha('#4CAF50', 0.08) },
+                        '&:hover': { bgcolor: alpha('#4CAF50', 0.05) },
+                      }}
+                    >
+                      <ListItemAvatar>
+                        <Badge
+                          overlap="circular"
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                          badgeContent={<Circle sx={{ fontSize: 10, color: '#44b700' }} />}
+                        >
+                          <Avatar src={resolveAvatar(other)} sx={{ width: 44, height: 44 }}>
+                            {other?.name?.charAt(0)}
+                          </Avatar>
+                        </Badge>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={<Typography variant="body2" fontWeight="600" noWrap>{other?.name || 'User'}</Typography>}
+                        secondary={
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            {conv.lastMessage || 'Start a conversation'}
+                          </Typography>
+                        }
+                      />
+                      {conv.lastMessageAt && (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', ml: 1, whiteSpace: 'nowrap' }}>
+                          {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: false })}
+                        </Typography>
+                      )}
+                    </ListItem>
+                    <Divider variant="inset" component="li" />
+                  </React.Fragment>
+                );
+              })}
+        </List>
+      </Paper>
+
+      {/* ── Chat Window ───────────────────────────────────────────────────── */}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: showList ? 'none' : 'flex', md: 'flex' },
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {!activeConvId ? (
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ fontSize: 64 }}>💬</Box>
+            <Typography variant="h6" color="text.secondary">Select a conversation</Typography>
+            <Typography variant="body2" color="text.secondary">Or connect with farmers to start chatting</Typography>
+          </Box>
+        ) : (
+          <>
+            {/* Chat Header */}
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.paper' }}>
+              <IconButton sx={{ display: { md: 'none' } }} onClick={() => setShowList(true)}>
+                <ArrowBack />
+              </IconButton>
+              <Avatar src={resolveAvatar(otherUser)} sx={{ width: 40, height: 40 }}>
+                {otherUser?.name?.charAt(0)}
+              </Avatar>
+              <Box flex={1}>
+                <Typography variant="subtitle1" fontWeight="bold">{otherUser?.name || 'User'}</Typography>
+                {isTyping && (
+                  <Typography variant="caption" color="primary" sx={{ fontStyle: 'italic' }}>typing...</Typography>
+                )}
+              </Box>
+            </Box>
+
+            {/* Messages */}
+            <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {loadingMsgs
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <Box key={i} sx={{ display: 'flex', justifyContent: i % 2 === 0 ? 'flex-end' : 'flex-start' }}>
+                      <Skeleton variant="rounded" width={200} height={40} sx={{ borderRadius: 3 }} />
+                    </Box>
+                  ))
+                : messages.map((msg) => {
+                    const isOwn = msg.senderId === user?._id;
+                    return (
+                      <Box
+                        key={msg._id}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: isOwn ? 'flex-end' : 'flex-start',
+                          alignItems: 'flex-end',
+                          gap: 1,
+                        }}
+                      >
+                        {!isOwn && (
+                          <Avatar src={resolveAvatar(msg)} sx={{ width: 28, height: 28 }}>
+                            {msg.senderName?.charAt(0)}
+                          </Avatar>
+                        )}
+                        <Box>
+                          <Box
+                            sx={{
+                              maxWidth: 320,
+                              px: 2,
+                              py: 1,
+                              borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                              bgcolor: isOwn ? 'primary.main' : alpha('#000', 0.06),
+                              color: isOwn ? 'white' : 'text.primary',
+                            }}
+                          >
+                            <Typography variant="body2">{msg.text}</Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontSize: '0.65rem' }}>
+                            {msg.createdAt ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true }) : ''}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })}
+              {isTyping && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'grey.300' }} />
+                  <Chip label="typing..." size="small" sx={{ borderRadius: 99, bgcolor: alpha('#000', 0.06) }} />
+                </Box>
+              )}
+              <div ref={messagesEndRef} />
+            </Box>
+
+            {/* Message Input */}
+            <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  maxRows={4}
+                  size="small"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={handleTyping}
+                  onKeyDown={handleKeyDown}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                />
+                <IconButton
+                  color="primary"
+                  onClick={handleSend}
+                  disabled={!newMessage.trim()}
+                  sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, '&.Mui-disabled': { bgcolor: 'action.disabledBackground' } }}
+                >
+                  <Send />
+                </IconButton>
+              </Box>
+            </Box>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+export default MessagesPage;

@@ -12,6 +12,7 @@ import {
   Videocam,
   Article,
 } from '@mui/icons-material';
+import { resolveAvatar } from '../../../utils/avatarUtils';
 
 const CreatePostCard = ({ user, onOpenDialog, setPostType }) => {
   return (
@@ -26,7 +27,7 @@ const CreatePostCard = ({ user, onOpenDialog, setPostType }) => {
     >
       <Box display="flex" gap={2} alignItems="center">
         <Avatar 
-          src={user?.profile?.profilePicture}
+          src={resolveAvatar(user)}
           sx={{ width: 48, height: 48 }}
         >
           {user?.name?.charAt(0)}

@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import theme from './theme';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -51,6 +52,11 @@ import FinTechDashboard from './pages/fintech/FinTechDashboard';
 // Profile
 import ProfilePage from './pages/profile/ProfilePage';
 
+// New Social Media Pages
+import MessagesPage from './pages/messages/MessagesPage';
+import NotificationsPage from './pages/notifications/NotificationsPage';
+import SearchPage from './pages/search/SearchPage';
+
 function AppContent() {
   const location = useLocation();
   const hideNavbar = ['/login', '/register'].includes(location.pathname);
@@ -96,7 +102,7 @@ function AppContent() {
           <Route
             path="/social"
             element={
-              <ProtectedRoute roles={['farmer', 'buyer', 'expert']}>
+              <ProtectedRoute>
                 <SocialFeed />
               </ProtectedRoute>
             }
@@ -166,6 +172,10 @@ function AppContent() {
             }
           />
 
+          <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+
           {/* Default Route */}
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
@@ -182,7 +192,9 @@ function App() {
       <CssBaseline />
       <Router>
         <AuthProvider>
-          <AppContent />
+          <SocketProvider>
+            <AppContent />
+          </SocketProvider>
         </AuthProvider>
       </Router>
     </ThemeProvider>

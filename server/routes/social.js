@@ -46,8 +46,22 @@ router.post('/post', authenticate, async (req, res) => {
     return res.status(400).json({ success: false, message: 'Content is required' });
   }
 
+  // Resolve avatar from multiple possible field paths — user.avatar (flat),
+  // profile.profilePicture (set via PUT /auth/profile), profile.avatar, photoURL
+  const resolvedAvatar =
+    user.avatar ||
+    user.profile?.profilePicture ||
+    user.profile?.avatar ||
+    user.photoURL ||
+    '';
+
   const newPost = {
-    user: { _id: user._id, name: user.name, role: user.role, avatar: user.avatar },
+    user: {
+      _id: user._id,
+      name: user.name,
+      role: user.role,
+      avatar: resolvedAvatar,
+    },
     content,
     type,
     category,
@@ -122,7 +136,11 @@ router.post('/post/:id/comment', authenticate, async (req, res) => {
       }
       const comment = {
         _id: generateId('comment'),
-        user: { _id: req.user._id, name: req.user.name },
+        user: {
+          _id: req.user._id,
+          name: req.user.name,
+          avatar: req.user.avatar || req.user.profile?.profilePicture || req.user.profile?.avatar || '',
+        },
         text,
         createdAt: new Date(),
       };
@@ -140,7 +158,11 @@ router.post('/post/:id/comment', authenticate, async (req, res) => {
   }
   const comment = {
     _id: generateId('comment'),
-    user: { _id: req.user._id, name: req.user.name },
+    user: {
+      _id: req.user._id,
+      name: req.user.name,
+      avatar: req.user.avatar || req.user.profile?.profilePicture || req.user.profile?.avatar || '',
+    },
     text,
     createdAt: new Date(),
   };
@@ -172,26 +194,37 @@ router.get('/groups', async (req, res) => {
   return res.json({ success: true, data: groups });
 });
 
-// GET suggested farmers (other registered users, farmers only)
+// GET suggested users — returns all registered users except current user
+// Supports farmers, buyers, experts seeing relevant connections
+// Kept at /farmers path for backward-compatibility with existing frontend code
 router.get('/farmers', authenticate, async (req, res) => {
   const currentUserId = req.user._id;
+  const roleFilter = req.query.role; // optional ?role=farmer to filter
 
   if (isFirestoreEnabled && db) {
     try {
-      const snap = await withTimeout(db.collection('users').where('role', '==', 'farmer').limit(10).get());
+      let query = db.collection('users').limit(20);
+      // Optional role filter — if not provided, return all roles
+      if (roleFilter) {
+        query = db.collection('users').where('role', '==', roleFilter).limit(20);
+      }
+      const snap = await withTimeout(query.get());
       const data = snap.docs
         .map((doc) => ({ _id: doc.id, ...doc.data() }))
         .filter((u) => u._id !== currentUserId)
-        .map(({ passwordHash, ...safe }) => safe);
+        .map(({ passwordHash, ...safe }) => safe)
+        .slice(0, 10);
       return res.json({ success: true, data });
     } catch (err) {
-      console.error('Firestore farmers error:', err.message);
+      console.error('Firestore suggested-users error:', err.message);
     }
   }
 
+  // In-memory fallback — return all non-current users (or filter by role)
   const data = users
-    .filter((u) => u.role === 'farmer' && u._id !== currentUserId)
-    .map(({ passwordHash, ...safe }) => safe);
+    .filter((u) => u._id !== currentUserId && (!roleFilter || u.role === roleFilter))
+    .map(({ passwordHash, ...safe }) => safe)
+    .slice(0, 10);
   return res.json({ success: true, data });
 });
 

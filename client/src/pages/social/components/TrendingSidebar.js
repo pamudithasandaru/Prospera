@@ -1,4 +1,6 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { resolveAvatar } from '../../../utils/avatarUtils';
 import {
   Paper,
   Typography,
@@ -43,6 +45,7 @@ const renderSection = (loading, emptyMsg, content) => {
 
 const TrendingSidebar = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [joinedGroups, setJoinedGroups] = useState({});
   // farmerId -> 'none' | 'sent' | 'received' | 'connected'
   const [connectionStatus, setConnectionStatus] = useState({});
@@ -250,7 +253,10 @@ const TrendingSidebar = () => {
         return (
         <Box key={farmer._id}>
           <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-            <Avatar src={farmer.avatar} sx={{ width: 40, height: 40 }}>
+            <Avatar 
+              src={resolveAvatar(farmer)}
+              sx={{ width: 40, height: 40 }}
+            >
               {farmer.name?.charAt(0)}
             </Avatar>
             <Box flex={1}>
@@ -281,7 +287,7 @@ const TrendingSidebar = () => {
             >
               {getConnectLabel(status, isLoading)}
             </Button>
-            <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }} onClick={() => navigate(`/messages?user=${farmer._id}`)}>
               <Message sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
@@ -369,8 +375,8 @@ const TrendingSidebar = () => {
       </Paper>
 
       <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Connect with Farmers</Typography>
-        {renderSection(loadingFarmers, 'No farmers to suggest yet.', farmersContent)}
+        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>People You May Know</Typography>
+        {renderSection(loadingFarmers, 'No suggestions yet. Connect with others!', farmersContent)}
       </Paper>
     </>
   );
