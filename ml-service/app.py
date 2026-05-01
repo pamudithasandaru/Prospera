@@ -181,22 +181,14 @@ if __name__ == "__main__":
     # Force UTF-8 output so emoji/unicode doesn't crash on Windows cp1252 terminals
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     print("\n" + "="*60)
-<<<<<<< Updated upstream
-    print("[ML] Plant Disease Detection API")
-=======
-    print("🌿 Plant Disease Detection API (ONNX Quantized)")
->>>>>>> Stashed changes
+    print("[ML] Plant Disease Detection API (ONNX Quantized)")
     print("="*60)
     print("[*] Starting server...")
     print("[*] Frontend: http://localhost:8000")
     print("[*] API:      http://localhost:8000/api/predict")
     print("[*] Health:   http://localhost:8000/health")
     if MODEL_PATH:
-<<<<<<< Updated upstream
-        print(f"[*] Local Keras model: {MODEL_PATH}")
-=======
-        print(f"🧠 ONNX Quantized model: {MODEL_PATH}")
->>>>>>> Stashed changes
+        print(f"[*] ONNX quantized model: {MODEL_PATH}")
     if MODEL_LOAD_ERROR:
         print(f"[!] Model load error: {MODEL_LOAD_ERROR}")
     print("="*60 + "\n")
