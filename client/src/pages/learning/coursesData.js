@@ -1,4 +1,5 @@
 // Static course data — used as fallback when API is unavailable
+// Images use picsum.photos with fixed seeds for consistent, reliable thumbnails
 const COURSES_DATA = [
   {
     id: '1',
@@ -11,7 +12,7 @@ const COURSES_DATA = [
     instructor: 'Dr. Anika Perera',
     duration: 12,
     students: 3420,
-    image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/crop1/600/360',
   },
   {
     id: '2',
@@ -24,7 +25,7 @@ const COURSES_DATA = [
     instructor: 'Prof. Rajan Nair',
     duration: 16,
     students: 2210,
-    image: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/soil2/600/360',
   },
   {
     id: '3',
@@ -37,7 +38,7 @@ const COURSES_DATA = [
     instructor: 'Dr. Suresh Kumara',
     duration: 10,
     students: 1875,
-    image: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/pest3/600/360',
   },
   {
     id: '4',
@@ -50,7 +51,7 @@ const COURSES_DATA = [
     instructor: 'Eng. Malika Fernando',
     duration: 8,
     students: 2640,
-    image: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/water4/600/360',
   },
   {
     id: '5',
@@ -63,7 +64,7 @@ const COURSES_DATA = [
     instructor: 'Ms. Priya Shankar',
     duration: 20,
     students: 4100,
-    image: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/organic5/600/360',
   },
   {
     id: '6',
@@ -76,7 +77,7 @@ const COURSES_DATA = [
     instructor: 'Mr. Dinesh Weerasinghe',
     duration: 14,
     students: 1550,
-    image: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/biz6/600/360',
   },
   {
     id: '7',
@@ -89,7 +90,7 @@ const COURSES_DATA = [
     instructor: 'Dr. Anika Perera',
     duration: 18,
     students: 980,
-    image: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/disease7/600/360',
   },
   {
     id: '8',
@@ -102,7 +103,7 @@ const COURSES_DATA = [
     instructor: 'Ms. Priya Shankar',
     duration: 6,
     students: 3300,
-    image: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/compost8/600/360',
   },
   {
     id: '9',
@@ -115,7 +116,7 @@ const COURSES_DATA = [
     instructor: 'Dr. Kavinda Jayalath',
     duration: 22,
     students: 760,
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/precision9/600/360',
   },
   {
     id: '10',
@@ -128,7 +129,7 @@ const COURSES_DATA = [
     instructor: 'Prof. Rajan Nair',
     duration: 14,
     students: 1120,
-    image: 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/soilph10/600/360',
   },
   {
     id: '11',
@@ -141,7 +142,7 @@ const COURSES_DATA = [
     instructor: 'Dr. Suresh Kumara',
     duration: 7,
     students: 1650,
-    image: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/biopest11/600/360',
   },
   {
     id: '12',
@@ -154,7 +155,7 @@ const COURSES_DATA = [
     instructor: 'Mr. Dinesh Weerasinghe',
     duration: 11,
     students: 2080,
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop',
+    image: 'https://picsum.photos/seed/supply12/600/360',
   },
 ];
 

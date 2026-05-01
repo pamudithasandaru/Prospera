@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import numpy as np
 from PIL import Image
-from tensorflow.keras.models import load_model
+import onnxruntime as ort
 
 # Base directory of this script so paths work regardless of cwd
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,8 +40,8 @@ MODEL_PATH_ENV = os.getenv('MODEL_PATH', '').strip()
 def resolve_model_path():
     candidates = [
         MODEL_PATH_ENV,
-        os.path.join(BASE_DIR, 'plant_disease_model.keras'),
-        os.path.join(BASE_DIR, 'models', 'plant_disease_model.keras'),
+        os.path.join(BASE_DIR, 'models', 'plant_disease_model_quantized.onnx'),
+        os.path.join(BASE_DIR, 'plant_disease_model_quantized.onnx'),
     ]
     for candidate in candidates:
         if candidate and os.path.exists(candidate):
@@ -50,7 +50,7 @@ def resolve_model_path():
 
 
 MODEL_PATH = resolve_model_path()
-MODEL = None
+SESSION = None
 MODEL_INPUT_SIZE = None
 MODEL_LOAD_ERROR = None
 
@@ -72,20 +72,22 @@ def canonical_label(label):
 
 
 def load_prediction_model():
-    global MODEL, MODEL_INPUT_SIZE
+    global SESSION, MODEL_INPUT_SIZE
 
     if not MODEL_PATH:
-        raise RuntimeError('No local model file found. Expected ml-service/plant_disease_model.keras')
+        raise RuntimeError('No ONNX model file found. Expected ml-service/models/plant_disease_model_quantized.onnx')
 
-    MODEL = load_model(MODEL_PATH, compile=False)
-    input_shape = MODEL.input_shape
-    if isinstance(input_shape, list):
-        input_shape = input_shape[0]
-
-    if len(input_shape) != 4 or input_shape[1] is None or input_shape[2] is None:
+    SESSION = ort.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider'])
+    
+    # Get input shape
+    input_name = SESSION.get_inputs()[0].name
+    input_shape = SESSION.get_inputs()[0].shape
+    
+    # Shape is typically [batch, height, width, channels]
+    if len(input_shape) == 4:
+        MODEL_INPUT_SIZE = (int(input_shape[1]), int(input_shape[2]))
+    else:
         raise RuntimeError(f'Unsupported model input shape: {input_shape}')
-
-    MODEL_INPUT_SIZE = (int(input_shape[1]), int(input_shape[2]))
 
 
 def preprocess_image(image: Image.Image):
@@ -98,11 +100,15 @@ def preprocess_image(image: Image.Image):
     return np.expand_dims(image_array, axis=0)
 
 
-def predict_with_local_model(image: Image.Image):
-    if MODEL is None:
-        raise RuntimeError(MODEL_LOAD_ERROR or 'Local model is not loaded')
+def predict_with_onnx_model(image: Image.Image):
+    if SESSION is None:
+        raise RuntimeError(MODEL_LOAD_ERROR or 'ONNX model is not loaded')
 
-    prediction = MODEL.predict(preprocess_image(image), verbose=0)
+    input_name = SESSION.get_inputs()[0].name
+    output_name = SESSION.get_outputs()[0].name
+    
+    input_data = preprocess_image(image)
+    prediction = SESSION.run([output_name], {input_name: input_data})[0]
     prediction = np.asarray(prediction).squeeze()
 
     if prediction.ndim != 1:
@@ -145,8 +151,8 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "online",
-        "model_loaded": MODEL is not None,
-        "prediction_backend": "local-keras",
+        "model_loaded": SESSION is not None,
+        "prediction_backend": "onnx-quantized",
         "model_path": MODEL_PATH,
         "model_error": MODEL_LOAD_ERROR,
         "classes": CLASS_NAMES
@@ -159,7 +165,7 @@ async def health_check():
 def predict(file: Annotated[UploadFile, File(...)]):
     """Predict plant disease from uploaded image"""
     image = Image.open(io.BytesIO(file.file.read())).convert('RGB')
-    return predict_with_local_model(image)
+    return predict_with_onnx_model(image)
 
 @app.post(
     "/predict",
@@ -175,14 +181,22 @@ if __name__ == "__main__":
     # Force UTF-8 output so emoji/unicode doesn't crash on Windows cp1252 terminals
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     print("\n" + "="*60)
+<<<<<<< Updated upstream
     print("[ML] Plant Disease Detection API")
+=======
+    print("🌿 Plant Disease Detection API (ONNX Quantized)")
+>>>>>>> Stashed changes
     print("="*60)
     print("[*] Starting server...")
     print("[*] Frontend: http://localhost:8000")
     print("[*] API:      http://localhost:8000/api/predict")
     print("[*] Health:   http://localhost:8000/health")
     if MODEL_PATH:
+<<<<<<< Updated upstream
         print(f"[*] Local Keras model: {MODEL_PATH}")
+=======
+        print(f"🧠 ONNX Quantized model: {MODEL_PATH}")
+>>>>>>> Stashed changes
     if MODEL_LOAD_ERROR:
         print(f"[!] Model load error: {MODEL_LOAD_ERROR}")
     print("="*60 + "\n")

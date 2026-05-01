@@ -77,6 +77,10 @@ export default function CourseDetailModal({ course, open, onClose }) {
           component="img"
           src={course.image}
           alt={course.title}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = `https://picsum.photos/seed/${course.id}/800/440`;
+          }}
           sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
         {/* Gradient overlay */}

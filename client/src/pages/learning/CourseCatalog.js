@@ -163,6 +163,10 @@ function CourseCard({ course, onViewCourse }) {
             height={180}
             image={course.image}
             alt={course.title}
+            onError={(e) => {
+              e.target.onerror = null; // prevent infinite loop
+              e.target.src = `https://picsum.photos/seed/${course.id}/600/360`;
+            }}
             sx={{ transition: 'transform 0.35s ease', '&:hover': { transform: 'scale(1.04)' } }}
           />
           {/* Level badge on image */}
@@ -295,13 +299,26 @@ const CourseCatalog = () => {
   // Debounced search term (300 ms delay)
   const searchTerm = useDebounce(searchInput, 300);
 
-  // ── Fetch courses (API first, fallback to static data) ──────────────────────
+  // ── Load courses: try API, fall back to static data immediately ─────────────
   useEffect(() => {
+    let cancelled = false;
     const fetchCourses = async () => {
       try {
-        const response = await api.get('/learning/courses');
-        const apiCourses = response.data.data || [];
-        // Normalise API shape to match our data shape
+        // Use a plain fetch so the axios 401-redirect interceptor can't interfere
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/learning/courses`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const apiCourses = json.data || [];
+        if (cancelled) return;
+        // Normalise API shape to match our local data shape
         const normalised = apiCourses.map((c) => ({
           id: c._id || c.id,
           title: c.title,
@@ -315,17 +332,18 @@ const CourseCatalog = () => {
           image:
             c.thumbnail ||
             c.image ||
-            'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600',
+            `https://picsum.photos/seed/${c._id || c.id}/600/360`,
         }));
         setCourses(normalised.length > 0 ? normalised : COURSES_DATA);
       } catch {
-        // API unavailable — use static data so the UI is always populated
-        setCourses(COURSES_DATA);
+        // API unavailable or route not yet implemented — use bundled static data
+        if (!cancelled) setCourses(COURSES_DATA);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchCourses();
+    return () => { cancelled = true; };
   }, []);
 
   // ── Computed stats ──────────────────────────────────────────────────────────
