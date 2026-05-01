@@ -36,23 +36,34 @@ import {
   AccountBalanceWallet,
   Logout,
   Person,
+  Search as SearchIcon,
+  Message as MessageIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
+import { resolveAvatar } from '../utils/avatarUtils';
+
+const ALL_ROLES = ['farmer', 'buyer', 'expert', 'consultant', 'admin', 'government'];
 
 const menuItems = [
-  { title: 'Dashboard', path: '/dashboard', icon: <Dashboard />, roles: ['farmer', 'buyer', 'expert', 'admin'] },
-  { title: 'Farm Management', path: '/farm', icon: <Terrain />, roles: ['farmer'] },
-  { title: 'Wholesale Market', path: '/market', icon: <ShoppingCart />, roles: ['farmer', 'buyer'] },
-  { title: 'AgriLink Social', path: '/social', icon: <People />, roles: ['farmer', 'buyer', 'expert'] },
-  { title: 'Learning Hub', path: '/learning', icon: <School />, roles: ['farmer', 'buyer', 'expert'] },
-  { title: 'AI Tools Lab', path: '/ai-tools', icon: <Psychology />, roles: ['farmer', 'expert'] },
-  { title: 'Marketplace', path: '/marketplace', icon: <Store />, roles: ['farmer', 'buyer'] },
-  { title: 'Government Portal', path: '/government', icon: <AccountBalance />, roles: ['farmer', 'government', 'admin'] },
-  { title: 'Weather', path: '/weather', icon: <Cloud />, roles: ['farmer'] },
-  { title: 'Support', path: '/support', icon: <Support />, roles: ['farmer', 'buyer', 'expert'] },
-  { title: 'AgriFinTech', path: '/fintech', icon: <AccountBalanceWallet />, roles: ['farmer'] },
+  { title: 'Dashboard',        path: '/dashboard', icon: <Dashboard />,           roles: ALL_ROLES },
+  { title: 'Farm Management',  path: '/farm',      icon: <Terrain />,             roles: ['farmer'] },
+  { title: 'Wholesale Market', path: '/market',    icon: <ShoppingCart />,        roles: ['farmer', 'buyer'] },
+  // Social is open to all authenticated users
+  { title: 'AgriLink Social',  path: '/social',    icon: <People />,              roles: ALL_ROLES },
+  { title: 'Learning Hub',     path: '/learning',  icon: <School />,              roles: ALL_ROLES },
+  { title: 'AI Tools Lab',     path: '/ai-tools',  icon: <Psychology />,          roles: ['farmer', 'expert', 'consultant'] },
+  { title: 'Marketplace',      path: '/marketplace',icon: <Store />,             roles: ['farmer', 'buyer'] },
+  { title: 'Government Portal',path: '/government',icon: <AccountBalance />,      roles: ['farmer', 'government', 'admin'] },
+  { title: 'Weather',          path: '/weather',   icon: <Cloud />,               roles: ['farmer'] },
+  { title: 'Support',          path: '/support',   icon: <Support />,             roles: ALL_ROLES },
+  { title: 'AgriFinTech',      path: '/fintech',   icon: <AccountBalanceWallet />,roles: ['farmer'] },
 ];
+
+// Social quick-links shown in the mobile drawer for all roles — defined inline in drawer JSX
+
 
 const Navbar = () => {
   const theme = useTheme();
@@ -110,6 +121,46 @@ const Navbar = () => {
         </Typography>
       </Box>
       <Divider />
+
+      {/* Social quick-links — always visible to all logged-in users */}
+      <List dense sx={{ mt: 0.5 }}>
+        <ListItemButton
+          onClick={() => navigate('/social')}
+          selected={location.pathname === '/social'}
+          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/social' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+        >
+          <ListItemIcon><People /></ListItemIcon>
+          <ListItemText primary="Social Feed" primaryTypographyProps={{ fontWeight: 600 }} />
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => navigate('/messages')}
+          selected={location.pathname === '/messages'}
+          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/messages' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+        >
+          <ListItemIcon><MessageIcon /></ListItemIcon>
+          <ListItemText primary="Messages" />
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => navigate('/notifications')}
+          selected={location.pathname === '/notifications'}
+          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/notifications' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+        >
+          <ListItemIcon><NotificationsIcon /></ListItemIcon>
+          <ListItemText primary="Notifications" />
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => navigate('/search')}
+          selected={location.pathname === '/search'}
+          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/search' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+        >
+          <ListItemIcon><SearchIcon /></ListItemIcon>
+          <ListItemText primary="Search" />
+        </ListItemButton>
+      </List>
+
+      <Divider />
+
+      {/* Role-based main navigation */}
       <List sx={{ mt: 1 }}>
         {filteredMenuItems.map((item) => (
           <ListItemButton
@@ -202,11 +253,30 @@ const Navbar = () => {
                           </Box>
                         )}
 
+                        {/* Action Icons */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                          <Tooltip title="Search">
+                            <IconButton color="inherit" onClick={() => navigate('/search')} size="small">
+                              <SearchIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Messages">
+                            <IconButton color="inherit" onClick={() => navigate('/messages')} size="small">
+                              <MessageIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <NotificationBell />
+                        </Box>
+
                         {/* User Menu */}
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt={currentUser?.name} src={currentUser?.profile?.profilePicture} sx={{ width: 36, height: 36 }}>
+                  <Avatar 
+                    alt={currentUser?.name} 
+                    src={resolveAvatar(currentUser)}
+                    sx={{ width: 36, height: 36 }}
+                  >
                     {currentUser?.name?.charAt(0)}
                   </Avatar>
                 </IconButton>

@@ -10,6 +10,7 @@ import {
   alpha,
 } from '@mui/material';
 import { Send } from '@mui/icons-material';
+import { resolveAvatar } from '../../../utils/avatarUtils';
 
 const CommentSection = ({ 
   post, 
@@ -37,7 +38,7 @@ const CommentSection = ({
         {/* Add Comment */}
         <Box display="flex" gap={1.5} mb={2}>
           <Avatar 
-            src={user?.profile?.profilePicture}
+            src={resolveAvatar(user)}
             sx={{ width: 36, height: 36 }}
           >
             {user?.name?.charAt(0)}
@@ -72,7 +73,7 @@ const CommentSection = ({
             {post.comments.map((comment, idx) => (
               <Box key={`comment-${post._id}-${idx}`} display="flex" gap={1.5}>
                 <Avatar 
-                  src={comment.user?.profile?.profilePicture}
+                  src={resolveAvatar(comment.user)}
                   sx={{ width: 36, height: 36 }}
                 >
                   {comment.user?.name?.charAt(0) || 'U'}

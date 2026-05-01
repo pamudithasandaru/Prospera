@@ -17,6 +17,7 @@ import TrendingSidebar from './components/TrendingSidebar';
 import CreatePostDialog from './components/CreatePostDialog';
 import PostMenu from './components/PostMenu';
 import FeedTabs from './components/FeedTabs';
+import StoriesBar from './components/StoriesBar';
 
 const SocialFeed = () => {
   const { user } = useAuth();
@@ -179,6 +180,9 @@ const SocialFeed = () => {
 
         {/* Main Feed */}
         <Grid item xs={12} md={6}>
+          {/* Stories Bar */}
+          <StoriesBar />
+
           {/* Create Post Card */}
           <CreatePostCard 
             user={user}

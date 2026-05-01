@@ -20,6 +20,8 @@ import {
   Verified,
 } from '@mui/icons-material';
 import CommentSection from './CommentSection';
+import { resolvePostUser } from '../../../utils/avatarUtils';
+
 
 const PostCard = ({ 
   post, 
@@ -34,6 +36,8 @@ const PostCard = ({
   onCommentChange,
   onAddComment,
 }) => {
+  // Resolve post author — supports both post.user and post.author shapes
+  const postUser = resolvePostUser(post);
   const content = typeof post.content === 'string' ? post.content : post.content?.text || '';
   const images = post.content?.images || post.images || [];
   
@@ -54,22 +58,22 @@ const PostCard = ({
       {/* Post Header */}
       <Box display="flex" gap={1.5} mb={2}>
         <Avatar 
-          src={post.author?.profile?.profilePicture || post.author?.profile?.avatar}
+          src={postUser.resolvedAvatar}
           sx={{ width: 48, height: 48 }}
         >
-          {post.author?.name?.charAt(0)}
+          {postUser.name?.charAt(0)}
         </Avatar>
         <Box flexGrow={1}>
           <Box display="flex" alignItems="center" gap={0.5}>
             <Typography variant="subtitle1" fontWeight="bold">
-              {post.author?.name || 'Unknown User'}
+              {postUser.name || 'Unknown User'}
             </Typography>
-            {post.author?.profile?.verificationBadge && (
+            {postUser.profile?.verificationBadge && (
               <Verified sx={{ fontSize: 16, color: 'primary.main' }} />
             )}
           </Box>
           <Typography variant="caption" color="text.secondary" display="block">
-            Farmer • {new Date(post.createdAt).toLocaleDateString('en-US', { 
+            {postUser.role ? postUser.role.charAt(0).toUpperCase() + postUser.role.slice(1) : 'Member'} • {new Date(post.createdAt).toLocaleDateString('en-US', { 
               month: 'short', 
               day: 'numeric',
               year: 'numeric'
