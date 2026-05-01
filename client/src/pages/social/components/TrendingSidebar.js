@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveAvatar } from '../../../utils/avatarUtils';
 import {
@@ -12,6 +12,9 @@ import {
   Skeleton,
   Badge,
   Chip,
+  Tooltip,
+  TextField,
+  InputAdornment,
   alpha,
 } from '@mui/material';
 import {
@@ -21,6 +24,7 @@ import {
   Notifications,
   Check,
   Close,
+  Search,
 } from '@mui/icons-material';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -58,6 +62,10 @@ const TrendingSidebar = () => {
   const [loadingTopics, setLoadingTopics] = useState(true);
   const [loadingNotifs, setLoadingNotifs] = useState(true);
   const [connectingId, setConnectingId] = useState(null);
+  const [peopleSearch, setPeopleSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchDebounce = useRef(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -71,19 +79,64 @@ const TrendingSidebar = () => {
     }
   }, [user]);
 
+  // ── Live full-DB search across all members ────────────────────────────────
+  useEffect(() => {
+    clearTimeout(searchDebounce.current);
+    const q = peopleSearch.trim();
+    if (!q) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    searchDebounce.current = setTimeout(async () => {
+      try {
+        const res = await api.get('/search', { params: { q, type: 'users' } });
+        const found = res.data.data?.users || [];
+        // Fetch connection status for each result on-demand
+        const newStatuses = {};
+        await Promise.allSettled(
+          found.map(async (u) => {
+            if (connectionStatus[u._id]) {
+              newStatuses[u._id] = connectionStatus[u._id];
+              return;
+            }
+            try {
+              const r = await api.get(`/social/connection-status/${u._id}`);
+              newStatuses[u._id] = r.data.status || 'none';
+            } catch {
+              newStatuses[u._id] = 'none';
+            }
+          })
+        );
+        setConnectionStatus((prev) => ({ ...prev, ...newStatuses }));
+        setSearchResults(found);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 350);
+    return () => clearTimeout(searchDebounce.current);
+  }, [peopleSearch]); // eslint-disable-line
+
   useEffect(() => {
     api.get('/social/groups')
       .then((res) => setGroups(res.data.data || []))
       .catch(() => setGroups([]))
       .finally(() => setLoadingGroups(false));
 
-    api.get('/social/farmers')
+    // ── People You May Know — mutual-connections algorithm ──────────────────
+    // Call the /suggestions endpoint which scores & sorts users by shared
+    // connections, excludes already-connected and pending-request users,
+    // and returns the top 10.
+    api.get('/social/suggestions')
       .then(async (res) => {
-        const fetchedFarmers = res.data.data || [];
-        // Fetch connection status for each farmer
+        const fetchedUsers = res.data.data || [];
+        // Fetch connection status for each suggested user
         const statuses = {};
         await Promise.allSettled(
-          fetchedFarmers.map(async (f) => {
+          fetchedUsers.map(async (f) => {
             try {
               const r = await api.get(`/social/connection-status/${f._id}`);
               statuses[f._id] = r.data.status || 'none';
@@ -93,8 +146,8 @@ const TrendingSidebar = () => {
           })
         );
         setConnectionStatus(statuses);
-        // Only show farmers that are NOT already connected
-        setFarmers(fetchedFarmers.filter((f) => statuses[f._id] !== 'connected'));
+        // Filter out already-connected (double-safety)
+        setFarmers(fetchedUsers.filter((f) => statuses[f._id] !== 'connected'));
       })
       .catch(() => setFarmers([]))
       .finally(() => setLoadingFarmers(false));
@@ -246,28 +299,48 @@ const TrendingSidebar = () => {
   );
 
   const farmersContent = farmers.length > 0 && (
-    <Box display="flex" flexDirection="column" gap={2} mt={2}>
+    <Box display="flex" flexDirection="column" gap={2} mt={1}>
       {farmers.map((farmer, index) => {
         const status = connectionStatus[farmer._id] || 'none';
         const isLoading = connectingId === farmer._id;
+        const mutualCount = farmer.mutualCount || 0;
         return (
         <Box key={farmer._id}>
           <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-            <Avatar 
+            <Avatar
               src={resolveAvatar(farmer)}
-              sx={{ width: 40, height: 40 }}
+              sx={{ width: 42, height: 42 }}
             >
               {farmer.name?.charAt(0)}
             </Avatar>
-            <Box flex={1}>
-              <Typography variant="subtitle2" fontWeight="600">{farmer.name}</Typography>
+            <Box flex={1} minWidth={0}>
+              <Typography variant="subtitle2" fontWeight="600" noWrap>
+                {farmer.name}
+              </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
                 {farmer.role?.charAt(0).toUpperCase()}{farmer.role?.slice(1)}
               </Typography>
-              {farmer.profile?.location?.district && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                  {farmer.profile.location.district}
-                </Typography>
+              {/* Mutual connections badge */}
+              {mutualCount > 0 ? (
+                <Tooltip title={`You share ${mutualCount} connection${mutualCount !== 1 ? 's' : ''}`} placement="top">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 600,
+                      fontSize: '0.68rem',
+                      cursor: 'default',
+                    }}
+                  >
+                    👥 {mutualCount} mutual connection{mutualCount !== 1 ? 's' : ''}
+                  </Typography>
+                </Tooltip>
+              ) : (
+                farmer.profile?.location?.district && (
+                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.68rem' }}>
+                    📍 {farmer.profile.location.district}
+                  </Typography>
+                )
               )}
             </Box>
           </Box>
@@ -287,7 +360,11 @@ const TrendingSidebar = () => {
             >
               {getConnectLabel(status, isLoading)}
             </Button>
-            <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }} onClick={() => navigate(`/messages?user=${farmer._id}`)}>
+            <IconButton
+              size="small"
+              sx={{ border: '1px solid', borderColor: 'divider' }}
+              onClick={() => navigate(`/messages?user=${farmer._id}`)}
+            >
               <Message sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
@@ -375,8 +452,155 @@ const TrendingSidebar = () => {
       </Paper>
 
       <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>People You May Know</Typography>
-        {renderSection(loadingFarmers, 'No suggestions yet. Connect with others!', farmersContent)}
+        {/* Header */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+          <Typography variant="subtitle1" fontWeight="bold">People You May Know</Typography>
+          {!peopleSearch && !loadingFarmers && farmers.length > 0 && (
+            <Chip
+              label={`${farmers.length} suggestions`}
+              size="small" color="primary" variant="outlined"
+              sx={{ fontSize: '0.68rem', height: 20 }}
+            />
+          )}
+          {peopleSearch && !searchLoading && (
+            <Chip
+              label={`${searchResults.length} found`}
+              size="small" color="success" variant="outlined"
+              sx={{ fontSize: '0.68rem', height: 20 }}
+            />
+          )}
+        </Box>
+
+        {/* Always-visible search box */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search all members..."
+          value={peopleSearch}
+          onChange={(e) => setPeopleSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ fontSize: 16, color: 'text.disabled' }} />
+              </InputAdornment>
+            ),
+            endAdornment: searchLoading ? (
+              <InputAdornment position="end">
+                <Skeleton variant="circular" width={14} height={14} />
+              </InputAdornment>
+            ) : null,
+          }}
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': { borderRadius: 99, fontSize: '0.82rem' },
+          }}
+        />
+
+        <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+          {peopleSearch
+            ? `Searching all members for "${peopleSearch}"…`
+            : 'Top 5 suggestions — sorted by mutual connections'}
+        </Typography>
+
+        {/* Render list */}
+        {(() => {
+          const isSearchMode = peopleSearch.trim().length > 0;
+          const isListLoading = isSearchMode ? searchLoading : loadingFarmers;
+          const list = isSearchMode ? searchResults : farmers;
+
+          if (isListLoading) return <SkeletonRows count={3} height={60} />;
+
+          if (isSearchMode && searchResults.length === 0) {
+            return (
+              <Typography variant="caption" color="text.secondary">
+                No members found for "{peopleSearch}"
+              </Typography>
+            );
+          }
+          if (!isSearchMode && farmers.length === 0) {
+            return (
+              <Typography variant="caption" color="text.secondary">
+                No suggestions yet. Connect with others!
+              </Typography>
+            );
+          }
+
+          return (
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              {list.map((farmer, index) => {
+                const status = connectionStatus[farmer._id] || 'none';
+                const isLoading = connectingId === farmer._id;
+                const mutualCount = farmer.mutualCount || 0;
+                return (
+                  <Box key={farmer._id}>
+                    <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                      <Avatar
+                        src={resolveAvatar(farmer) || undefined}
+                        imgProps={{
+                          onError: (e) => { e.target.style.display = 'none'; }
+                        }}
+                        sx={{ width: 42, height: 42 }}
+                      >
+                        {farmer.name?.charAt(0)}
+                      </Avatar>
+                      <Box flex={1} minWidth={0}>
+                        <Typography variant="subtitle2" fontWeight="600" noWrap>
+                          {farmer.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {farmer.role?.charAt(0).toUpperCase()}{farmer.role?.slice(1)}
+                        </Typography>
+                        {!isSearchMode && mutualCount > 0 ? (
+                          <Tooltip
+                            title={`You share ${mutualCount} connection${mutualCount !== 1 ? 's' : ''}`}
+                            placement="top"
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.68rem', cursor: 'default' }}
+                            >
+                              👥 {mutualCount} mutual connection{mutualCount !== 1 ? 's' : ''}
+                            </Typography>
+                          </Tooltip>
+                        ) : (
+                          farmer.profile?.location?.district && (
+                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.68rem' }}>
+                              📍 {farmer.profile.location.district}
+                            </Typography>
+                          )
+                        )}
+                      </Box>
+                    </Box>
+                    <Box display="flex" gap={1}>
+                      <Button
+                        fullWidth size="small"
+                        variant={getConnectVariant(status)}
+                        color={getConnectColor(status)}
+                        startIcon={status === 'none' || status === 'received' ? <PersonAdd /> : null}
+                        onClick={() => {
+                          if (status === 'received') handleAccept(farmer._id);
+                          else if (status === 'none') handleConnect(farmer._id);
+                        }}
+                        disabled={isLoading || status === 'connected' || status === 'sent'}
+                        sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600, fontSize: '0.75rem' }}
+                      >
+                        {getConnectLabel(status, isLoading)}
+                      </Button>
+                      <IconButton
+                        size="small"
+                        sx={{ border: '1px solid', borderColor: 'divider' }}
+                        onClick={() => navigate(`/messages?user=${farmer._id}`)}
+                      >
+                        <Message sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                    {index < list.length - 1 && <Divider sx={{ mt: 2 }} />}
+                  </Box>
+                );
+              })}
+            </Box>
+          );
+        })()}
       </Paper>
     </>
   );

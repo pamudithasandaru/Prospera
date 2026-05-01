@@ -12,9 +12,18 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
 // ── Rate Limiters ─────────────────────────────────────────────────────────────
+// Skip rate limiting entirely for localhost during development.
+// Rate limiting is a production concern — hammering it in dev causes 429 storms.
+const isDev = process.env.NODE_ENV !== 'production';
+const skipLocalhost = (req) => {
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return isDev && (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1');
+};
+
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 2000,                 // 2000 req/window — enough for normal usage + polling
+  skip: skipLocalhost,       // no limit at all on localhost in dev
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
@@ -22,15 +31,17 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,                   // 50 login attempts per 15 min
+  skip: skipLocalhost,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many auth attempts, please try again later.' },
 });
 
 const writeLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30,
+  windowMs: 60 * 1000,       // 1 minute
+  max: 100,                  // 100 writes/min
+  skip: skipLocalhost,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many write operations, please slow down.' },

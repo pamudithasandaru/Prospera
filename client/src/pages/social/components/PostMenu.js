@@ -16,18 +16,20 @@ import {
   Flag,
 } from '@mui/icons-material';
 
+import { resolvePostUser } from '../../../utils/avatarUtils';
+
 const PostMenu = ({ anchorEl, onClose, postId, currentUserId, posts, onDelete }) => {
   const [saved, setSaved] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const post = posts?.find((p) => p._id === postId);
-  const isOwner =
-    post &&
-    currentUserId &&
-    (post.author?._id === currentUserId ||
-      post.user?._id === currentUserId ||
-      post.author === currentUserId ||
-      post.user === currentUserId);
+  
+  // Robust ownership check
+  const postUser = resolvePostUser(post);
+  const isOwner = 
+    currentUserId && 
+    postUser && 
+    (postUser._id === currentUserId || postUser.id === currentUserId || postUser === currentUserId);
 
   const handleSave = () => {
     setSaved((prev) => !prev);

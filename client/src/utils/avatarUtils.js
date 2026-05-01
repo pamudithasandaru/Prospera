@@ -20,10 +20,17 @@
 export const resolveAvatar = (userObj) => {
   if (!userObj) return '';
   return (
+    // Highest priority: user-uploaded photo stored via profile edit
     userObj?.profile?.profilePicture ||
+    userObj?.profile?.photoURL ||
+    userObj?.profile?.photo ||
     userObj?.profile?.avatar ||
+    // Firebase Auth / Google OAuth fields at root level
     userObj?.photoURL ||
+    userObj?.picture ||
+    // Notification / message embed field
     userObj?.senderAvatar ||
+    // Default system-assigned avatar (pravatar placeholder, etc.)
     userObj?.avatar ||
     ''
   );

@@ -180,4 +180,23 @@ router.put('/password', authenticate, async (req, res) => {
   return res.json({ success: true, message: 'Password updated' });
 });
 
+router.get('/user/:id', async (req, res) => {
+  const { id } = req.params;
+  if (isFirestoreEnabled && db) {
+    try {
+      const doc = await withTimeout(db.collection('users').doc(id).get());
+      if (doc.exists) {
+        return res.json({ success: true, data: sanitizeUser({ _id: doc.id, ...doc.data() }) });
+      }
+    } catch (err) {
+      console.error('Firestore get-user error:', err.message);
+    }
+  }
+  const user = users.find((u) => u._id === id);
+  if (user) {
+    return res.json({ success: true, data: sanitizeUser(user) });
+  }
+  return res.status(404).json({ success: false, message: 'User not found' });
+});
+
 module.exports = router;

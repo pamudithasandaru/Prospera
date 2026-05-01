@@ -170,6 +170,43 @@ router.post('/post/:id/comment', authenticate, async (req, res) => {
   return res.status(201).json({ success: true, data: comment });
 });
 
+router.delete('/post/:id', authenticate, async (req, res) => {
+  const userId = req.user._id;
+
+  if (isFirestoreEnabled && db) {
+    try {
+      const docRef = db.collection('socialPosts').doc(req.params.id);
+      const snap = await withTimeout(docRef.get());
+      if (!snap.exists) {
+        return res.status(404).json({ success: false, message: 'Post not found' });
+      }
+      const post = snap.data();
+      // Ownership check: handle both user._id and author._id variants
+      const authorId = post.user?._id || post.author?._id || post.author || post.user;
+      if (authorId !== userId) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: You can only delete your own posts' });
+      }
+      await withTimeout(docRef.delete());
+      return res.json({ success: true, message: 'Post deleted successfully' });
+    } catch (err) {
+      console.error('Firestore delete-post error:', err.message);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  const idx = socialPosts.findIndex((p) => p._id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ success: false, message: 'Post not found' });
+  }
+  const post = socialPosts[idx];
+  const authorId = post.user?._id || post.author?._id || post.author || post.user;
+  if (authorId !== userId) {
+    return res.status(403).json({ success: false, message: 'Unauthorized' });
+  }
+  socialPosts.splice(idx, 1);
+  return res.json({ success: true, message: 'Post deleted successfully' });
+});
+
 // GET suggested groups
 router.get('/groups', async (req, res) => {
   if (isFirestoreEnabled && db) {
@@ -227,6 +264,109 @@ router.get('/farmers', authenticate, async (req, res) => {
     .slice(0, 10);
   return res.json({ success: true, data });
 });
+
+// ─── PEOPLE YOU MAY KNOW — Mutual Connections Algorithm ─────────────────────
+// Score = number of shared connections between current user and candidate.
+// Candidates are sorted descending by score; top 10 are returned.
+// Only users not already connected / with pending requests are included.
+router.get('/suggestions', authenticate, async (req, res) => {
+  const myId = req.user._id;
+
+  if (isFirestoreEnabled && db) {
+    try {
+      // 1. Get my current connections list (array of partner IDs)
+      const myConnSnap = await withTimeout(
+        db.collection('connections').where('users', 'array-contains', myId).get()
+      );
+      const myConnectionIds = new Set(
+        myConnSnap.docs.map((d) => d.data().users.find((id) => id !== myId)).filter(Boolean)
+      );
+
+      // 2. Get pending request IDs (sent or received) to exclude them
+      const [sentSnap, recvSnap] = await Promise.all([
+        withTimeout(db.collection('connectionRequests').where('senderId', '==', myId).where('status', '==', 'pending').get()),
+        withTimeout(db.collection('connectionRequests').where('receiverId', '==', myId).where('status', '==', 'pending').get()),
+      ]);
+      const pendingIds = new Set([
+        ...sentSnap.docs.map((d) => d.data().receiverId),
+        ...recvSnap.docs.map((d) => d.data().senderId),
+      ]);
+
+      // 3. Fetch all users except me, already-connected, and pending
+      const allUsersSnap = await withTimeout(db.collection('users').limit(100).get());
+      const candidates = allUsersSnap.docs
+        .map((doc) => ({ _id: doc.id, ...doc.data() }))
+        .filter((u) => u._id !== myId && !myConnectionIds.has(u._id) && !pendingIds.has(u._id))
+        .map(({ passwordHash, ...safe }) => safe);
+
+      // 4. For each candidate, count mutual connections
+      // Fetch their connection lists in parallel
+      const scored = await Promise.all(
+        candidates.map(async (candidate) => {
+          try {
+            const theirSnap = await withTimeout(
+              db.collection('connections').where('users', 'array-contains', candidate._id).get()
+            );
+            const theirConnectionIds = new Set(
+              theirSnap.docs.map((d) => d.data().users.find((id) => id !== candidate._id)).filter(Boolean)
+            );
+            // Count overlap
+            let mutualCount = 0;
+            myConnectionIds.forEach((id) => { if (theirConnectionIds.has(id)) mutualCount++; });
+            return { ...candidate, mutualCount };
+          } catch {
+            return { ...candidate, mutualCount: 0 };
+          }
+        })
+      );
+
+      // 5. Sort by mutualCount desc, take top 5
+      scored.sort((a, b) => b.mutualCount - a.mutualCount);
+      return res.json({ success: true, data: scored.slice(0, 5) });
+
+    } catch (err) {
+      console.error('Firestore suggestions error:', err.message);
+    }
+  }
+
+  // ── In-memory fallback ─────────────────────────────────────────────────────
+  // Build my connection set
+  const myConnectionIds = new Set(
+    connections
+      .filter((c) => c.users.includes(myId))
+      .map((c) => c.users.find((id) => id !== myId))
+      .filter(Boolean)
+  );
+
+  // Pending request IDs
+  const pendingIds = new Set(
+    connectionRequests
+      .filter((r) => r.status === 'pending' && (r.senderId === myId || r.receiverId === myId))
+      .map((r) => (r.senderId === myId ? r.receiverId : r.senderId))
+  );
+
+  // Candidates = everyone except me, already connected, pending
+  const candidates = users
+    .filter((u) => u._id !== myId && !myConnectionIds.has(u._id) && !pendingIds.has(u._id))
+    .map(({ passwordHash, ...safe }) => safe);
+
+  // Score by mutual connections
+  const scored = candidates.map((candidate) => {
+    const theirConnectionIds = new Set(
+      connections
+        .filter((c) => c.users.includes(candidate._id))
+        .map((c) => c.users.find((id) => id !== candidate._id))
+        .filter(Boolean)
+    );
+    let mutualCount = 0;
+    myConnectionIds.forEach((id) => { if (theirConnectionIds.has(id)) mutualCount++; });
+    return { ...candidate, mutualCount };
+  });
+
+  scored.sort((a, b) => b.mutualCount - a.mutualCount);
+  return res.json({ success: true, data: scored.slice(0, 5) });
+});
+
 
 // ─── CONNECTION ROUTES ───────────────────────────────────────────────────────
 

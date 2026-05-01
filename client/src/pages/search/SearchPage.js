@@ -26,6 +26,7 @@ import { Search, TrendingUp, Person, Article } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { resolveAvatar } from '../../utils/avatarUtils';
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,7 +148,7 @@ const SearchPage = () => {
                         }
                       >
                         <ListItemAvatar>
-                          <Avatar src={u.profile?.profilePicture || u.avatar}>{u.name?.charAt(0)}</Avatar>
+                          <Avatar src={resolveAvatar(u)}>{u.name?.charAt(0)}</Avatar>
                         </ListItemAvatar>
                         <ListItemText
                           primary={<Typography variant="body2" fontWeight="600">{u.name}</Typography>}

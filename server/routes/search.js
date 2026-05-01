@@ -18,10 +18,11 @@ router.get(
   '/',
   authenticate,
   [
-    query('q').notEmpty().isLength({ min: 1, max: 100 }).trim().escape(),
+    query('q').notEmpty().isLength({ min: 1, max: 100 }).trim(),
     query('type').optional().isIn(['all', 'users', 'posts', 'hashtags']),
   ],
   async (req, res) => {
+    // Validate — do NOT use .escape() as it HTML-encodes the query and breaks matching
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -37,21 +38,22 @@ router.get(
       try {
         // ── User search ─────────────────────────────────────────────────────
         if (type === 'all' || type === 'users') {
-          // Firestore doesn't support full-text search natively.
-          // We use a name prefix search trick with >= and <=.
-          const nameEnd = q.slice(0, -1) + String.fromCharCode(q.charCodeAt(q.length - 1) + 1);
+          // Firestore doesn't support native full-text search.
+          // Fetch a broad set then filter by substring in JS (case-insensitive).
           const snap = await withTimeout(
-            db.collection('users')
-              .orderBy('name')
-              .startAt(q)
-              .endBefore(nameEnd)
-              .limit(limit)
-              .get()
+            db.collection('users').limit(100).get()
           );
-          results.users = snap.docs.map((d) => {
-            const { passwordHash, ...safe } = d.data();
-            return { _id: d.id, ...safe };
-          });
+          results.users = snap.docs
+            .map((d) => {
+              const { passwordHash, ...safe } = d.data();
+              return { _id: d.id, ...safe };
+            })
+            .filter((u) =>
+              (u.name || '').toLowerCase().includes(q) ||
+              (u.email || '').toLowerCase().includes(q) ||
+              (u.role || '').toLowerCase().includes(q)
+            )
+            .slice(0, limit);
         }
 
         // ── Post search ─────────────────────────────────────────────────────
@@ -104,7 +106,11 @@ router.get(
     // ── In-memory fallback ────────────────────────────────────────────────────
     if (type === 'all' || type === 'users') {
       results.users = users
-        .filter((u) => u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))
+        .filter((u) =>
+          (u.name || '').toLowerCase().includes(q) ||
+          (u.email || '').toLowerCase().includes(q) ||
+          (u.role || '').toLowerCase().includes(q)
+        )
         .slice(0, limit)
         .map(({ passwordHash, ...safe }) => safe);
     }

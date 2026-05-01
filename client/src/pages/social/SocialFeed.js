@@ -5,6 +5,8 @@ import {
   Paper,
   Typography,
   Button,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -34,6 +36,7 @@ const SocialFeed = () => {
   const [commentText, setCommentText] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     fetchPosts();
@@ -83,26 +86,51 @@ const SocialFeed = () => {
     }
   };
 
-  const handleLikePost = async (postId) => {
-    try {
-      await api.post(`/social/post/${postId}/like`);
-      
-      // Update local state
-      setPosts(posts.map(post => {
-        if (post._id === postId) {
-          const isLiked = post.likes?.some(like => like.user === user._id);
-          return {
-            ...post,
-            likes: isLiked
-              ? post.likes.filter(like => like.user !== user._id)
-              : [...(post.likes || []), { user: user._id, date: new Date() }]
-          };
+  // ── Optimistic Like with Debounced API Sync ──────────────────────────────
+  // UI updates instantly. The API call is sent 5 seconds after the last click
+  // on each individual post (debounced per-post). If the API fails, UI reverts.
+  const likeTimers = React.useRef({});     // postId → timer ID
+  const likeSnapshot = React.useRef({});   // postId → likes array before optimistic update
+
+  const handleLikePost = (postId) => {
+    // 1. Update UI immediately (optimistic)
+    setPosts((prev) => prev.map((post) => {
+      if (post._id !== postId) return post;
+      const isLiked = post.likes?.some(
+        (l) => l.user === user._id || l.user?._id === user._id
+      );
+      // Save snapshot ONLY on the first click in this debounce window
+      if (!likeTimers.current[postId]) {
+        likeSnapshot.current[postId] = post.likes || [];
+      }
+      return {
+        ...post,
+        likes: isLiked
+          ? post.likes.filter((l) => l.user !== user._id && l.user?._id !== user._id)
+          : [...(post.likes || []), { user: user._id, date: new Date() }],
+      };
+    }));
+
+    // 2. Reset the debounce timer for this post
+    clearTimeout(likeTimers.current[postId]);
+    likeTimers.current[postId] = setTimeout(async () => {
+      delete likeTimers.current[postId];
+      try {
+        await api.post(`/social/post/${postId}/like`);
+        // Success — clear snapshot, server state now matches UI
+        delete likeSnapshot.current[postId];
+      } catch (error) {
+        console.error('Like sync failed, reverting:', error);
+        // Revert to pre-click state
+        const snapshot = likeSnapshot.current[postId];
+        if (snapshot !== undefined) {
+          setPosts((prev) => prev.map((post) =>
+            post._id === postId ? { ...post, likes: snapshot } : post
+          ));
+          delete likeSnapshot.current[postId];
         }
-        return post;
-      }));
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
+      }
+    }, 5000); // sync to DB after 5 s of no further clicks
   };
 
   const handleAddComment = async (postId) => {
@@ -159,9 +187,11 @@ const SocialFeed = () => {
     try {
       await api.delete(`/social/post/${postId}`);
       setPosts(posts.filter(p => p._id !== postId));
+      setSnackbar({ open: true, message: 'Post deleted successfully', severity: 'success' });
     } catch {
       // remove locally even if server fails (for demo mode)
       setPosts(posts.filter(p => p._id !== postId));
+      setSnackbar({ open: true, message: 'Post removed', severity: 'info' });
     }
     handleCloseMenu();
   };
@@ -278,6 +308,17 @@ const SocialFeed = () => {
         posts={posts}
         onDelete={handleDeletePost}
       />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

@@ -7,7 +7,7 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { db, isFirestoreEnabled } = require('../services/firestore');
 const { body, validationResult } = require('express-validator');
-const { generateId } = require('../data/sampleData');
+const { users, generateId } = require('../data/sampleData');
 
 const router = express.Router();
 const TIMEOUT = 6000;
@@ -17,6 +17,41 @@ const withTimeout = (p) =>
 // ── In-memory fallback store ──────────────────────────────────────────────────
 const memConversations = [];
 const memMessages = [];
+
+// ── Helper: Populate participant info ─────────────────────────────────────────
+async function populateConversations(convs, currentUserId) {
+  const result = [];
+  for (const conv of convs) {
+    const otherId = conv.participants.find((id) => id !== currentUserId);
+    let otherUser = null;
+
+    if (isFirestoreEnabled && db) {
+      try {
+        const doc = await withTimeout(db.collection('users').doc(otherId).get());
+        if (doc.exists) {
+          const { passwordHash, ...safe } = doc.data();
+          otherUser = { _id: doc.id, ...safe };
+        }
+      } catch (err) {
+        console.error('Populate error:', err.message);
+      }
+    }
+
+    if (!otherUser) {
+      const u = users.find((x) => x._id === otherId);
+      if (u) {
+        const { passwordHash, ...safe } = u;
+        otherUser = safe;
+      }
+    }
+
+    result.push({
+      ...conv,
+      otherUser: otherUser || { _id: otherId, name: 'User' },
+    });
+  }
+  return result;
+}
 
 // ── Helper: get or create a conversation between two users ───────────────────
 async function getOrCreateConversation(userId1, userId2) {
@@ -71,22 +106,24 @@ router.get('/conversations', authenticate, async (req, res) => {
       const snap = await withTimeout(
         db.collection('conversations').where('participants', 'array-contains', userId).get()
       );
-      const data = snap.docs
+      const rawConvs = snap.docs
         .map((d) => ({ _id: d.id, ...d.data() }))
         .sort((a, b) => {
           const aTime = a.lastMessageAt?.seconds || a.createdAt?.seconds || 0;
           const bTime = b.lastMessageAt?.seconds || b.createdAt?.seconds || 0;
           return bTime - aTime;
         });
+      const data = await populateConversations(rawConvs, userId);
       return res.json({ success: true, data });
     } catch (err) {
       console.error('Firestore conversations error:', err.message);
     }
   }
 
-  const data = memConversations
+  const rawConvs = memConversations
     .filter((c) => c.participants.includes(userId))
     .sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
+  const data = await populateConversations(rawConvs, userId);
   return res.json({ success: true, data });
 });
 
@@ -99,7 +136,8 @@ router.get('/conversation/:userId', authenticate, async (req, res) => {
   }
   try {
     const conv = await getOrCreateConversation(myId, otherId);
-    return res.json({ success: true, data: conv });
+    const [populated] = await populateConversations([conv], myId);
+    return res.json({ success: true, data: populated });
   } catch (err) {
     console.error('Get/create conversation error:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to load conversation' });
@@ -140,8 +178,10 @@ router.post(
   authenticate,
   [
     body('text').optional().isString().trim(),
-    body('mediaUrl').optional().isURL(),
-    body('mediaType').optional().isIn(['image', 'video', 'file']),
+    body('mediaUrl').optional().isString(), // accepts both URLs and base64 data URIs
+    body('mediaType').optional().isIn(['image', 'video', 'audio', 'file']),
+    body('fileName').optional().isString(),
+    body('fileSize').optional().isNumeric(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -150,7 +190,7 @@ router.post(
     }
 
     const { conversationId } = req.params;
-    const { text, mediaUrl, mediaType } = req.body;
+    const { text, mediaUrl, mediaType, fileName, fileSize } = req.body;
     const senderId = req.user._id;
 
     if (!text && !mediaUrl) {
@@ -161,10 +201,12 @@ router.post(
       conversationId,
       senderId,
       senderName: req.user.name,
-      senderAvatar: req.user.avatar || '',
+      senderAvatar: req.user.avatar || req.user.profile?.profilePicture || '',
       text: text || '',
       mediaUrl: mediaUrl || null,
       mediaType: mediaType || null,
+      fileName: fileName || null,
+      fileSize: fileSize || null,
       readBy: [senderId],
       createdAt: new Date(),
     };
@@ -178,9 +220,13 @@ router.post(
         savedMessage = { _id: ref.id, ...message };
 
         // Update conversation's lastMessage
+        const previewText = text ||
+          (mediaType === 'image' ? '🖼 Image' :
+           mediaType === 'audio' ? '🎙 Voice message' :
+           mediaType === 'file' ? `📎 ${fileName || 'File'}` : '📎 Media');
         await withTimeout(
           db.collection('conversations').doc(conversationId).update({
-            lastMessage: text || '📎 Media',
+            lastMessage: previewText,
             lastMessageAt: new Date(),
           })
         );
@@ -191,9 +237,13 @@ router.post(
       savedMessage = { _id: generateId('msg'), ...message };
       memMessages.push(savedMessage);
 
+      const previewText = text ||
+        (mediaType === 'image' ? '🖼 Image' :
+         mediaType === 'audio' ? '🎙 Voice message' :
+         mediaType === 'file' ? `📎 ${fileName || 'File'}` : '📎 Media');
       const conv = memConversations.find((c) => c._id === conversationId);
       if (conv) {
-        conv.lastMessage = text || '📎 Media';
+        conv.lastMessage = previewText;
         conv.lastMessageAt = new Date();
       }
     }
