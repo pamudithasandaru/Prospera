@@ -116,6 +116,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/learning/courses/:id"
+            element={
+              <ProtectedRoute>
+                <CourseCatalog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/ai-tools"
             element={
               <ProtectedRoute roles={['farmer', 'expert']}>

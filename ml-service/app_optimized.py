@@ -9,8 +9,14 @@ Uses:
 import os
 import sys
 import time
+# Force UTF-8 so Windows cp1252 terminals don't crash on any unicode output
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+import io
 import numpy as np
-import cv2
+from PIL import Image
 import onnxruntime as rt
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +28,7 @@ load_dotenv()
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 print("\n" + "="*60)
-print("🌿 Plant Disease Detection API (ONNX Optimized)")
+print("[ML] Plant Disease Detection API (ONNX Optimized)")
 print("="*60)
 
 app = FastAPI(title="Plant Disease Detection API (ONNX)")
@@ -73,21 +79,39 @@ def load_onnx_model():
     for model_path, model_desc in model_paths:
         if os.path.exists(model_path):
             try:
-                print(f"📂 Loading {model_desc}: {os.path.basename(model_path)}")
+                print(f"[*] Loading {model_desc}: {os.path.basename(model_path)}")
                 file_size = os.path.getsize(model_path) / (1024 * 1024)
-                print(f"   Size: {file_size:.1f} MB")
-                
-                session = rt.InferenceSession(model_path, providers=['CPUExecutionProvider'])
-                input_name = session.get_inputs()[0].name
-                output_name = session.get_outputs()[0].name
-                model_type = model_desc
-                
-                print(f"   ✓ Loaded successfully")
-                print(f"   Input shape: {session.get_inputs()[0].shape}")
-                print(f"   Output shape: {session.get_outputs()[0].shape}")
-                return True
+                print(f"    Size: {file_size:.1f} MB")
+
+                # Try first with default options, then with optimizations disabled
+                loaded = False
+                for opt_level, label in [
+                    (rt.GraphOptimizationLevel.ORT_ENABLE_ALL, 'full optimization'),
+                    (rt.GraphOptimizationLevel.ORT_DISABLE_ALL, 'no optimization'),
+                ]:
+                    try:
+                        opts = rt.SessionOptions()
+                        opts.graph_optimization_level = opt_level
+                        session = rt.InferenceSession(
+                            model_path,
+                            sess_options=opts,
+                            providers=['CPUExecutionProvider'],
+                        )
+                        input_name = session.get_inputs()[0].name
+                        output_name = session.get_outputs()[0].name
+                        model_type = model_desc
+                        print(f"    Loaded successfully ({label})")
+                        print(f"    Input : {session.get_inputs()[0].shape}")
+                        print(f"    Output: {session.get_outputs()[0].shape}")
+                        loaded = True
+                        break
+                    except Exception as inner_e:
+                        print(f"    [{label}] load error: {inner_e}")
+
+                if loaded:
+                    return True
             except Exception as e:
-                print(f"   ❌ Error: {e}")
+                print(f"    Error reading model file: {e}")
                 continue
     
     # Fallback to Keras if ONNX not available
@@ -108,45 +132,27 @@ def load_onnx_model():
 
 def preprocess_opencv(image_bytes: bytes) -> np.ndarray:
     """
-    Preprocess image using OpenCV
-    ~5x faster than PIL for this task
+    Preprocess image using PIL (pillow)
     """
     try:
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        
-        # Decode image
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("Failed to decode image")
-        
-        # Convert BGR to RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
-        # Resize to model input size (512x512)
-        img = cv2.resize(img, (512, 512), interpolation=cv2.INTER_LINEAR)
-        
-        # Normalize to [0, 1]
-        img = img.astype(np.float32) / 255.0
-        
-        # Expand batch dimension
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        img = img.resize((512, 512), Image.BILINEAR)
+        img = np.array(img, dtype=np.float32) / 255.0
         img = np.expand_dims(img, axis=0)
-        
         return img
     except Exception as e:
         print(f"Preprocessing error: {e}")
         raise
 
 # Load model on startup
-print("\n📋 Model Loading:")
+print("\n[*] Model Loading:")
 print("-" * 60)
 keras_model = load_onnx_model()
 if session is None and keras_model is None:
-    print("\n❌ Error: No model available. Please ensure:")
-    print("   1. Run: python convert_to_onnx.py")
-    print("   2. Run: python quantize_onnx.py")
-    print("   3. Or ensure plant_disease_model.keras exists")
-    sys.exit(1)
+    print("\n[!] Warning: No model available. Predictions will fail.")
+    print("    1. Run: python convert_to_onnx.py")
+    print("    2. Run: python quantize_onnx.py")
+    print("    3. Or place plant_disease_model.keras in the models/ folder")
 
 print()
 
@@ -230,11 +236,11 @@ async def predict_legacy(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     print("="*60)
-    print("🚀 Starting Optimized ML Service...")
+    print("[ML] Starting Optimized ML Service...")
     print("="*60)
-    print("📱 Frontend: http://localhost:8000")
-    print("📊 API: http://localhost:8000/api/predict")
-    print("❤️  Health: http://localhost:8000/health")
-    print("📋 Model Type:", model_type)
+    print("[*] Frontend: http://localhost:8000")
+    print("[*] API:      http://localhost:8000/api/predict")
+    print("[*] Health:   http://localhost:8000/health")
+    print("[*] Model Type:", model_type)
     print("="*60 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000)

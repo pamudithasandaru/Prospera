@@ -137,7 +137,12 @@ const DiseaseDetection = () => {
     setResult(null);
     try {
       const data = await predictDisease(selectedFile);
-      setResult(data.data);
+      // Handle error field returned by ONNX endpoint
+      if (data?.data?.error) {
+        setError(`Prediction error: ${data.data.error}`);
+      } else {
+        setResult(data.data);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Prediction failed. Make sure the ML service is running.');
     } finally {
@@ -145,7 +150,17 @@ const DiseaseDetection = () => {
     }
   };
 
-  const info = result ? DISEASE_INFO[result.prediction] || null : null;
+  // Normalize lookup: try exact match first, then case-insensitive
+  const resolveInfo = (prediction) => {
+    if (!prediction) return null;
+    if (DISEASE_INFO[prediction]) return DISEASE_INFO[prediction];
+    const key = Object.keys(DISEASE_INFO).find(
+      (k) => k.toLowerCase() === prediction.toLowerCase().replace(/ /g, '_')
+    );
+    return key ? DISEASE_INFO[key] : null;
+  };
+
+  const info = result ? resolveInfo(result.prediction) : null;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -325,6 +340,42 @@ const DiseaseDetection = () => {
                     </ListItem>
                   ))}
                 </List>
+              </Box>
+            )}
+
+            {/* Fallback: result exists but no matching info (unknown label) */}
+            {result && !info && (
+              <Box>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2" fontWeight="bold">
+                    Prediction: {result.prediction}
+                  </Typography>
+                  <Typography variant="body2">
+                    Confidence: {result.confidence != null ? `${(result.confidence * 100).toFixed(1)}%` : 'N/A'}
+                  </Typography>
+                </Alert>
+                {result.all_predictions && (
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      Class Probabilities
+                    </Typography>
+                    {Object.entries(result.all_predictions)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([cls, prob]) => (
+                        <Box key={cls} mb={0.8}>
+                          <Box display="flex" justifyContent="space-between" mb={0.3}>
+                            <Typography variant="caption">{cls.replace('_', ' ')}</Typography>
+                            <Typography variant="caption" fontWeight="bold">{(prob * 100).toFixed(1)}%</Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={prob * 100}
+                            sx={{ borderRadius: 2, height: 6 }}
+                          />
+                        </Box>
+                      ))}
+                  </Box>
+                )}
               </Box>
             )}
           </Paper>
