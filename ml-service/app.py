@@ -15,7 +15,6 @@ load_dotenv(os.path.join(BASE_DIR, '..', '.env'))
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from huggingface_hub import hf_hub_download
 import tensorflow as tf
 from PIL import Image
 import numpy as np
@@ -41,38 +40,22 @@ app.add_middleware(
 )
 
 MODEL_DIR = os.path.join(BASE_DIR, 'models')
-os.makedirs(MODEL_DIR, exist_ok=True)
-
-HF_MODEL_REPO_ID = os.getenv('HF_MODEL_REPO_ID', '').strip()
-HF_MODEL_FILENAME = os.getenv('HF_MODEL_FILENAME', 'plant_disease_model.keras').strip()
-HF_TOKEN = os.getenv('HF_TOKEN', '').strip() or None
 
 
 def resolve_model_path():
-    """Resolve model path from local cache, Hugging Face Hub, or legacy fallback."""
-    local_candidate = os.path.join(MODEL_DIR, HF_MODEL_FILENAME)
-    if os.path.exists(local_candidate):
-        print(f"Using local model: {local_candidate}")
-        return local_candidate
+    """Resolve the model path from local files only."""
+    model_candidates = [
+        os.path.join(MODEL_DIR, 'plant_disease_model.keras'),
+        os.path.join(BASE_DIR, 'plant_disease_model.keras'),
+    ]
 
-    if HF_MODEL_REPO_ID:
-        try:
-            print(f"Downloading model from Hugging Face: {HF_MODEL_REPO_ID}/{HF_MODEL_FILENAME}")
-            downloaded = hf_hub_download(
-                repo_id=HF_MODEL_REPO_ID,
-                filename=HF_MODEL_FILENAME,
-                token=HF_TOKEN,
-                local_dir=MODEL_DIR,
-            )
-            print(f"Model downloaded to: {downloaded}")
-            return downloaded
-        except Exception as e:
-            print(f"Hugging Face download failed: {e}")
-            print("Falling back to local model file in ml-service root if available.")
+    for candidate in model_candidates:
+        if os.path.exists(candidate):
+            print(f"Using local model: {candidate}")
+            return candidate
 
-    fallback = os.path.join(BASE_DIR, 'plant_disease_model.keras')
-    print(f"Using fallback model path: {fallback}")
-    return fallback
+    print("No local plant_disease_model.keras file found.")
+    return model_candidates[0]
 
 # Load model with proper error handling
 MODEL_PATH = resolve_model_path()

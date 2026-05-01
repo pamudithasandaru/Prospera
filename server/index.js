@@ -33,7 +33,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 app.use(helmet());
-app.use(cors({ origin: [CLIENT_URL, 'http://localhost:3001'], credentials: true }));
+app.use(cors({ origin: [CLIENT_URL, 'http://localhost:3000', 'http://localhost:3001'], credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
