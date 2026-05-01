@@ -66,6 +66,25 @@ const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 const CLIENT_URL_DEV = 'http://localhost:3001';
 
+// ── Rate Limiters ─────────────────────────────────────────────────────────────
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit login attempts
+  message: 'Too many login attempts, please try again later.',
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // Limit writes
+  message: 'Too many write requests, please try again later.',
+});
+
 // Force reliable public DNS for SRV lookups (avoids local DNS issues)
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
