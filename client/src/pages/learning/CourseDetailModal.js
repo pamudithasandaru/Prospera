@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ const getHighlights = (course) => [
 ];
 
 export default function CourseDetailModal({ course, open, onClose }) {
+  const navigate = useNavigate();
+
   if (!course) return null;
 
   const levelMeta = LEVEL_COLORS[course.level] || LEVEL_COLORS.beginner;
@@ -240,13 +243,10 @@ export default function CourseDetailModal({ course, open, onClose }) {
             size="large"
             startIcon={<School />}
             sx={{ px: 4, fontWeight: 700 }}
-            onClick={() =>
-              window.open(
-                'https://www.youtube.com/watch?v=3LPJfIKxwWc&list=PLhQjrBD2T381WAHyx1pq-sBfykqMBI7V4',
-                '_blank',
-                'noopener,noreferrer'
-              )
-            }
+            onClick={() => {
+              navigate(`/learning/course/${course.id}`);
+              onClose();
+            }}
           >
             Enroll Now — Free
           </Button>

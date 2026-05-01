@@ -77,8 +77,8 @@ const socialLinks = [
 
 const contactInfo = [
   { icon: <Email sx={{ fontSize: 16 }} />, text: 'support@prospera.agri' },
-  { icon: <Phone sx={{ fontSize: 16 }} />, text: '+91 98765 43210' },
-  { icon: <LocationOn sx={{ fontSize: 16 }} />, text: 'New Delhi, India' },
+  { icon: <Phone sx={{ fontSize: 16 }} />, text: '+94 71 234 5678' },
+  { icon: <LocationOn sx={{ fontSize: 16 }} />, text: 'Galle, Sri Lanka' },
 ];
 
 const Footer = () => {
@@ -408,7 +408,7 @@ const Footer = () => {
             variant="caption"
             sx={{ color: alpha('#ffffff', 0.2), fontSize: '0.73rem', textAlign: { xs: 'center', sm: 'right' } }}
           >
-            Built with ❤️ for Indian Farmers
+            Built with ❤️ for Farmers
           </Typography>
         </Box>
       </Container>

@@ -21,6 +21,13 @@ import {
   Select,
   FormControl,
   InputLabel,
+  IconButton,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Search,
@@ -36,11 +43,15 @@ import {
   FilterList,
   ExpandMore,
   SearchOff,
+  Add,
+  Edit,
+  Delete,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import COURSES_DATA from './coursesData';
+import { useAuth } from '../../context/AuthContext';
 import CourseDetailModal from './CourseDetailModal';
+import CourseFormDialog from './CourseFormDialog';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -136,7 +147,7 @@ function CourseCardSkeleton() {
 
 // ─── Course Card ───────────────────────────────────────────────────────────────
 
-function CourseCard({ course, onViewCourse }) {
+function CourseCard({ course, onViewCourse, isOwner, onEdit, onDelete }) {
   const levelMeta = LEVEL_META[course.level] || LEVEL_META.beginner;
   const categoryLabel =
     CATEGORIES.find((c) => c.value === course.category)?.label || course.category;
@@ -275,6 +286,31 @@ function CourseCard({ course, onViewCourse }) {
           >
             View Course
           </Button>
+          {isOwner && (
+            <Box display="flex" gap={1} mt={1}>
+              <Button
+                fullWidth
+                size="small"
+                variant="outlined"
+                startIcon={<Edit />}
+                onClick={(e) => { e.stopPropagation(); onEdit(course); }}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Edit
+              </Button>
+              <Button
+                fullWidth
+                size="small"
+                variant="outlined"
+                color="error"
+                startIcon={<Delete />}
+                onClick={(e) => { e.stopPropagation(); onDelete(course); }}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Delete
+              </Button>
+            </Box>
+          )}
         </Box>
       </Card>
     </Fade>
@@ -285,6 +321,8 @@ function CourseCard({ course, onViewCourse }) {
 
 const CourseCatalog = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isExpert = user?.role === 'expert';
 
   // State
   const [courses, setCourses] = useState([]);
@@ -295,6 +333,14 @@ const CourseCatalog = () => {
   const [visibleCount, setVisibleCount] = useState(COURSES_PER_PAGE);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Expert CRUD state
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, course: null });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Debounced search term (300 ms delay)
   const searchTerm = useDebounce(searchInput, 300);
@@ -333,18 +379,22 @@ const CourseCatalog = () => {
             c.thumbnail ||
             c.image ||
             `https://picsum.photos/seed/${c._id || c.id}/600/360`,
+          createdBy: c.createdBy || null,
+          thumbnail: c.thumbnail || '',
+          videos: c.videos || [],
+          materials: c.materials || [],
         }));
-        setCourses(normalised.length > 0 ? normalised : COURSES_DATA);
+        setCourses(normalised);
       } catch {
-        // API unavailable or route not yet implemented — use bundled static data
-        if (!cancelled) setCourses(COURSES_DATA);
+        // API unavailable — show empty state
+        if (!cancelled) setCourses([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     fetchCourses();
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshKey]);
 
   // ── Computed stats ──────────────────────────────────────────────────────────
   const totalStudents = useMemo(
@@ -419,18 +469,79 @@ const CourseCatalog = () => {
     setModalOpen(false);
   }, []);
 
+  // ── Expert CRUD handlers ─────────────────────────────────────────────────
+  const handleCreateCourse = () => {
+    setEditingCourse(null);
+    setFormOpen(true);
+  };
+
+  const handleEditCourse = (course) => {
+    setEditingCourse(course);
+    setFormOpen(true);
+  };
+
+  const handleSaveCourse = async (formData) => {
+    setSaving(true);
+    try {
+      if (editingCourse) {
+        await api.put(`/learning/courses/${editingCourse.id}`, formData);
+        setSnackbar({ open: true, message: 'Course updated successfully!', severity: 'success' });
+      } else {
+        await api.post('/learning/courses', formData);
+        setSnackbar({ open: true, message: 'Course created successfully!', severity: 'success' });
+      }
+      setFormOpen(false);
+      setEditingCourse(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save course';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteClick = (course) => {
+    setDeleteDialog({ open: true, course });
+  };
+
+  const handleConfirmDelete = async () => {
+    const course = deleteDialog.course;
+    setDeleteDialog({ open: false, course: null });
+    try {
+      await api.delete(`/learning/courses/${course.id}`);
+      setSnackbar({ open: true, message: 'Course deleted successfully!', severity: 'success' });
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to delete course';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 6 }}>
       {/* ── Page Header ── */}
-      <Box mb={4}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          🌱 Learning Hub
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Enhance your farming knowledge with expert-led courses — search, filter, and learn at
-          your own pace.
-        </Typography>
+      <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-start">
+        <Box>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            🌱 Learning Hub
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Enhance your farming knowledge with expert-led courses — search, filter, and learn at
+            your own pace.
+          </Typography>
+        </Box>
+        {isExpert && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleCreateCourse}
+            sx={{ fontWeight: 700, textTransform: 'none', px: 3, borderRadius: 2, whiteSpace: 'nowrap' }}
+          >
+            Add Course
+          </Button>
+        )}
       </Box>
 
       {/* ── Stats Cards ── */}
@@ -619,7 +730,13 @@ const CourseCatalog = () => {
           <Grid container spacing={3}>
             {visibleCourses.map((course) => (
               <Grid item xs={12} sm={6} md={4} key={course.id}>
-                <CourseCard course={course} onViewCourse={handleViewCourse} />
+                <CourseCard
+                  course={course}
+                  onViewCourse={handleViewCourse}
+                  isOwner={isExpert && user?._id && course.createdBy === user._id}
+                  onEdit={handleEditCourse}
+                  onDelete={handleDeleteClick}
+                />
               </Grid>
             ))}
           </Grid>
@@ -648,6 +765,52 @@ const CourseCatalog = () => {
         open={modalOpen}
         onClose={handleCloseModal}
       />
+
+      {/* ── Course Form Dialog (Create / Edit) ── */}
+      <CourseFormDialog
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditingCourse(null); }}
+        onSave={handleSaveCourse}
+        course={editingCourse}
+        saving={saving}
+      />
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, course: null })}
+      >
+        <DialogTitle>Delete Course?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{deleteDialog.course?.title}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, course: null })}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Snackbar ── */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

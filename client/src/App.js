@@ -21,6 +21,7 @@ import Unauthorized from './pages/Unauthorized';
 
 // Farm Management
 import FarmDashboard from './pages/farm/FarmDashboard';
+import ExpertFarmView from './pages/farm/ExpertFarmView';
 
 // Market
 import MarketListings from './pages/market/MarketListings';
@@ -30,6 +31,7 @@ import SocialFeed from './pages/social/SocialFeed';
 
 // Learning
 import CourseCatalog from './pages/learning/CourseCatalog';
+import CoursePage from './pages/learning/CoursePage';
 
 // AI Tools
 import DiseaseDetection from './pages/ai/DiseaseDetection';
@@ -84,6 +86,14 @@ function AppContent() {
 
           {/* Protected Module Routes */}
           <Route
+            path="/farm/expert"
+            element={
+              <ProtectedRoute roles={['expert', 'consultant']}>
+                <ExpertFarmView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/farm"
             element={
               <ProtectedRoute roles={['farmer']}>
@@ -112,6 +122,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <CourseCatalog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/learning/course/:courseId"
+            element={
+              <ProtectedRoute>
+                <CoursePage />
               </ProtectedRoute>
             }
           />
