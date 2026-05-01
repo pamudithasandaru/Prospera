@@ -5,4 +5,8 @@ numpy>=1.26.0
 python-multipart>=0.0.6
 requests>=2.31.0
 python-dotenv>=1.0.1
+<<<<<<< Updated upstream
 onnxruntime>=1.16.0
+=======
+onnxruntime>=1.17.0
+>>>>>>> Stashed changes
