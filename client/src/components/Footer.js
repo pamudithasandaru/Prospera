@@ -5,13 +5,12 @@ import {
   Grid,
   Typography,
   Link,
-  Divider,
   IconButton,
   Stack,
   Chip,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import { Link as RouterLink } from 'react-router-dom';
+import { neuColors, neuRaised, neuInset, neuCircle } from '../neumorphic';
 import {
   Agriculture,
   Facebook,
@@ -81,6 +80,15 @@ const contactInfo = [
   { icon: <LocationOn sx={{ fontSize: 16 }} />, text: 'Galle, Sri Lanka' },
 ];
 
+const sectionTitleSx = {
+  color: neuColors.primary,
+  fontWeight: 700,
+  fontSize: '0.7rem',
+  letterSpacing: '0.12em',
+  mb: 2.5,
+  display: 'block',
+};
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
@@ -88,86 +96,36 @@ const Footer = () => {
     <Box
       component="footer"
       sx={{
-        background: 'linear-gradient(135deg, #0B2710 0%, #0D1F0E 40%, #0A1628 100%)',
-        color: 'white',
+        ...neuRaised('lg'),
+        color: 'text.primary',
         mt: 'auto',
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: 'linear-gradient(90deg, #1B5E20, #4CAF50, #0D47A1, #5472d3)',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          top: '-180px',
-          right: '-180px',
-          width: 400,
-          height: 400,
-          borderRadius: '50%',
-          background: alpha('#4CAF50', 0.04),
-          pointerEvents: 'none',
-        },
+        borderRadius: '32px 32px 0 0',
       }}
     >
-      {/* Decorative blobs */}
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: '-100px',
-          left: '-100px',
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: alpha('#0D47A1', 0.06),
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Main Footer Content */}
-      <Container maxWidth="xl" sx={{ pt: 7, pb: 4, position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="xl" sx={{ pt: 7, pb: 4 }}>
         <Grid container spacing={5}>
-          {/* Brand Column */}
           <Grid item xs={12} md={4} lg={3.5}>
-            {/* Logo */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
               <Box
                 sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #1B5E20, #4CAF50)',
+                  ...neuCircle(44, 'sm'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 16px rgba(76, 175, 80, 0.35)',
                 }}
               >
-                <Agriculture sx={{ color: 'white', fontSize: 24 }} />
+                <Agriculture sx={{ color: neuColors.primary, fontSize: 24 }} />
               </Box>
               <Box>
                 <Typography
                   variant="h6"
-                  sx={{
-                    fontWeight: 800,
-                    lineHeight: 1,
-                    background: 'linear-gradient(135deg, #4CAF50, #81C784)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.3px',
-                  }}
+                  sx={{ fontWeight: 800, lineHeight: 1, color: neuColors.primary, letterSpacing: '-0.3px' }}
                 >
                   Prospera
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ color: alpha('#ffffff', 0.45), letterSpacing: '0.05em', fontSize: '0.65rem' }}
+                  sx={{ color: 'text.secondary', letterSpacing: '0.05em', fontSize: '0.65rem' }}
                 >
                   AgriTech Platform
                 </Typography>
@@ -176,13 +134,7 @@ const Footer = () => {
 
             <Typography
               variant="body2"
-              sx={{
-                color: alpha('#ffffff', 0.55),
-                lineHeight: 1.85,
-                mb: 3,
-                maxWidth: 300,
-                fontSize: '0.82rem',
-              }}
+              sx={{ color: 'text.secondary', lineHeight: 1.85, mb: 3, maxWidth: 300, fontSize: '0.82rem' }}
             >
               Empowering farmers with cutting-edge technology, AI-driven insights, and a connected
               agricultural ecosystem to build a prosperous future for Indian agriculture.
@@ -193,31 +145,20 @@ const Footer = () => {
               size="small"
               sx={{
                 mb: 3.5,
-                bgcolor: alpha('#4CAF50', 0.12),
-                color: '#81C784',
-                border: `1px solid ${alpha('#4CAF50', 0.25)}`,
+                color: neuColors.primary,
                 fontWeight: 600,
                 fontSize: '0.72rem',
                 '& .MuiChip-label': { px: 1.5 },
               }}
             />
 
-            {/* Contact Info */}
             <Stack spacing={1.5}>
               {contactInfo.map((item, idx) => (
                 <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box
-                    sx={{
-                      color: '#4CAF50',
-                      display: 'flex',
-                      alignItems: 'center',
-                      opacity: 0.85,
-                      flexShrink: 0,
-                    }}
-                  >
+                  <Box sx={{ color: neuColors.primary, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                     {item.icon}
                   </Box>
-                  <Typography variant="body2" sx={{ color: alpha('#ffffff', 0.5), fontSize: '0.8rem' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
                     {item.text}
                   </Typography>
                 </Box>
@@ -225,20 +166,9 @@ const Footer = () => {
             </Stack>
           </Grid>
 
-          {/* Navigation Columns */}
           {footerSections.map((section) => (
             <Grid item xs={6} sm={4} md={2.5} lg={2} key={section.title}>
-              <Typography
-                variant="overline"
-                sx={{
-                  color: '#4CAF50',
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
-                  letterSpacing: '0.12em',
-                  mb: 2.5,
-                  display: 'block',
-                }}
-              >
+              <Typography variant="overline" sx={sectionTitleSx}>
                 {section.title}
               </Typography>
               <Stack spacing={1.4}>
@@ -252,19 +182,19 @@ const Footer = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
-                      color: alpha('#ffffff', 0.48),
+                      color: 'text.secondary',
                       fontSize: '0.82rem',
                       fontFamily: 'Poppins, sans-serif',
                       fontWeight: 400,
                       transition: 'color 0.2s ease, gap 0.2s ease',
                       '&:hover': {
-                        color: '#81C784',
+                        color: neuColors.primary,
                         gap: 1.5,
                         '& .arrow-icon': { opacity: 1 },
                       },
                     }}
                   >
-                    <Box sx={{ color: alpha('#4CAF50', 0.6), display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <Box sx={{ color: neuColors.primary, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                       {link.icon}
                     </Box>
                     {link.label}
@@ -278,23 +208,12 @@ const Footer = () => {
             </Grid>
           ))}
 
-          {/* Social & App Column */}
           <Grid item xs={12} sm={12} md={3} lg={2.5}>
-            <Typography
-              variant="overline"
-              sx={{
-                color: '#4CAF50',
-                fontWeight: 700,
-                fontSize: '0.7rem',
-                letterSpacing: '0.12em',
-                mb: 2.5,
-                display: 'block',
-              }}
-            >
+            <Typography variant="overline" sx={sectionTitleSx}>
               Follow Us
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ mb: 4 }}>
+            <Stack direction="row" spacing={1.5} sx={{ mb: 4 }}>
               {socialLinks.map((social) => (
                 <IconButton
                   key={social.label}
@@ -304,21 +223,11 @@ const Footer = () => {
                   aria-label={social.label}
                   size="small"
                   sx={{
-                    color: alpha('#ffffff', 0.45),
-                    bgcolor: alpha('#ffffff', 0.05),
-                    border: `1px solid ${alpha('#ffffff', 0.08)}`,
-                    borderRadius: '10px',
-                    width: 36,
-                    height: 36,
-                    transition: 'all 0.25s ease',
+                    ...neuCircle(36, 'xs'),
+                    color: 'text.secondary',
                     '& svg': { fontSize: 17 },
-                    '&:hover': {
-                      color: '#4CAF50',
-                      bgcolor: alpha('#4CAF50', 0.12),
-                      borderColor: alpha('#4CAF50', 0.35),
-                      transform: 'translateY(-3px)',
-                      boxShadow: '0 6px 16px rgba(76, 175, 80, 0.2)',
-                    },
+                    '&:hover': { color: neuColors.primary, boxShadow: neuRaised('sm').boxShadow },
+                    '&:active': { boxShadow: neuInset('xs').boxShadow },
                   }}
                 >
                   {social.icon}
@@ -326,50 +235,33 @@ const Footer = () => {
               ))}
             </Stack>
 
-            <Box
-              sx={{
-                p: 2.5,
-                borderRadius: '16px',
-                border: `1px solid ${alpha('#4CAF50', 0.18)}`,
-                bgcolor: alpha('#4CAF50', 0.05),
-                backdropFilter: 'blur(8px)',
-              }}
-            >
+            <Box sx={{ p: 2.5, borderRadius: '16px', ...neuInset('sm') }}>
               <Typography
                 variant="subtitle2"
-                sx={{ color: alpha('#ffffff', 0.85), fontWeight: 600, mb: 0.75, fontSize: '0.82rem' }}
+                sx={{ color: 'text.primary', fontWeight: 600, mb: 0.75, fontSize: '0.82rem' }}
               >
                 Stay Connected
               </Typography>
-              <Typography variant="body2" sx={{ color: alpha('#ffffff', 0.4), fontSize: '0.75rem', lineHeight: 1.7 }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.75rem', lineHeight: 1.7 }}>
                 Get the latest agri news, market prices, and crop alerts directly to your account.
               </Typography>
             </Box>
           </Grid>
         </Grid>
 
-        {/* Divider */}
-        <Divider
-          sx={{
-            mt: 5,
-            mb: 3,
-            borderColor: alpha('#ffffff', 0.07),
-          }}
-        />
-
-        {/* Bottom Bar */}
         <Box
           sx={{
+            mt: 6,
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            alignItems: { xs: 'center', sm: 'center' },
+            alignItems: 'center',
             gap: 2,
           }}
         >
           <Typography
             variant="caption"
-            sx={{ color: alpha('#ffffff', 0.3), fontSize: '0.75rem', textAlign: { xs: 'center', sm: 'left' } }}
+            sx={{ color: 'text.secondary', fontSize: '0.75rem', textAlign: { xs: 'center', sm: 'left' } }}
           >
             © {currentYear} Prospera AgriTech Platform. All rights reserved.
           </Typography>
@@ -378,7 +270,7 @@ const Footer = () => {
             direction="row"
             spacing={0.5}
             divider={
-              <Box component="span" sx={{ color: alpha('#ffffff', 0.2), alignSelf: 'center', fontSize: '0.7rem' }}>
+              <Box component="span" sx={{ color: 'text.secondary', alignSelf: 'center', fontSize: '0.7rem' }}>
                 ·
               </Box>
             }
@@ -392,11 +284,11 @@ const Footer = () => {
                 href="#"
                 underline="none"
                 sx={{
-                  color: alpha('#ffffff', 0.3),
+                  color: 'text.secondary',
                   fontSize: '0.73rem',
                   fontFamily: 'Poppins, sans-serif',
                   transition: 'color 0.2s',
-                  '&:hover': { color: '#81C784' },
+                  '&:hover': { color: neuColors.primary },
                 }}
               >
                 {item}
@@ -406,7 +298,7 @@ const Footer = () => {
 
           <Typography
             variant="caption"
-            sx={{ color: alpha('#ffffff', 0.2), fontSize: '0.73rem', textAlign: { xs: 'center', sm: 'right' } }}
+            sx={{ color: 'text.secondary', fontSize: '0.73rem', textAlign: { xs: 'center', sm: 'right' } }}
           >
             Built with ❤️ for Farmers
           </Typography>

@@ -89,7 +89,7 @@ const FarmFormDialog = ({ open, onClose, onSubmit, farm = null }) => {
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent>
         <Box display="flex" flexDirection="column" gap={2.5} pt={1}>
           <TextField
             label="Farm Name"

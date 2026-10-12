@@ -17,7 +17,6 @@ import {
   ListItemText,
   Divider,
   Skeleton,
-  alpha,
   Badge,
   InputAdornment,
   Chip,
@@ -43,6 +42,7 @@ import api from '../../services/api';
 import { useSearchParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { resolveAvatar } from '../../utils/avatarUtils';
+import { neuColors, neuRaised, neuInset, neuInteractive, inset, raised } from '../../neumorphic';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const toBase64 = (blob) =>
@@ -99,7 +99,7 @@ const MediaBubble = ({ msg, isOwn }) => {
         <IconButton
           size="small"
           onClick={togglePlay}
-          sx={{ bgcolor: isOwn ? 'rgba(255,255,255,0.2)' : alpha('#000', 0.08), color: isOwn ? 'white' : 'text.primary' }}
+          sx={{ ...neuRaised('xs'), color: 'primary.main' }}
         >
           {playing ? <Pause sx={{ fontSize: 18 }} /> : <PlayArrow sx={{ fontSize: 18 }} />}
         </IconButton>
@@ -371,7 +371,7 @@ const MessagesPage = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 80px)', gap: 0, bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 80px)', gap: 2, p: 1, bgcolor: neuColors.base }}>
 
       {/* ── Conversation List ──────────────────────────────────────────────── */}
       <Paper
@@ -379,15 +379,13 @@ const MessagesPage = () => {
         sx={{
           width: { xs: showList ? '100%' : 0, md: 320 },
           minWidth: { md: 320 },
-          borderRight: '1px solid',
-          borderColor: 'divider',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           transition: 'width 0.2s',
         }}
       >
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight="bold" mb={1.5}>Messages</Typography>
           <TextField
             fullWidth size="small"
@@ -427,8 +425,12 @@ const MessagesPage = () => {
                       onClick={() => openConversation(conv._id)}
                       sx={{
                         py: 1.5,
-                        '&.Mui-selected': { bgcolor: alpha('#4CAF50', 0.08) },
-                        '&:hover': { bgcolor: alpha('#4CAF50', 0.05) },
+                        mx: 1,
+                        width: 'auto',
+                        borderRadius: 2,
+                        transition: 'box-shadow .2s ease',
+                        '&:hover': { backgroundColor: neuColors.base, boxShadow: raised('xs') },
+                        '&.Mui-selected, &.Mui-selected:hover': { backgroundColor: neuColors.base, boxShadow: inset('xs') },
                       }}
                     >
                       <ListItemAvatar>
@@ -471,7 +473,7 @@ const MessagesPage = () => {
       </Paper>
 
       {/* ── Chat Window ────────────────────────────────────────────────────── */}
-      <Box sx={{ flex: 1, display: { xs: showList ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', overflow: 'hidden' }}>
+      <Box sx={{ ...neuRaised('md'), borderRadius: 3, flex: 1, display: { xs: showList ? 'none' : 'flex', md: 'flex' }, flexDirection: 'column', overflow: 'hidden' }}>
         {!activeConvId ? (
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ fontSize: 64 }}>💬</Box>
@@ -481,7 +483,7 @@ const MessagesPage = () => {
         ) : (
           <>
             {/* Header */}
-            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.paper' }}>
+            <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <IconButton sx={{ display: { md: 'none' } }} onClick={() => setShowList(true)}>
                 <ArrowBack />
               </IconButton>
@@ -531,7 +533,9 @@ const MessagesPage = () => {
                               px: msg.mediaType ? 1.5 : 2,
                               py: msg.mediaType ? 1 : 1,
                               borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                              bgcolor: isOwn ? 'primary.main' : alpha('#000', 0.06),
+                              ...(isOwn
+                                ? { bgcolor: 'primary.main', boxShadow: raised('xs') }
+                                : neuInset('xs')),
                               color: isOwn ? 'white' : 'text.primary',
                               opacity: isOptimistic ? 0.75 : 1,
                               transition: 'opacity 0.3s',
@@ -554,15 +558,15 @@ const MessagesPage = () => {
                   })}
               {isTyping && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'grey.300' }} />
-                  <Chip label="typing..." size="small" sx={{ borderRadius: 99, bgcolor: alpha('#000', 0.06) }} />
+                  <Avatar sx={{ width: 28, height: 28, ...neuRaised('xs') }} />
+                  <Chip label="typing..." size="small" sx={{ borderRadius: 99, ...neuInset('xs') }} />
                 </Box>
               )}
               <div ref={messagesEndRef} />
             </Box>
 
             {/* ── Input Bar ─────────────────────────────────────────────────── */}
-            <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+            <Box sx={{ p: 1.5 }}>
               {/* Recording indicator */}
               {recording && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, px: 1 }}>
@@ -606,7 +610,7 @@ const MessagesPage = () => {
                     color={recording ? 'error' : 'default'}
                     onClick={recording ? stopRecording : startRecording}
                     disabled={sending}
-                    sx={recording ? { bgcolor: alpha('#f44336', 0.1) } : {}}
+                    sx={recording ? { boxShadow: inset('xs') } : {}}
                   >
                     {recording ? <Stop sx={{ fontSize: 20 }} /> : <Mic sx={{ fontSize: 20 }} />}
                   </IconButton>
@@ -618,13 +622,12 @@ const MessagesPage = () => {
                   onClick={handleSend}
                   disabled={!newMessage.trim() || sending || recording}
                   sx={{
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    '&:hover': { bgcolor: 'primary.dark' },
-                    '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
+                    ...neuInteractive('xs'),
+                    color: 'primary.main',
+                    '&.Mui-disabled': { boxShadow: 'none' },
                   }}
                 >
-                  {sending ? <CircularProgress size={18} sx={{ color: 'white' }} /> : <Send />}
+                  {sending ? <CircularProgress size={18} /> : <Send />}
                 </IconButton>
               </Box>
             </Box>

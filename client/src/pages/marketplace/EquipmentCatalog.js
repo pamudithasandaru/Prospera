@@ -25,6 +25,7 @@ import {
   FilterList,
   LocalShipping,
 } from '@mui/icons-material';
+import { neuRaised } from '../../neumorphic';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -174,7 +175,7 @@ const EquipmentCatalog = () => {
                   />
                 )}
                 <IconButton
-                  sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'white' }}
+                  sx={{ position: 'absolute', top: 8, right: 8, ...neuRaised('xs') }}
                   size="small"
                 >
                   <FavoriteBorder />

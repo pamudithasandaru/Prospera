@@ -6,7 +6,9 @@ import {
   TrendingUp, TrendingDown, AttachMoney, Grass, Terrain, EmojiEvents,
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { neuColors, raised } from '../../neumorphic';
 
+const tooltipStyle = { background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text };
 const COLORS = ['#4caf50', '#2196f3', '#ff9800', '#f44336', '#9c27b0', '#00bcd4', '#ff5722', '#607d8b', '#e91e63', '#3f51b5'];
 
 const StatCard = ({ label, value, icon, color = 'primary.main', prefix = '' }) => (
@@ -136,7 +138,7 @@ const FarmInsightsPanel = ({ insights, farmName = '' }) => {
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => `LKR ${v.toLocaleString()}`} />
+                    <Tooltip formatter={(v) => `LKR ${v.toLocaleString()}`} contentStyle={tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
                 <Box flex={1}>
@@ -165,7 +167,7 @@ const FarmInsightsPanel = ({ insights, farmName = '' }) => {
             </Typography>
             {topRevenueCrop ? (
               <Box display="flex" alignItems="center" gap={2}>
-                <EmojiEvents sx={{ fontSize: 48, color: '#ffc107' }} />
+                <EmojiEvents sx={{ fontSize: 48, color: neuColors.warning }} />
                 <Box>
                   <Typography variant="h6" fontWeight="bold">{topRevenueCrop.label}</Typography>
                   <Typography variant="body1" color="success.main" fontWeight="bold">

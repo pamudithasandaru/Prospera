@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Agriculture } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { neuColors, neuInset, neuCircle } from '../neumorphic';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -58,9 +59,11 @@ const Login = () => {
           alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+        <Paper elevation={0} sx={{ p: 4, width: '100%' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Agriculture sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+            <Box sx={{ ...neuCircle(80, 'md'), display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+              <Agriculture sx={{ fontSize: 44, color: neuColors.primary }} />
+            </Box>
             <Typography component="h1" variant="h4" fontWeight="bold">
               Prospera
             </Typography>
@@ -133,7 +136,7 @@ const Login = () => {
             </Box>
           </Box>
 
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+          <Box sx={{ mt: 3, p: 2, borderRadius: '14px', ...neuInset('sm') }}>
             <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
               Test Credentials:
             </Typography>

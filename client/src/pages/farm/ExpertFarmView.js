@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container, Paper, Typography, Box, Button, LinearProgress,
   Avatar, Chip, Card, CardContent, CardActionArea, Grid,
-  IconButton, Collapse, Divider, TextField, InputAdornment,
+  IconButton, Collapse, TextField, InputAdornment,
 } from '@mui/material';
 import {
   Agriculture, ExpandMore, ExpandLess, Search, Person,
   Terrain, ArrowBack, Refresh,
 } from '@mui/icons-material';
 import api from '../../services/api';
+import { neuInset } from '../../neumorphic';
 import FarmInsightsPanel from './FarmInsightsPanel';
 
 const ExpertFarmView = () => {
@@ -222,8 +223,7 @@ const ExpertFarmView = () => {
             </CardActionArea>
 
             <Collapse in={expandedFarmer === farmer._id}>
-              <Divider />
-              <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
+              <Box sx={{ p: 2, m: 1.5, borderRadius: 3, ...neuInset('sm') }}>
                 {loadingFarms === farmer._id ? (
                   <LinearProgress sx={{ my: 2 }} />
                 ) : farmerFarms[farmer._id]?.length > 0 ? (

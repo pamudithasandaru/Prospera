@@ -19,7 +19,6 @@ import {
   ListItemText,
   Skeleton,
   InputAdornment,
-  alpha,
   Button,
 } from '@mui/material';
 import { Search, TrendingUp, Person, Article } from '@mui/icons-material';
@@ -27,6 +26,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { resolveAvatar } from '../../utils/avatarUtils';
+import { neuInteractive } from '../../neumorphic';
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -69,7 +69,7 @@ const SearchPage = () => {
   const PostResult = ({ post }) => {
     const text = typeof post.content === 'string' ? post.content : post.content?.text || '';
     return (
-      <Paper elevation={0} sx={{ p: 2, mb: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2, '&:hover': { boxShadow: '0 2px 12px rgba(0,0,0,0.07)' } }}>
+      <Paper elevation={0} sx={{ ...neuInteractive('sm'), p: 2, mb: 1, borderRadius: 2 }}>
         <Box display="flex" gap={1.5} alignItems="center" mb={1}>
           <Avatar sx={{ width: 32, height: 32 }}>{post.author?.name?.charAt(0) || post.user?.name?.charAt(0)}</Avatar>
           <Typography variant="caption" fontWeight="bold">{post.author?.name || post.user?.name}</Typography>
@@ -85,7 +85,7 @@ const SearchPage = () => {
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       {/* Search Bar */}
-      <Paper elevation={0} sx={{ p: 2, mb: 3, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 2, mb: 3 }}>
         <TextField
           fullWidth
           size="medium"
@@ -101,7 +101,7 @@ const SearchPage = () => {
       </Paper>
 
       {/* Tabs */}
-      <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+      <Paper elevation={0} sx={{ overflow: 'hidden' }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
           <Tab label="All" icon={<Search sx={{ fontSize: 16 }} />} iconPosition="start" />
           <Tab label={`People (${results.users.length})`} icon={<Person sx={{ fontSize: 16 }} />} iconPosition="start" />
@@ -138,7 +138,7 @@ const SearchPage = () => {
                     {results.users.map((u) => (
                       <ListItem
                         key={u._id}
-                        sx={{ px: 0, borderRadius: 2, '&:hover': { bgcolor: alpha('#4CAF50', 0.05) } }}
+                        sx={{ px: 0, borderRadius: 2 }}
                         secondaryAction={
                           u._id !== user?._id && (
                             <Button size="small" variant="outlined" sx={{ borderRadius: 99, textTransform: 'none' }} onClick={() => handleMessageUser(u._id)}>
@@ -178,7 +178,7 @@ const SearchPage = () => {
                         key={h.tag}
                         label={`${h.tag} · ${h.posts} posts`}
                         onClick={() => setQuery(h.tag.replace('#', ''))}
-                        sx={{ borderRadius: 99, '&:hover': { bgcolor: alpha('#4CAF50', 0.1) } }}
+                        sx={{ borderRadius: 99, ...neuInteractive('xs') }}
                       />
                     ))}
                   </Box>

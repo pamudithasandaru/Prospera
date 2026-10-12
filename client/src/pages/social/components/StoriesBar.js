@@ -11,7 +11,6 @@ import {
   IconButton,
   Paper,
   Skeleton,
-  alpha,
 } from '@mui/material';
 import { Add, ChevronLeft, ChevronRight } from '@mui/icons-material';
 import api from '../../../services/api';
@@ -19,10 +18,11 @@ import { useAuth } from '../../../context/AuthContext';
 import StoryViewer from './StoryViewer';
 import CreateStoryDialog from './CreateStoryDialog';
 import { resolveAvatar } from '../../../utils/avatarUtils';
+import { neuRaised, raised, neuColors } from '../../../neumorphic';
 
 const STORY_RING = {
   unviewed: 'linear-gradient(135deg, #4CAF50, #1B5E20)',
-  viewed: 'linear-gradient(135deg, #bdbdbd, #9e9e9e)',
+  viewed: neuColors.dark,
 };
 
 const StoriesBar = () => {
@@ -76,8 +76,6 @@ const StoriesBar = () => {
       elevation={0}
       sx={{
         mb: 2,
-        border: '1px solid',
-        borderColor: 'divider',
         overflow: 'hidden',
         position: 'relative',
       }}
@@ -92,9 +90,8 @@ const StoriesBar = () => {
           top: '50%',
           transform: 'translateY(-50%)',
           zIndex: 2,
-          bgcolor: 'background.paper',
-          boxShadow: 2,
-          '&:hover': { bgcolor: 'background.paper' },
+          ...neuRaised('xs'),
+          '&:hover': { boxShadow: raised('sm') },
           display: storyGroups.length > 5 ? 'flex' : 'none',
         }}
       >
@@ -131,10 +128,9 @@ const StoriesBar = () => {
               sx={{
                 width: 56,
                 height: 56,
-                border: '2px solid',
-                borderColor: 'divider',
-                transition: 'transform 0.2s',
-                '&:hover': { transform: 'scale(1.05)' },
+                ...neuRaised('sm'),
+                transition: 'box-shadow 0.2s',
+                '&:hover': { boxShadow: raised('md') },
               }}
             >
               {user?.name?.charAt(0)}
@@ -151,7 +147,7 @@ const StoriesBar = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '2px solid white',
+                boxShadow: raised('xs'),
               }}
             >
               <Add sx={{ fontSize: 12, color: 'white' }} />
@@ -200,7 +196,7 @@ const StoriesBar = () => {
                       sx={{
                         width: 52,
                         height: 52,
-                        border: '2px solid white',
+                        border: `2px solid ${neuColors.base}`,
                       }}
                     >
                       {group.author?.name?.charAt(0)}
@@ -235,9 +231,8 @@ const StoriesBar = () => {
           top: '50%',
           transform: 'translateY(-50%)',
           zIndex: 2,
-          bgcolor: 'background.paper',
-          boxShadow: 2,
-          '&:hover': { bgcolor: 'background.paper' },
+          ...neuRaised('xs'),
+          '&:hover': { boxShadow: raised('sm') },
           display: storyGroups.length > 5 ? 'flex' : 'none',
         }}
       >

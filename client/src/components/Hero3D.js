@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { neuColors, raised, inset } from '../neumorphic';
 
 const slides = [
     {
@@ -170,21 +171,24 @@ export default function Hero3D({ height = 450 }) {
                     z-index: 100;
                 }
                 .arrows button{
-                    background-color: #eee5;
+                    background-color: ${neuColors.base};
                     border: none;
                     font-family: monospace;
                     width: 40px;
                     height: 40px;
-                    border-radius: 5px;
+                    border-radius: 50%;
                     font-size: x-large;
-                    color: lightblue;
-                    transition: .5s;
-                    margin-left: 8px;
+                    color: ${neuColors.primary};
+                    box-shadow: ${raised('sm')};
+                    transition: .3s;
+                    margin-left: 12px;
+                    cursor: pointer;
                 }
                 .arrows button:hover{
-                    background-color: #eee;
-                    color: black;
-                    cursor: pointer;
+                    box-shadow: ${raised('md')};
+                }
+                .arrows button:active{
+                    box-shadow: ${inset('sm')};
                 }
                 .thumbnail{
                     position: absolute;

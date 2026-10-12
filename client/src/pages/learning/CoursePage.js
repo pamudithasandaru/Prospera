@@ -49,6 +49,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import CourseFormDialog from './CourseFormDialog';
+import { neuColors, neuInset, neuInteractive } from '../../neumorphic';
 
 // Tab Panel component
 function TabPanel(props) {
@@ -311,7 +312,7 @@ const CoursePage = () => {
                 </Box>
 
                 {/* Video Info */}
-                <CardContent sx={{ bgcolor: 'grey.50', p: 2 }}>
+                <CardContent sx={{ bgcolor: neuColors.base, p: 2 }}>
                   <Box display="flex" alignItems="flex-start" gap={2} justifyContent="space-between">
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -376,11 +377,7 @@ const CoursePage = () => {
             <Tabs
               value={tabValue}
               onChange={(e, val) => setTabValue(val)}
-              sx={{
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                bgcolor: 'grey.50',
-              }}
+              sx={{ bgcolor: neuColors.base }}
             >
               <Tab id="course-tab-0" aria-controls="course-tabpanel-0" label="📝 Notes" />
               <Tab id="course-tab-1" aria-controls="course-tabpanel-1" label="📚 Materials" />
@@ -422,7 +419,7 @@ const CoursePage = () => {
                       Your Notes ({currentNotes.length})
                     </Typography>
                     {currentNotes.map((note) => (
-                      <Card key={note.id} sx={{ mb: 2, bgcolor: '#fffbf0' }}>
+                      <Card key={note.id} sx={{ mb: 2 }}>
                         <CardContent>
                           {editingId === note.id ? (
                             <Box display="flex" gap={1} flexDirection="column">
@@ -500,7 +497,7 @@ const CoursePage = () => {
                   <Typography variant="subtitle2" fontWeight="bold" mb={2}>
                     Available Resources
                   </Typography>
-                  <List sx={{ bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <List sx={{ ...neuInset('sm'), borderRadius: 2, p: 1 }}>
                     {materials.map((material, idx) => (
                       <React.Fragment key={idx}>
                         <ListItem
@@ -521,7 +518,6 @@ const CoursePage = () => {
                           }
                           sx={{
                             py: 2,
-                            '&:hover': { bgcolor: 'grey.100' },
                           }}
                         >
                           <ListItemIcon>
@@ -607,12 +603,9 @@ const CoursePage = () => {
                     onClick={() => setCurrentVideoIndex(idx)}
                     sx={{
                       mb: 1,
-                      borderRadius: 1,
-                      bgcolor: idx === currentVideoIndex ? 'primary.light' : 'grey.50',
-                      '&:hover': { bgcolor: 'primary.lighter' },
-                      border:
-                        idx === currentVideoIndex ? '2px solid' : '2px solid transparent',
-                      borderColor: idx === currentVideoIndex ? 'primary.main' : 'transparent',
+                      borderRadius: 2,
+                      ...neuInteractive('sm'),
+                      ...(idx === currentVideoIndex && { boxShadow: neuInset('sm').boxShadow }),
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>

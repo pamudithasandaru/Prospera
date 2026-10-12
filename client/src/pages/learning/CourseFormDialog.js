@@ -22,6 +22,7 @@ import {
   VideoLibrary,
   LibraryBooks,
 } from '@mui/icons-material';
+import { neuRaised } from '../../neumorphic';
 
 const CATEGORIES = [
   { value: 'crop-management', label: 'Crop Management' },
@@ -277,8 +278,8 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
                     gap: 1,
                     mb: 1.5,
                     p: 1.5,
-                    bgcolor: 'grey.50',
-                    borderRadius: 1,
+                    ...neuRaised('sm'),
+                    borderRadius: 2,
                     alignItems: 'center',
                   }}
                 >
@@ -337,8 +338,8 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
                     gap: 1,
                     mb: 1.5,
                     p: 1.5,
-                    bgcolor: 'grey.50',
-                    borderRadius: 1,
+                    ...neuRaised('sm'),
+                    borderRadius: 2,
                     alignItems: 'center',
                   }}
                 >

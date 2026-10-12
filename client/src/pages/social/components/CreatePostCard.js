@@ -5,7 +5,6 @@ import {
   Avatar,
   Button,
   Divider,
-  alpha,
 } from '@mui/material';
 import {
   Image as ImageIcon,
@@ -13,6 +12,7 @@ import {
   Article,
 } from '@mui/icons-material';
 import { resolveAvatar } from '../../../utils/avatarUtils';
+import { neuInset, inset } from '../../../neumorphic';
 
 const CreatePostCard = ({ user, onOpenDialog, setPostType }) => {
   return (
@@ -21,8 +21,6 @@ const CreatePostCard = ({ user, onOpenDialog, setPostType }) => {
       sx={{ 
         p: 2.5, 
         mb: 2,
-        border: '1px solid',
-        borderColor: 'divider',
       }}
     >
       <Box display="flex" gap={2} alignItems="center">
@@ -46,11 +44,8 @@ const CreatePostCard = ({ user, onOpenDialog, setPostType }) => {
             borderRadius: 50,
             px: 3,
             py: 1.5,
-            borderColor: 'divider',
-            '&:hover': {
-              borderColor: 'primary.main',
-              bgcolor: alpha('#4CAF50', 0.04),
-            },
+            ...neuInset('sm'),
+            '&:hover': { boxShadow: inset('md') },
           }}
         >
           Share your farming experience...

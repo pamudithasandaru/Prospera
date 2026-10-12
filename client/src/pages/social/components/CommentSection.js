@@ -7,10 +7,10 @@ import {
   Typography,
   Divider,
   Collapse,
-  alpha,
 } from '@mui/material';
 import { Send } from '@mui/icons-material';
 import { resolveAvatar } from '../../../utils/avatarUtils';
+import { neuInset } from '../../../neumorphic';
 
 const CommentSection = ({ 
   post, 
@@ -81,7 +81,7 @@ const CommentSection = ({
                 <Box 
                   flexGrow={1} 
                   sx={{ 
-                    bgcolor: alpha('#000', 0.03),
+                    ...neuInset('sm'),
                     borderRadius: 2,
                     p: 1.5,
                   }}

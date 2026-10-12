@@ -21,6 +21,7 @@ import {
   Compress,
   WaterDrop,
 } from '@mui/icons-material';
+import { neuColors, raised } from '../../neumorphic';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
 
@@ -246,10 +247,10 @@ const WeatherDashboard = () => {
                 { date: 'Sat', temp: 28 },
                 { date: 'Sun', temp: 30 },
               ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke={neuColors.dark} strokeOpacity={0.4} />
+                <XAxis dataKey="date" stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
+                <YAxis stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text }} />
                 <Line type="monotone" dataKey="temp" stroke="#2e7d32" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
@@ -263,9 +264,9 @@ const WeatherDashboard = () => {
               Agricultural Insights
             </Typography>
             <Box display="flex" flexDirection="column" gap={2} mt={2}>
-              <Card variant="outlined" sx={{ bgcolor: 'success.light', color: 'white' }}>
+              <Card variant="outlined">
                 <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold">
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.success }}>
                     Planting Conditions
                   </Typography>
                   <Typography variant="body2">
@@ -273,9 +274,9 @@ const WeatherDashboard = () => {
                   </Typography>
                 </CardContent>
               </Card>
-              <Card variant="outlined" sx={{ bgcolor: 'warning.light', color: 'white' }}>
+              <Card variant="outlined">
                 <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold">
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.warning }}>
                     Irrigation Advisory
                   </Typography>
                   <Typography variant="body2">
@@ -283,9 +284,9 @@ const WeatherDashboard = () => {
                   </Typography>
                 </CardContent>
               </Card>
-              <Card variant="outlined" sx={{ bgcolor: 'info.light', color: 'white' }}>
+              <Card variant="outlined">
                 <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold">
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.info }}>
                     Pest Risk
                   </Typography>
                   <Typography variant="body2">

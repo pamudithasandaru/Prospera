@@ -8,7 +8,6 @@ import {
   Button,
   Divider,
   Chip,
-  alpha,
 } from '@mui/material';
 import {
   ThumbUp,
@@ -21,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import CommentSection from './CommentSection';
 import { resolvePostUser } from '../../../utils/avatarUtils';
+import { neuRaised, inset } from '../../../neumorphic';
 
 
 const PostCard = ({ 
@@ -47,12 +47,7 @@ const PostCard = ({
       sx={{ 
         p: 3, 
         mb: 2,
-        border: '1px solid',
-        borderColor: 'divider',
-        transition: 'box-shadow 0.3s',
-        '&:hover': {
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-        },
+        ...neuRaised('md'),
       }}
     >
       {/* Post Header */}
@@ -131,10 +126,7 @@ const PostCard = ({
               variant="outlined"
               sx={{ 
                 borderRadius: 1,
-                '&:hover': { 
-                  bgcolor: alpha('#4CAF50', 0.08),
-                  cursor: 'pointer',
-                },
+                cursor: 'pointer',
               }}
             />
           ))}
@@ -162,7 +154,7 @@ const PostCard = ({
           onClick={onLike}
           sx={{
             color: isLiked ? 'primary.main' : 'text.secondary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) },
+            ...(isLiked && { boxShadow: inset('sm') }),
             textTransform: 'none',
             fontWeight: 600,
           }}
@@ -176,7 +168,6 @@ const PostCard = ({
           onClick={onToggleComments}
           sx={{
             color: 'text.secondary',
-            '&:hover': { bgcolor: alpha('#2196F3', 0.08) },
             textTransform: 'none',
             fontWeight: 600,
           }}
@@ -190,7 +181,6 @@ const PostCard = ({
           onClick={onShare}
           sx={{
             color: 'text.secondary',
-            '&:hover': { bgcolor: alpha('#FF9800', 0.08) },
             textTransform: 'none',
             fontWeight: 600,
           }}
@@ -201,7 +191,6 @@ const PostCard = ({
           size="small"
           sx={{
             color: 'text.secondary',
-            '&:hover': { bgcolor: alpha('#000', 0.04) },
           }}
         >
           <BookmarkBorder />

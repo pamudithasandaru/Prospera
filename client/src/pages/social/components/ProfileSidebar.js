@@ -9,7 +9,6 @@ import {
   Button,
   Divider,
   IconButton,
-  alpha,
 } from '@mui/material';
 import {
   People,
@@ -20,6 +19,7 @@ import {
   Message,
 } from '@mui/icons-material';
 import api from '../../../services/api';
+import { neuInset, neuRaised } from '../../../neumorphic';
 
 const ProfileSidebar = ({ user }) => {
   const navigate = useNavigate();
@@ -42,15 +42,14 @@ const ProfileSidebar = ({ user }) => {
         sx={{ 
           mb: 2, 
           overflow: 'hidden',
-          border: '1px solid',
-          borderColor: 'divider',
         }}
       >
         {/* Cover Image */}
         <Box
           sx={{
             height: 80,
-            background: 'linear-gradient(135deg, #1B5E20 0%, #4CAF50 100%)',
+            ...neuInset('md'),
+            borderRadius: 0,
           }}
         />
         
@@ -61,7 +60,7 @@ const ProfileSidebar = ({ user }) => {
             sx={{ 
               width: 80, 
               height: 80, 
-              border: '4px solid white',
+              ...neuRaised('sm'),
               mb: 1,
             }}
           >
@@ -118,8 +117,6 @@ const ProfileSidebar = ({ user }) => {
         sx={{ 
           p: 2, 
           mb: 2,
-          border: '1px solid',
-          borderColor: 'divider',
         }}
       >
         <Button 
@@ -131,7 +128,6 @@ const ProfileSidebar = ({ user }) => {
             justifyContent: 'flex-start', 
             mb: 1,
             color: 'text.primary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
           }}
         >
           My Network
@@ -145,7 +141,6 @@ const ProfileSidebar = ({ user }) => {
             justifyContent: 'flex-start', 
             mb: 1,
             color: 'text.primary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
           }}
         >
           My Groups
@@ -159,7 +154,6 @@ const ProfileSidebar = ({ user }) => {
             justifyContent: 'flex-start', 
             mb: 1,
             color: 'text.primary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
           }}
         >
           Messages
@@ -173,7 +167,6 @@ const ProfileSidebar = ({ user }) => {
             justifyContent: 'flex-start', 
             mb: 1,
             color: 'text.primary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
           }}
         >
           Knowledge Hub
@@ -186,7 +179,6 @@ const ProfileSidebar = ({ user }) => {
           sx={{ 
             justifyContent: 'flex-start',
             color: 'text.primary',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) }
           }}
         >
           Expert Sessions
@@ -198,8 +190,6 @@ const ProfileSidebar = ({ user }) => {
         elevation={0} 
         sx={{ 
           p: 2,
-          border: '1px solid',
-          borderColor: 'divider',
         }}
       >
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>

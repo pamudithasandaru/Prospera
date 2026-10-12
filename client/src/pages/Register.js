@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Agriculture } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { neuColors, neuCircle } from '../neumorphic';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -79,9 +80,11 @@ const Register = () => {
           alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+        <Paper elevation={0} sx={{ p: 4, width: '100%' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Agriculture sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+            <Box sx={{ ...neuCircle(80, 'md'), display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+              <Agriculture sx={{ fontSize: 44, color: neuColors.primary }} />
+            </Box>
             <Typography component="h1" variant="h4" fontWeight="bold">
               Join Prospera
             </Typography>

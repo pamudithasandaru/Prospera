@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { neuColors } from '../../neumorphic';
 
 const GovernmentSchemes = () => {
   const navigate = useNavigate();
@@ -100,42 +101,42 @@ const GovernmentSchemes = () => {
       <Grid container spacing={3}>
         {/* Quick Stats */}
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.primary }}>
                 {schemes.length}
               </Typography>
-              <Typography variant="body2">Active Schemes</Typography>
+              <Typography variant="body2" color="text.secondary">Active Schemes</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.success }}>
                 {applications.filter(a => a.status === 'approved').length}
               </Typography>
-              <Typography variant="body2">Approved Applications</Typography>
+              <Typography variant="body2" color="text.secondary">Approved Applications</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.warning }}>
                 {applications.filter(a => a.status === 'pending').length}
               </Typography>
-              <Typography variant="body2">Pending Review</Typography>
+              <Typography variant="body2" color="text.secondary">Pending Review</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'info.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Typography variant="h4" fontWeight="bold">
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.info }}>
                 5
               </Typography>
-              <Typography variant="body2">New Advisories</Typography>
+              <Typography variant="body2" color="text.secondary">New Advisories</Typography>
             </CardContent>
           </Card>
         </Grid>
