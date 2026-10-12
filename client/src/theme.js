@@ -1,4 +1,5 @@
 import { createTheme, alpha } from '@mui/material/styles';
+import { Grow } from '@mui/material';
 import { neuColors as c, raised, inset } from './neumorphic';
 
 const font = [
@@ -13,6 +14,11 @@ const font = [
 ].join(',');
 
 const surface = { backgroundColor: c.base, backgroundImage: 'none' };
+
+// Shared motion tokens: one easing curve so every hover feels the same.
+const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const fast = `.25s ${ease}`;
+const smooth = `.4s ${ease}`;
 
 const theme = createTheme({
   palette: {
@@ -67,12 +73,25 @@ const theme = createTheme({
       },
     },
     MuiCard: {
-      styleOverrides: { root: { ...surface, border: 'none', boxShadow: raised('md'), borderRadius: 24 } },
+      styleOverrides: {
+        root: {
+          ...surface,
+          border: 'none',
+          boxShadow: raised('md'),
+          borderRadius: 24,
+          overflow: 'hidden',
+          transition: `box-shadow ${smooth}, transform ${smooth}`,
+          '&:hover': { boxShadow: raised('lg'), transform: 'translateY(-4px)' },
+          '& .MuiCardMedia-root': { transition: `transform .6s ${ease}` },
+          '&:hover .MuiCardMedia-root': { transform: 'scale(1.05)' },
+        },
+      },
     },
     MuiCardActionArea: {
-      styleOverrides: { root: { '&:hover .MuiCardActionArea-focusHighlight': { opacity: 0 } } },
+      styleOverrides: { root: { transition: `background-color ${fast}`, '&:hover .MuiCardActionArea-focusHighlight': { opacity: 0 } } },
     },
     MuiDialog: {
+      defaultProps: { TransitionComponent: Grow, transitionDuration: { enter: 380, exit: 220 } },
       styleOverrides: { paper: { ...surface, boxShadow: raised('xl'), borderRadius: 28 } },
     },
     MuiDrawer: {
@@ -90,7 +109,9 @@ const theme = createTheme({
           borderRadius: 16,
           paddingInline: 20,
           border: 'none',
-          transition: 'box-shadow .2s ease, color .2s ease',
+          transition: `box-shadow ${fast}, transform ${fast}, background-color ${fast}, color ${fast}`,
+          '&:hover': { transform: 'translateY(-2px)' },
+          '&:active': { transform: 'translateY(0)' },
         },
         contained: {
           backgroundColor: c.base,
@@ -134,15 +155,15 @@ const theme = createTheme({
         root: {
           backgroundColor: c.base,
           boxShadow: raised('xs'),
-          transition: 'box-shadow .2s ease',
-          '&:hover': { backgroundColor: c.base, boxShadow: raised('sm') },
-          '&:active': { boxShadow: inset('xs') },
+          transition: `box-shadow ${fast}, transform ${fast}, color ${fast}`,
+          '&:hover': { backgroundColor: c.base, boxShadow: raised('sm'), transform: 'scale(1.1)' },
+          '&:active': { boxShadow: inset('xs'), transform: 'scale(0.96)' },
         },
       },
     },
     MuiFab: {
       styleOverrides: {
-        root: { backgroundColor: c.base, color: c.primary, boxShadow: raised('md'), '&:hover': { backgroundColor: c.base, boxShadow: raised('lg') }, '&:active': { boxShadow: inset('md') } },
+        root: { backgroundColor: c.base, color: c.primary, boxShadow: raised('md'), transition: `box-shadow ${fast}, transform ${fast}`, '&:hover': { backgroundColor: c.base, boxShadow: raised('lg'), transform: 'translateY(-3px) scale(1.05)' }, '&:active': { boxShadow: inset('md') } },
       },
     },
     MuiToggleButtonGroup: {
@@ -150,7 +171,7 @@ const theme = createTheme({
     },
     MuiToggleButton: {
       styleOverrides: {
-        root: { border: 'none', color: c.textMuted, '&.Mui-selected': { backgroundColor: c.base, color: c.primary, boxShadow: raised('xs'), '&:hover': { backgroundColor: c.base } } },
+        root: { border: 'none', color: c.textMuted, transition: `box-shadow ${fast}, color ${fast}`, '&:hover': { color: c.primary }, '&.Mui-selected': { backgroundColor: c.base, color: c.primary, boxShadow: raised('xs'), '&:hover': { backgroundColor: c.base } } },
       },
     },
     MuiOutlinedInput: {
@@ -159,8 +180,10 @@ const theme = createTheme({
           backgroundColor: c.base,
           borderRadius: 16,
           boxShadow: inset('sm'),
+          transition: `box-shadow ${fast}`,
           '& fieldset': { border: 'none' },
           '&:hover fieldset': { border: 'none' },
+          '&:hover:not(.Mui-focused)': { boxShadow: inset('md') },
           '&.Mui-focused': { boxShadow: `${inset('sm')}, 0 0 0 2px ${alpha(c.primary, 0.45)}` },
           '&.Mui-focused fieldset': { border: 'none' },
           '&.Mui-error': { boxShadow: `${inset('sm')}, 0 0 0 2px ${alpha(c.error, 0.5)}` },
@@ -179,7 +202,7 @@ const theme = createTheme({
     },
     MuiChip: {
       styleOverrides: {
-        root: { fontWeight: 600, backgroundColor: c.base, boxShadow: raised('xs'), border: 'none', color: c.text },
+        root: { fontWeight: 600, backgroundColor: c.base, boxShadow: raised('xs'), border: 'none', color: c.text, transition: `box-shadow ${fast}, transform ${fast}` },
         outlined: { border: 'none' },
         filled: { backgroundColor: c.base },
         colorPrimary: { backgroundColor: c.base, color: c.primary },
@@ -188,23 +211,24 @@ const theme = createTheme({
         colorWarning: { backgroundColor: c.base, color: c.warning },
         colorError: { backgroundColor: c.base, color: c.error },
         colorInfo: { backgroundColor: c.base, color: c.info },
-        clickable: { '&:hover': { backgroundColor: c.base, boxShadow: raised('sm') }, '&:active': { boxShadow: inset('xs') } },
+        clickable: { '&:hover': { backgroundColor: c.base, boxShadow: raised('sm'), transform: 'translateY(-1px)' }, '&:active': { boxShadow: inset('xs') } },
       },
     },
     MuiAvatar: {
-      styleOverrides: { root: { border: 'none', boxShadow: raised('xs'), backgroundColor: c.baseDeep, color: c.textMuted } },
+      styleOverrides: { root: { border: 'none', boxShadow: raised('xs'), backgroundColor: c.baseDeep, color: c.textMuted, transition: `transform ${fast}, box-shadow ${fast}`, '&:hover': { transform: 'scale(1.06)', boxShadow: raised('sm') } } },
     },
     MuiBadge: {
       styleOverrides: { badge: { boxShadow: raised('xs') } },
     },
     MuiMenu: {
+      defaultProps: { transitionDuration: { enter: 280, exit: 180 } },
       styleOverrides: { paper: { ...surface, borderRadius: 20, border: 'none', boxShadow: raised('lg') } },
     },
     MuiPopover: {
       styleOverrides: { paper: { ...surface, border: 'none', boxShadow: raised('lg') } },
     },
     MuiMenuItem: {
-      styleOverrides: { root: { borderRadius: 12, marginInline: 6, '&:hover': { backgroundColor: 'transparent', boxShadow: inset('xs') }, '&.Mui-selected': { backgroundColor: 'transparent', boxShadow: inset('xs'), color: c.primary } } },
+      styleOverrides: { root: { borderRadius: 12, transition: `box-shadow ${fast}, color ${fast}, padding-left ${fast}`, marginInline: 6, '&:hover': { backgroundColor: 'transparent', boxShadow: inset('xs') }, '&.Mui-selected': { backgroundColor: 'transparent', boxShadow: inset('xs'), color: c.primary } } },
     },
     MuiListItemButton: {
       styleOverrides: {
@@ -212,6 +236,7 @@ const theme = createTheme({
           borderRadius: 14,
           marginInline: 8,
           marginBlock: 3,
+          transition: `box-shadow ${fast}, color ${fast}, transform ${fast}`,
           '&:hover': { backgroundColor: 'transparent', boxShadow: raised('xs') },
           '&.Mui-selected': { backgroundColor: 'transparent', color: c.primary, boxShadow: inset('xs'), '&:hover': { backgroundColor: 'transparent' } },
         },
@@ -222,14 +247,14 @@ const theme = createTheme({
     },
     MuiTab: {
       styleOverrides: {
-        root: { textTransform: 'none', fontWeight: 600, borderRadius: 14, minHeight: 40, color: c.textMuted, '&.Mui-selected': { color: c.primary, backgroundColor: c.base, boxShadow: raised('xs') } },
+        root: { textTransform: 'none', fontWeight: 600, borderRadius: 14, minHeight: 40, color: c.textMuted, transition: `box-shadow ${fast}, color ${fast}, background-color ${fast}`, '&:hover': { color: c.primary }, '&.Mui-selected': { color: c.primary, backgroundColor: c.base, boxShadow: raised('xs') } },
       },
     },
     MuiSwitch: {
       styleOverrides: {
         root: { width: 56, height: 32, padding: 0 },
-        switchBase: { padding: 4, '&.Mui-checked': { transform: 'translateX(24px)', color: c.primary, '& + .MuiSwitch-track': { opacity: 1, backgroundColor: c.base } } },
-        thumb: { width: 24, height: 24, boxShadow: raised('xs'), backgroundColor: c.base },
+        switchBase: { padding: 4, transition: `transform ${fast}, color ${fast}`, '&.Mui-checked': { transform: 'translateX(24px)', color: c.primary, '& + .MuiSwitch-track': { opacity: 1, backgroundColor: c.base } } },
+        thumb: { transition: `box-shadow ${fast}`, width: 24, height: 24, boxShadow: raised('xs'), backgroundColor: c.base },
         track: { borderRadius: 16, backgroundColor: c.base, boxShadow: inset('xs'), opacity: 1 },
       },
     },
@@ -243,7 +268,7 @@ const theme = createTheme({
       },
     },
     MuiLinearProgress: {
-      styleOverrides: { root: { borderRadius: 8, height: 10, backgroundColor: c.base, boxShadow: inset('xs') }, bar: { borderRadius: 8 } },
+      styleOverrides: { root: { borderRadius: 8, height: 10, backgroundColor: c.base, boxShadow: inset('xs') }, bar: { borderRadius: 8, transition: `transform .8s ${ease}` } },
     },
     MuiCircularProgress: { defaultProps: { thickness: 4 } },
     MuiAlert: {
@@ -259,12 +284,14 @@ const theme = createTheme({
     },
     MuiSnackbarContent: { styleOverrides: { root: { ...surface, color: c.text, boxShadow: raised('md') } } },
     MuiTooltip: {
+      defaultProps: { enterDelay: 250, TransitionProps: { timeout: 250 } },
       styleOverrides: { tooltip: { backgroundColor: c.base, color: c.text, boxShadow: raised('sm'), fontWeight: 500 }, arrow: { color: c.base } },
     },
     MuiAccordion: {
-      styleOverrides: { root: { ...surface, boxShadow: raised('md'), borderRadius: '20px !important', '&:before': { display: 'none' }, '&.Mui-expanded': { margin: '8px 0' } } },
+      styleOverrides: { root: { ...surface, boxShadow: raised('md'), borderRadius: '20px !important', transition: `box-shadow ${smooth}, margin ${smooth}`, '&:hover': { boxShadow: raised('lg') }, '&:before': { display: 'none' }, '&.Mui-expanded': { margin: '8px 0' } } },
     },
     MuiTableContainer: { styleOverrides: { root: { ...surface, borderRadius: 20, boxShadow: raised('md') } } },
+    MuiTableRow: { styleOverrides: { root: { transition: `background-color ${fast}`, '&.MuiTableRow-hover:hover, tbody &:hover': { backgroundColor: alpha(c.dark, 0.12) } } } },
     MuiTableCell: { styleOverrides: { root: { borderBottom: `1px solid ${alpha(c.dark, 0.3)}` }, head: { fontWeight: 700, color: c.textMuted } } },
     MuiDivider: { styleOverrides: { root: { borderColor: alpha(c.dark, 0.35), borderBottomWidth: 1 } } },
     MuiStepIcon: { styleOverrides: { root: { color: c.baseDeep, '&.Mui-active': { color: c.primary }, '&.Mui-completed': { color: c.primary } } } },
