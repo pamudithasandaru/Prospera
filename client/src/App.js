@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import theme from './theme';
 import { neuColors } from './neumorphic';
+import ScrollReveal from './motion/ScrollReveal';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
@@ -69,6 +70,7 @@ function AppContent() {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: neuColors.base }}>
       {!hideNavbar && <Navbar />}
       <Box component="main" sx={{ flexGrow: 1, bgcolor: neuColors.base }}>
+        <Box key={location.pathname} className="page-transition">
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -207,8 +209,10 @@ function AppContent() {
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
+        </Box>
       </Box>
       {!hideFooter && <Footer />}
+      <ScrollReveal />
     </Box>
   );
 }
