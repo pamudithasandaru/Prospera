@@ -26,13 +26,13 @@ import {
   Park,
 } from '@mui/icons-material';
 import { predictDisease } from '../../services/mlApi';
+import { neuInset } from '../../neumorphic';
 
 // Disease info map for the 4 model classes
 const DISEASE_INFO = {
   Healthy: {
     label: 'Healthy',
     color: 'success',
-    bgColor: '#e8f5e9',
     icon: <Park />,
     description: 'Your plant appears healthy with no visible signs of disease.',
     symptoms: ['Normal leaf colouring', 'No lesions or spots', 'Firm and upright structure'],
@@ -45,7 +45,6 @@ const DISEASE_INFO = {
   Rust: {
     label: 'Rust',
     color: 'warning',
-    bgColor: '#fff3e0',
     icon: <Warning />,
     description: 'Rust is a fungal disease that appears as orange, yellow, or brown pustules on leaves.',
     symptoms: [
@@ -63,7 +62,6 @@ const DISEASE_INFO = {
   Scab: {
     label: 'Scab',
     color: 'warning',
-    bgColor: '#fff8e1',
     icon: <Warning />,
     description: 'Scab is caused by fungal pathogens and results in rough, corky lesions on leaves and fruit.',
     symptoms: [
@@ -81,7 +79,6 @@ const DISEASE_INFO = {
   Multiple_Diseases: {
     label: 'Multiple Diseases',
     color: 'error',
-    bgColor: '#fce4ec',
     icon: <BugReport />,
     description: 'The plant shows signs of multiple concurrent diseases, requiring comprehensive treatment.',
     symptoms: [
@@ -187,12 +184,10 @@ const DiseaseDetection = () => {
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               sx={{
-                border: '2px dashed',
-                borderColor: 'primary.main',
-                borderRadius: 2,
+                ...neuInset('md'),
+                borderRadius: 3,
                 p: 4,
                 textAlign: 'center',
-                bgcolor: 'background.default',
                 mb: 2,
                 minHeight: 300,
                 display: 'flex',
@@ -271,10 +266,10 @@ const DiseaseDetection = () => {
             {result && info && (
               <Box>
                 {/* Prediction banner */}
-                <Card sx={{ mb: 2, bgcolor: info.bgColor, border: `1px solid`, borderColor: `${info.color}.main` }}>
+                <Card sx={{ mb: 2 }}>
                   <CardContent>
                     <Box display="flex" alignItems="center" gap={1} mb={1}>
-                      {info.icon}
+                      <Box sx={{ display: 'flex', color: `${info.color}.dark` }}>{info.icon}</Box>
                       <Typography variant="h6" fontWeight="bold" color={`${info.color}.dark`}>
                         {info.label}
                       </Typography>

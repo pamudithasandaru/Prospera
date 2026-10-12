@@ -66,7 +66,7 @@ const ExpenseRevenueDialog = ({ open, onClose, onSubmit, type: initType = 'expen
           <IconButton onClick={onClose} size="small"><Close /></IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent>
         <Box display="flex" flexDirection="column" gap={2.5} pt={1}>
           <ToggleButtonGroup value={entryType} exclusive onChange={(_, v) => v && setEntryType(v)} fullWidth size="small">
             <ToggleButton value="expense" sx={{ gap: 1 }}><TrendingDown fontSize="small" /> Expense</ToggleButton>

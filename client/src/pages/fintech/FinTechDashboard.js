@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import api from '../../services/api';
+import { neuColors, raised } from '../../neumorphic';
 
 const FinTechDashboard = () => {
   const [loans, setLoans] = useState([]);
@@ -133,13 +134,13 @@ const FinTechDashboard = () => {
       <Grid container spacing={3}>
         {/* Credit Score Card */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: '100%', bgcolor: 'primary.light', color: 'white' }}>
+          <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Your Credit Score
             </Typography>
             <Box textAlign="center" my={3}>
-              <CreditScore sx={{ fontSize: 60, mb: 2 }} />
-              <Typography variant="h2" fontWeight="bold">
+              <CreditScore sx={{ fontSize: 60, mb: 2, color: neuColors.primary }} />
+              <Typography variant="h2" fontWeight="bold" sx={{ color: neuColors.primary }}>
                 {creditScore?.score || 720}
               </Typography>
               <Typography variant="body2">
@@ -151,7 +152,7 @@ const FinTechDashboard = () => {
                 sx={{ mt: 2, height: 8, borderRadius: 4 }}
               />
             </Box>
-            <Typography variant="caption">
+            <Typography variant="caption" color="text.secondary">
               Last updated: {new Date(creditScore?.lastUpdated || Date.now()).toLocaleDateString()}
             </Typography>
           </Paper>
@@ -254,7 +255,7 @@ const FinTechDashboard = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text }} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

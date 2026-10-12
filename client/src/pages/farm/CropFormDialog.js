@@ -101,7 +101,7 @@ const CropFormDialog = ({ open, onClose, onSubmit, crop = null }) => {
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent>
         <Box display="flex" flexDirection="column" gap={2.5} pt={1}>
           <TextField
             label="Crop Name"
