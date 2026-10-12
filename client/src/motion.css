@@ -1,0 +1,58 @@
+/* Global motion system: scroll reveal, route fade, and shared easing. */
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --reveal-delay: 0ms;
+}
+
+/* ---- Scroll reveal (driven by motion/ScrollReveal.js) ----
+   Uses the individual `translate` property so it never fights `transform` hover effects. */
+
+[data-reveal='hidden'],
+[data-reveal='out-down'],
+[data-reveal='out-up'] {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-reveal='hidden'],
+[data-reveal='out-down'] { translate: 0 28px; }
+[data-reveal='out-up'] { translate: 0 -20px; }
+
+[data-reveal='in-down'] { animation: reveal-in-down 0.7s var(--ease-out) var(--reveal-delay) backwards; }
+[data-reveal='in-up'] { animation: reveal-in-up 0.7s var(--ease-out) var(--reveal-delay) backwards; }
+[data-reveal='out-down'] { animation: reveal-out-down 0.4s var(--ease-in-out) both; }
+[data-reveal='out-up'] { animation: reveal-out-up 0.4s var(--ease-in-out) both; }
+
+@keyframes reveal-in-down {
+  from { opacity: 0; translate: 0 28px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes reveal-in-up {
+  from { opacity: 0; translate: 0 -20px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes reveal-out-down {
+  from { opacity: 1; translate: 0 0; }
+  to { opacity: 0; translate: 0 28px; }
+}
+@keyframes reveal-out-up {
+  from { opacity: 1; translate: 0 0; }
+  to { opacity: 0; translate: 0 -20px; }
+}
+
+/* ---- Route change ---- */
+.page-transition { animation: page-in 0.45s var(--ease-out) backwards; }
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Hover polish for plain links / images ---- */
+a { transition: color 0.2s ease, opacity 0.2s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { animation: none !important; opacity: 1 !important; translate: none !important; pointer-events: auto !important; }
+  .page-transition { animation: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
