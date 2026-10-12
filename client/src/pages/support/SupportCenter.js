@@ -36,6 +36,7 @@ import {
   Phone,
 } from '@mui/icons-material';
 import api from '../../services/api';
+import { neuColors } from '../../neumorphic';
 
 const SupportCenter = () => {
   const [tickets, setTickets] = useState([]);
@@ -125,46 +126,46 @@ const SupportCenter = () => {
       <Grid container spacing={3}>
         {/* Quick Stats */}
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <ContactSupport sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
+              <ContactSupport sx={{ fontSize: 40, mb: 1, color: neuColors.primary }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.primary }}>
                 {tickets.filter(t => t.status === 'open').length}
               </Typography>
-              <Typography variant="body2">Open Tickets</Typography>
+              <Typography variant="body2" color="text.secondary">Open Tickets</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <CheckCircle sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
+              <CheckCircle sx={{ fontSize: 40, mb: 1, color: neuColors.success }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.success }}>
                 {tickets.filter(t => t.status === 'resolved').length}
               </Typography>
-              <Typography variant="body2">Resolved</Typography>
+              <Typography variant="body2" color="text.secondary">Resolved</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Pending sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
+              <Pending sx={{ fontSize: 40, mb: 1, color: neuColors.warning }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.warning }}>
                 {tickets.filter(t => t.status === 'pending').length}
               </Typography>
-              <Typography variant="body2">Pending</Typography>
+              <Typography variant="body2" color="text.secondary">Pending</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
-          <Card sx={{ bgcolor: 'info.main', color: 'white' }}>
+          <Card>
             <CardContent>
-              <Phone sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" fontWeight="bold">
+              <Phone sx={{ fontSize: 40, mb: 1, color: neuColors.info }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.info }}>
                 24/7
               </Typography>
-              <Typography variant="body2">Hotline Support</Typography>
+              <Typography variant="body2" color="text.secondary">Hotline Support</Typography>
             </CardContent>
           </Card>
         </Grid>

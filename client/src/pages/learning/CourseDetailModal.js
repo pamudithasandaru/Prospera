@@ -25,11 +25,12 @@ import {
   School,
   SignalCellularAlt,
 } from '@mui/icons-material';
+import { neuColors, neuRaised } from '../../neumorphic';
 
 const LEVEL_COLORS = {
-  beginner: { bg: '#e8f5e9', text: '#2e7d32', label: 'Beginner' },
-  intermediate: { bg: '#fff8e1', text: '#f57f17', label: 'Intermediate' },
-  advanced: { bg: '#fce4ec', text: '#c62828', label: 'Advanced' },
+  beginner: { text: neuColors.success, label: 'Beginner' },
+  intermediate: { text: neuColors.warning, label: 'Intermediate' },
+  advanced: { text: neuColors.error, label: 'Advanced' },
 };
 
 const CATEGORY_LABELS = {
@@ -99,12 +100,12 @@ export default function CourseDetailModal({ course, open, onClose }) {
           <Chip
             label={categoryLabel}
             size="small"
-            sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 600 }}
+            sx={{ ...neuRaised('xs'), color: neuColors.primary, fontWeight: 600 }}
           />
           <Chip
             label={levelMeta.label}
             size="small"
-            sx={{ bgcolor: levelMeta.bg, color: levelMeta.text, fontWeight: 600 }}
+            sx={{ ...neuRaised('xs'), color: levelMeta.text, fontWeight: 600 }}
           />
         </Box>
         {/* Close button */}
@@ -114,9 +115,8 @@ export default function CourseDetailModal({ course, open, onClose }) {
             position: 'absolute',
             top: 8,
             right: 8,
-            bgcolor: 'rgba(0,0,0,0.4)',
-            color: 'white',
-            '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' },
+            ...neuRaised('xs'),
+            color: neuColors.text,
           }}
         >
           <Close />
@@ -150,7 +150,6 @@ export default function CourseDetailModal({ course, open, onClose }) {
                   mt: 0.5,
                   height: 6,
                   borderRadius: 3,
-                  bgcolor: 'grey.200',
                   '& .MuiLinearProgress-bar': { bgcolor: 'warning.main' },
                 }}
               />
@@ -227,9 +226,7 @@ export default function CourseDetailModal({ course, open, onClose }) {
           sx={{
             px: 3,
             py: 2,
-            bgcolor: 'grey.50',
-            borderTop: '1px solid',
-            borderColor: 'divider',
+            bgcolor: neuColors.base,
             display: 'flex',
             gap: 2,
             justifyContent: 'flex-end',

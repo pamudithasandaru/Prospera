@@ -52,6 +52,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import CourseDetailModal from './CourseDetailModal';
 import CourseFormDialog from './CourseFormDialog';
+import { neuColors, neuRaised, neuInset, raised } from '../../neumorphic';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -75,9 +76,9 @@ const SORT_OPTIONS = [
 ];
 
 const LEVEL_META = {
-  beginner: { color: 'success', bg: '#e8f5e9', text: '#2e7d32' },
-  intermediate: { color: 'warning', bg: '#fff8e1', text: '#f57f17' },
-  advanced: { color: 'error', bg: '#fce4ec', text: '#c62828' },
+  beginner: { color: 'success', text: neuColors.success },
+  intermediate: { color: 'warning', text: neuColors.warning },
+  advanced: { color: 'error', text: neuColors.error },
 };
 
 const COURSES_PER_PAGE = 6;
@@ -160,11 +161,8 @@ function CourseCard({ course, onViewCourse, isOwner, onEdit, onDelete }) {
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 2,
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-          },
+          transition: 'box-shadow 0.2s ease',
+          '&:hover': { boxShadow: raised('lg') },
         }}
       >
         {/* Thumbnail */}
@@ -188,7 +186,7 @@ function CourseCard({ course, onViewCourse, isOwner, onEdit, onDelete }) {
               position: 'absolute',
               top: 10,
               right: 10,
-              bgcolor: levelMeta.bg,
+              ...neuRaised('xs'),
               color: levelMeta.text,
               fontWeight: 700,
               fontSize: '0.7rem',
@@ -551,19 +549,19 @@ const CourseCatalog = () => {
             icon: <MenuBook sx={{ fontSize: 38 }} />,
             value: loading ? '—' : courses.length,
             label: 'Available Courses',
-            bg: 'primary.main',
+            tone: neuColors.primary,
           },
           {
             icon: <Person sx={{ fontSize: 38 }} />,
             value: loading ? '—' : `${uniqueInstructors}+`,
             label: 'Expert Instructors',
-            bg: 'success.main',
+            tone: neuColors.success,
           },
           {
             icon: <PlayCircleOutline sx={{ fontSize: 38 }} />,
             value: '500+',
             label: 'Video Lessons',
-            bg: 'warning.main',
+            tone: neuColors.warning,
           },
           {
             icon: <PeopleAlt sx={{ fontSize: 38 }} />,
@@ -573,7 +571,7 @@ const CourseCatalog = () => {
               ? `${(totalStudents / 1000).toFixed(0)}K+`
               : totalStudents,
             label: 'Students Enrolled',
-            bg: 'info.main',
+            tone: neuColors.info,
           },
         ].map((stat, i) => (
           <Grid item xs={6} md={3} key={i}>
@@ -582,18 +580,16 @@ const CourseCatalog = () => {
               sx={{
                 p: 2.5,
                 textAlign: 'center',
-                bgcolor: stat.bg,
-                color: 'white',
                 borderRadius: 2,
-                transition: 'transform 0.2s',
-                '&:hover': { transform: 'translateY(-2px)' },
+                transition: 'box-shadow 0.2s',
+                '&:hover': { boxShadow: raised('lg') },
               }}
             >
-              {stat.icon}
+              <Box sx={{ color: stat.tone, display: 'flex', justifyContent: 'center' }}>{stat.icon}</Box>
               <Typography variant="h4" fontWeight="bold" mt={0.5}>
                 {stat.value}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              <Typography variant="body2" color="text.secondary">
                 {stat.label}
               </Typography>
             </Paper>
@@ -703,8 +699,7 @@ const CourseCatalog = () => {
             p: 8,
             textAlign: 'center',
             borderRadius: 2,
-            border: '2px dashed',
-            borderColor: 'divider',
+            ...neuInset('lg'),
           }}
         >
           <SearchOff sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
