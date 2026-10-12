@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import theme from './theme';
+import { neuColors } from './neumorphic';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
@@ -65,9 +66,9 @@ function AppContent() {
   const hideFooter = ['/login', '/register'].includes(location.pathname);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: neuColors.base }}>
       {!hideNavbar && <Navbar />}
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
+      <Box component="main" sx={{ flexGrow: 1, bgcolor: neuColors.base }}>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />

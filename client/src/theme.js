@@ -1,53 +1,34 @@
 import { createTheme, alpha } from '@mui/material/styles';
+import { neuColors as c, raised, inset } from './neumorphic';
+
+const font = [
+  'Poppins',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Segoe UI"',
+  'Roboto',
+  '"Helvetica Neue"',
+  'Arial',
+  'sans-serif',
+].join(',');
+
+const surface = { backgroundColor: c.base, backgroundImage: 'none' };
 
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: {
-      main: '#1B5E20',
-      light: '#4CAF50',
-      dark: '#0B3D0E',
-      contrastText: '#ffffff',
-    },
-    secondary: {
-      main: '#0D47A1',
-      light: '#5472d3',
-      dark: '#002171',
-      contrastText: '#ffffff',
-    },
-    success: {
-      main: '#2e7d32',
-    },
-    warning: {
-      main: '#ed6c02',
-    },
-    error: {
-      main: '#d32f2f',
-    },
-    info: {
-      main: '#0288d1',
-    },
-    background: {
-      default: '#f6f8fb',
-      paper: '#ffffff',
-    },
-    text: {
-      primary: '#0f172a',
-      secondary: '#475569',
-    },
-    divider: alpha('#0f172a', 0.08),
+    primary: { main: c.primary, light: '#4CAF50', dark: '#0B3D0E', contrastText: '#ffffff' },
+    secondary: { main: c.secondary, light: '#5472d3', dark: '#002171', contrastText: '#ffffff' },
+    success: { main: c.success },
+    warning: { main: c.warning },
+    error: { main: c.error },
+    info: { main: c.info },
+    background: { default: c.base, paper: c.base },
+    text: { primary: c.text, secondary: c.textMuted },
+    divider: alpha(c.dark, 0.35),
   },
   typography: {
-    fontFamily: [
-      'Poppins',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
+    fontFamily: font,
     h1: { fontWeight: 800, letterSpacing: -0.5 },
     h2: { fontWeight: 700, letterSpacing: -0.3 },
     h3: { fontWeight: 700 },
@@ -57,112 +38,240 @@ const theme = createTheme({
     subtitle1: { fontWeight: 600 },
     button: { textTransform: 'none', fontWeight: 600 },
   },
-  shape: {
-    borderRadius: 16,
-  },
+  shape: { borderRadius: 20 },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
-        body: {
-          backgroundColor: '#f6f8fb',
-          backgroundImage:
-            'radial-gradient(1200px 600px at 10% -10%, rgba(76, 175, 80, 0.18), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(33, 150, 243, 0.12), transparent 60%)',
-        },
-        '*::selection': {
-          backgroundColor: alpha('#4CAF50', 0.25),
-        },
-        '*::-webkit-scrollbar': {
-          width: 10,
-          height: 10,
-        },
-        '*::-webkit-scrollbar-thumb': {
-          backgroundColor: alpha('#0f172a', 0.2),
-          borderRadius: 8,
-        },
+        body: { backgroundColor: c.base, backgroundImage: 'none', color: c.text },
+        '*::selection': { backgroundColor: alpha(c.primary, 0.2) },
+        '*::-webkit-scrollbar': { width: 10, height: 10 },
+        '*::-webkit-scrollbar-track': { background: c.base, boxShadow: inset('xs'), borderRadius: 8 },
+        '*::-webkit-scrollbar-thumb': { backgroundColor: c.dark, borderRadius: 8, border: `2px solid ${c.base}` },
       },
     },
     MuiAppBar: {
+      defaultProps: { elevation: 0 },
       styleOverrides: {
-        root: {
-          backgroundColor: alpha('#ffffff', 0.9),
-          color: '#0f172a',
-          backdropFilter: 'blur(14px)',
-          borderBottom: `1px solid ${alpha('#0f172a', 0.08)}`,
-          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)',
-        },
+        root: { ...surface, color: c.text, backdropFilter: 'none', border: 'none', boxShadow: `0 8px 18px ${alpha(c.dark, 0.55)}` },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-        },
+        root: { ...surface, color: c.text },
+        elevation0: { boxShadow: raised('md') },
+        elevation1: { boxShadow: raised('md') },
+        elevation2: { boxShadow: raised('md') },
+        elevation3: { boxShadow: raised('lg') },
+        elevation4: { boxShadow: raised('lg') },
+        outlined: { border: 'none', boxShadow: raised('md') },
       },
     },
     MuiCard: {
-      styleOverrides: {
-        root: {
-          border: `1px solid ${alpha('#0f172a', 0.08)}`,
-          boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
-        },
-      },
+      styleOverrides: { root: { ...surface, border: 'none', boxShadow: raised('md'), borderRadius: 24 } },
+    },
+    MuiCardActionArea: {
+      styleOverrides: { root: { '&:hover .MuiCardActionArea-focusHighlight': { opacity: 0 } } },
+    },
+    MuiDialog: {
+      styleOverrides: { paper: { ...surface, boxShadow: raised('xl'), borderRadius: 28 } },
+    },
+    MuiDrawer: {
+      styleOverrides: { paper: { ...surface, boxShadow: raised('lg'), border: 'none' } },
+    },
+    MuiBackdrop: {
+      styleOverrides: { root: { backgroundColor: alpha('#1f2735', 0.35) } },
     },
     MuiButton: {
+      defaultProps: { disableElevation: true, disableRipple: true },
       styleOverrides: {
         root: {
           textTransform: 'none',
           fontWeight: 600,
-          borderRadius: 12,
-          paddingInline: 16,
+          borderRadius: 16,
+          paddingInline: 20,
+          border: 'none',
+          transition: 'box-shadow .2s ease, color .2s ease',
+        },
+        contained: {
+          backgroundColor: c.base,
+          color: c.text,
+          boxShadow: raised('sm'),
+          '&:hover': { backgroundColor: c.base, boxShadow: raised('md') },
+          '&:active': { boxShadow: inset('sm') },
+          '&.Mui-disabled': { backgroundColor: c.base, boxShadow: 'none', color: alpha(c.text, 0.35) },
         },
         containedPrimary: {
-          boxShadow: '0 10px 20px rgba(27, 94, 32, 0.25)',
+          backgroundColor: c.primary,
+          color: '#fff',
+          boxShadow: `${raised('sm')}`,
+          '&:hover': { backgroundColor: '#17501b', boxShadow: raised('md') },
+          '&:active': { backgroundColor: '#17501b', boxShadow: inset('sm') },
+        },
+        containedSecondary: {
+          backgroundColor: c.secondary,
+          color: '#fff',
+          '&:hover': { backgroundColor: '#0b3b8a', boxShadow: raised('md') },
+          '&:active': { backgroundColor: '#0b3b8a', boxShadow: inset('sm') },
+        },
+        containedError: { backgroundColor: c.error, color: '#fff', '&:hover': { backgroundColor: '#a82020' } },
+        containedSuccess: { backgroundColor: c.success, color: '#fff', '&:hover': { backgroundColor: '#276a2b' } },
+        outlined: {
+          border: 'none',
+          backgroundColor: c.base,
+          boxShadow: raised('sm'),
+          '&:hover': { border: 'none', backgroundColor: c.base, boxShadow: raised('md') },
+          '&:active': { boxShadow: inset('sm') },
+        },
+        text: {
+          '&:hover': { backgroundColor: 'transparent', boxShadow: raised('xs') },
+          '&:active': { boxShadow: inset('xs') },
         },
       },
+    },
+    MuiIconButton: {
+      defaultProps: { disableRipple: true },
+      styleOverrides: {
+        root: {
+          backgroundColor: c.base,
+          boxShadow: raised('xs'),
+          transition: 'box-shadow .2s ease',
+          '&:hover': { backgroundColor: c.base, boxShadow: raised('sm') },
+          '&:active': { boxShadow: inset('xs') },
+        },
+      },
+    },
+    MuiFab: {
+      styleOverrides: {
+        root: { backgroundColor: c.base, color: c.primary, boxShadow: raised('md'), '&:hover': { backgroundColor: c.base, boxShadow: raised('lg') }, '&:active': { boxShadow: inset('md') } },
+      },
+    },
+    MuiToggleButtonGroup: {
+      styleOverrides: { root: { ...surface, boxShadow: inset('sm'), borderRadius: 18, padding: 4, gap: 4 }, grouped: { border: 'none', borderRadius: '14px !important' } },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: { border: 'none', color: c.textMuted, '&.Mui-selected': { backgroundColor: c.base, color: c.primary, boxShadow: raised('xs'), '&:hover': { backgroundColor: c.base } } },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: c.base,
+          borderRadius: 16,
+          boxShadow: inset('sm'),
+          '& fieldset': { border: 'none' },
+          '&:hover fieldset': { border: 'none' },
+          '&.Mui-focused': { boxShadow: `${inset('sm')}, 0 0 0 2px ${alpha(c.primary, 0.45)}` },
+          '&.Mui-focused fieldset': { border: 'none' },
+          '&.Mui-error': { boxShadow: `${inset('sm')}, 0 0 0 2px ${alpha(c.error, 0.5)}` },
+        },
+      },
+    },
+    MuiFilledInput: {
+      defaultProps: { disableUnderline: true },
+      styleOverrides: { root: { backgroundColor: c.base, borderRadius: 16, boxShadow: inset('sm'), '&:hover, &.Mui-focused': { backgroundColor: c.base } } },
+    },
+    MuiInputBase: {
+      styleOverrides: { root: { color: c.text } },
+    },
+    MuiSelect: {
+      styleOverrides: { icon: { color: c.textMuted } },
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          fontWeight: 600,
-        },
+        root: { fontWeight: 600, backgroundColor: c.base, boxShadow: raised('xs'), border: 'none', color: c.text },
+        outlined: { border: 'none' },
+        filled: { backgroundColor: c.base },
+        colorPrimary: { backgroundColor: c.base, color: c.primary },
+        colorSecondary: { backgroundColor: c.base, color: c.secondary },
+        colorSuccess: { backgroundColor: c.base, color: c.success },
+        colorWarning: { backgroundColor: c.base, color: c.warning },
+        colorError: { backgroundColor: c.base, color: c.error },
+        colorInfo: { backgroundColor: c.base, color: c.info },
+        clickable: { '&:hover': { backgroundColor: c.base, boxShadow: raised('sm') }, '&:active': { boxShadow: inset('xs') } },
       },
     },
     MuiAvatar: {
-      styleOverrides: {
-        root: {
-          border: `2px solid ${alpha('#0f172a', 0.08)}`,
-        },
-      },
+      styleOverrides: { root: { border: 'none', boxShadow: raised('xs'), backgroundColor: c.baseDeep, color: c.textMuted } },
+    },
+    MuiBadge: {
+      styleOverrides: { badge: { boxShadow: raised('xs') } },
     },
     MuiMenu: {
-      styleOverrides: {
-        paper: {
-          borderRadius: 16,
-          border: `1px solid ${alpha('#0f172a', 0.08)}`,
-          boxShadow: '0 18px 50px rgba(15, 23, 42, 0.18)',
-        },
-      },
+      styleOverrides: { paper: { ...surface, borderRadius: 20, border: 'none', boxShadow: raised('lg') } },
+    },
+    MuiPopover: {
+      styleOverrides: { paper: { ...surface, border: 'none', boxShadow: raised('lg') } },
+    },
+    MuiMenuItem: {
+      styleOverrides: { root: { borderRadius: 12, marginInline: 6, '&:hover': { backgroundColor: 'transparent', boxShadow: inset('xs') }, '&.Mui-selected': { backgroundColor: 'transparent', boxShadow: inset('xs'), color: c.primary } } },
     },
     MuiListItemButton: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 14,
           marginInline: 8,
-          marginBlock: 2,
-          '&.Mui-selected': {
-            backgroundColor: alpha('#4CAF50', 0.12),
-            color: '#1B5E20',
-          },
+          marginBlock: 3,
+          '&:hover': { backgroundColor: 'transparent', boxShadow: raised('xs') },
+          '&.Mui-selected': { backgroundColor: 'transparent', color: c.primary, boxShadow: inset('xs'), '&:hover': { backgroundColor: 'transparent' } },
         },
       },
     },
-    MuiDivider: {
+    MuiTabs: {
+      styleOverrides: { root: { ...surface, boxShadow: inset('sm'), borderRadius: 18, minHeight: 48, padding: 4 }, indicator: { display: 'none' } },
+    },
+    MuiTab: {
       styleOverrides: {
-        root: {
-          borderColor: alpha('#0f172a', 0.08),
-        },
+        root: { textTransform: 'none', fontWeight: 600, borderRadius: 14, minHeight: 40, color: c.textMuted, '&.Mui-selected': { color: c.primary, backgroundColor: c.base, boxShadow: raised('xs') } },
       },
     },
+    MuiSwitch: {
+      styleOverrides: {
+        root: { width: 56, height: 32, padding: 0 },
+        switchBase: { padding: 4, '&.Mui-checked': { transform: 'translateX(24px)', color: c.primary, '& + .MuiSwitch-track': { opacity: 1, backgroundColor: c.base } } },
+        thumb: { width: 24, height: 24, boxShadow: raised('xs'), backgroundColor: c.base },
+        track: { borderRadius: 16, backgroundColor: c.base, boxShadow: inset('xs'), opacity: 1 },
+      },
+    },
+    MuiCheckbox: { styleOverrides: { root: { color: c.textMuted } } },
+    MuiRadio: { styleOverrides: { root: { color: c.textMuted } } },
+    MuiSlider: {
+      styleOverrides: {
+        rail: { backgroundColor: c.baseDeep, boxShadow: inset('xs'), opacity: 1 },
+        track: { border: 'none' },
+        thumb: { backgroundColor: c.base, boxShadow: raised('xs'), '&:hover, &.Mui-focusVisible': { boxShadow: raised('sm') } },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: { root: { borderRadius: 8, height: 10, backgroundColor: c.base, boxShadow: inset('xs') }, bar: { borderRadius: 8 } },
+    },
+    MuiCircularProgress: { defaultProps: { thickness: 4 } },
+    MuiAlert: {
+      styleOverrides: {
+        root: { ...surface, borderRadius: 18, boxShadow: raised('sm'), border: 'none' },
+        standardSuccess: { backgroundColor: c.base, color: c.success },
+        standardInfo: { backgroundColor: c.base, color: c.info },
+        standardWarning: { backgroundColor: c.base, color: c.warning },
+        standardError: { backgroundColor: c.base, color: c.error },
+        filled: { boxShadow: raised('sm') },
+        outlined: { border: 'none' },
+      },
+    },
+    MuiSnackbarContent: { styleOverrides: { root: { ...surface, color: c.text, boxShadow: raised('md') } } },
+    MuiTooltip: {
+      styleOverrides: { tooltip: { backgroundColor: c.base, color: c.text, boxShadow: raised('sm'), fontWeight: 500 }, arrow: { color: c.base } },
+    },
+    MuiAccordion: {
+      styleOverrides: { root: { ...surface, boxShadow: raised('md'), borderRadius: '20px !important', '&:before': { display: 'none' }, '&.Mui-expanded': { margin: '8px 0' } } },
+    },
+    MuiTableContainer: { styleOverrides: { root: { ...surface, borderRadius: 20, boxShadow: raised('md') } } },
+    MuiTableCell: { styleOverrides: { root: { borderBottom: `1px solid ${alpha(c.dark, 0.3)}` }, head: { fontWeight: 700, color: c.textMuted } } },
+    MuiDivider: { styleOverrides: { root: { borderColor: alpha(c.dark, 0.35), borderBottomWidth: 1 } } },
+    MuiStepIcon: { styleOverrides: { root: { color: c.baseDeep, '&.Mui-active': { color: c.primary }, '&.Mui-completed': { color: c.primary } } } },
+    MuiPaginationItem: {
+      styleOverrides: { root: { boxShadow: raised('xs'), '&.Mui-selected': { backgroundColor: c.base, color: c.primary, boxShadow: inset('xs') } } },
+    },
+    MuiBottomNavigation: { styleOverrides: { root: { ...surface, boxShadow: raised('md') } } },
   },
 });
 

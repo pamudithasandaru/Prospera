@@ -17,7 +17,6 @@ import {
   ListItemIcon,
   ListItemText,
   ListItemButton,
-  Divider,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -40,7 +39,7 @@ import {
   Message as MessageIcon,
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
-import { alpha } from '@mui/material/styles';
+import { neuColors, neuRaised, neuInset, neuCircle } from '../neumorphic';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import { resolveAvatar } from '../utils/avatarUtils';
@@ -64,6 +63,12 @@ const menuItems = [
 
 // Social quick-links shown in the mobile drawer for all roles — defined inline in drawer JSX
 
+
+const listItemSx = (active) => ({
+  borderRadius: '12px',
+  mb: 0.75,
+  ...(active ? neuInset('xs') : { boxShadow: 'none' }),
+});
 
 const Navbar = () => {
   const theme = useTheme();
@@ -120,14 +125,12 @@ const Navbar = () => {
         <Typography variant="subtitle1" fontWeight={700}>
         </Typography>
       </Box>
-      <Divider />
-
       {/* Social quick-links — always visible to all logged-in users */}
       <List dense sx={{ mt: 0.5 }}>
         <ListItemButton
           onClick={() => navigate('/social')}
           selected={location.pathname === '/social'}
-          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/social' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+          sx={{ ...listItemSx(location.pathname === '/social'), '& .MuiListItemIcon-root': { color: location.pathname === '/social' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
         >
           <ListItemIcon><People /></ListItemIcon>
           <ListItemText primary="Social Feed" primaryTypographyProps={{ fontWeight: 600 }} />
@@ -135,7 +138,7 @@ const Navbar = () => {
         <ListItemButton
           onClick={() => navigate('/messages')}
           selected={location.pathname === '/messages'}
-          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/messages' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+          sx={{ ...listItemSx(location.pathname === '/messages'), '& .MuiListItemIcon-root': { color: location.pathname === '/messages' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
         >
           <ListItemIcon><MessageIcon /></ListItemIcon>
           <ListItemText primary="Messages" />
@@ -143,7 +146,7 @@ const Navbar = () => {
         <ListItemButton
           onClick={() => navigate('/notifications')}
           selected={location.pathname === '/notifications'}
-          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/notifications' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+          sx={{ ...listItemSx(location.pathname === '/notifications'), '& .MuiListItemIcon-root': { color: location.pathname === '/notifications' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
         >
           <ListItemIcon><NotificationsIcon /></ListItemIcon>
           <ListItemText primary="Notifications" />
@@ -151,14 +154,12 @@ const Navbar = () => {
         <ListItemButton
           onClick={() => navigate('/search')}
           selected={location.pathname === '/search'}
-          sx={{ '& .MuiListItemIcon-root': { color: location.pathname === '/search' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
+          sx={{ ...listItemSx(location.pathname === '/search'), '& .MuiListItemIcon-root': { color: location.pathname === '/search' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
         >
           <ListItemIcon><SearchIcon /></ListItemIcon>
           <ListItemText primary="Search" />
         </ListItemButton>
       </List>
-
-      <Divider />
 
       {/* Role-based main navigation */}
       <List sx={{ mt: 1 }}>
@@ -168,6 +169,7 @@ const Navbar = () => {
             onClick={() => navigate(item.path)}
             selected={location.pathname === item.path}
             sx={{
+              ...listItemSx(location.pathname === item.path),
               '& .MuiListItemIcon-root': {
                 color: location.pathname === item.path ? 'primary.main' : 'text.secondary',
                 minWidth: 40,
@@ -189,13 +191,7 @@ const Navbar = () => {
         elevation={0}
         sx={{
           color: theme.palette.text.primary,
-          background: `
-            radial-gradient(circle at 10% 20%, ${alpha(theme.palette.primary.light, 0.16)} 0%, ${alpha(theme.palette.primary.light, 0)} 40%),
-            radial-gradient(circle at 90% 80%, ${alpha(theme.palette.secondary.light, 0.12)} 0%, ${alpha(theme.palette.secondary.light, 0)} 45%),
-            linear-gradient(135deg, ${alpha(theme.palette.common.white, 0.96)} 0%, ${alpha(theme.palette.grey[50], 0.94)} 100%)
-          `,
-          borderBottom: `1px solid ${alpha(theme.palette.grey[300], 0.65)}`,
-          boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, 0.08)}`,
+          ...neuRaised('md'),
         }}
       >
         <Container maxWidth="xl">
@@ -239,11 +235,12 @@ const Navbar = () => {
                               color: location.pathname === item.path ? 'primary.main' : 'text.primary',
                               display: 'block',
                               textTransform: 'none',
-                              borderBottom: location.pathname === item.path ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
-                              transition: 'all 0.3s ease',
+                              borderRadius: '12px',
+                              px: 2,
+                              ...(location.pathname === item.path ? neuInset('sm') : { boxShadow: 'none', backgroundColor: 'transparent' }),
+                              transition: 'box-shadow 0.2s ease, color 0.2s ease',
                               '&:hover': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                              transform: 'translateY(-2px)',
+                                ...(location.pathname === item.path ? neuInset('sm') : neuRaised('xs')),
                               },
                             }}
                             >
@@ -275,7 +272,7 @@ const Navbar = () => {
                   <Avatar 
                     alt={currentUser?.name} 
                     src={resolveAvatar(currentUser)}
-                    sx={{ width: 36, height: 36 }}
+                    sx={{ ...neuCircle(38, 'sm'), color: neuColors.primary }}
                   >
                     {currentUser?.name?.charAt(0)}
                   </Avatar>
@@ -305,7 +302,6 @@ const Navbar = () => {
                     {currentUser?.email}
                   </Typography>
                 </Box>
-                <Divider />
                 <MenuItem onClick={() => { navigate('/profile'); handleCloseUserMenu(); }}>
                   <ListItemIcon>
                     <Person fontSize="small" />
@@ -325,7 +321,12 @@ const Navbar = () => {
       </AppBar>
 
       {/* Mobile Drawer */}
-      <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer(false)}>
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={toggleDrawer(false)}
+        PaperProps={{ sx: { backgroundColor: neuColors.base } }}
+      >
         {drawerContent}
       </Drawer>
     </>
