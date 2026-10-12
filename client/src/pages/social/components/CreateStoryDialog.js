@@ -15,10 +15,10 @@ import {
   ToggleButton,
   Typography,
   CircularProgress,
-  alpha,
 } from '@mui/material';
 import { Image, VideoLibrary, TextFields } from '@mui/icons-material';
 import api from '../../../services/api';
+import { neuInset, inset, raised } from '../../../neumorphic';
 
 const BG_COLORS = [
   '#1B5E20', '#0D47A1', '#4A148C', '#B71C1C',
@@ -81,8 +81,8 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
 
   // Live preview background
   const previewStyle = mediaType === 'text'
-    ? { background: `linear-gradient(135deg, ${bgColor}, #000)` }
-    : { bgcolor: 'background.default' };
+    ? { backgroundColor: bgColor }
+    : {};
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
@@ -145,10 +145,9 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
                     borderRadius: '50%',
                     bgcolor: c,
                     cursor: 'pointer',
-                    border: bgColor === c ? '3px solid' : '2px solid transparent',
-                    borderColor: bgColor === c ? 'primary.main' : 'transparent',
-                    transition: 'transform 0.15s',
-                    '&:hover': { transform: 'scale(1.15)' },
+                    boxShadow: bgColor === c ? inset('xs') : raised('xs'),
+                    transition: 'box-shadow 0.2s',
+                    '&:hover': { boxShadow: bgColor === c ? inset('xs') : raised('sm') },
                   }}
                 />
               ))}
@@ -166,9 +165,8 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              ...neuInset('sm'),
               ...previewStyle,
-              border: '1px solid',
-              borderColor: 'divider',
             }}
           >
             {mediaType === 'image' && mediaUrl ? (

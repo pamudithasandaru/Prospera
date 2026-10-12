@@ -15,7 +15,6 @@ import {
   Tooltip,
   TextField,
   InputAdornment,
-  alpha,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -28,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import { neuRaised, neuInteractive } from '../../../neumorphic';
 
 const SkeletonRows = ({ count, height }) =>
   Array.from({ length: count }).map((_, i) => (
@@ -252,8 +252,7 @@ const TrendingSidebar = () => {
             cursor: 'pointer',
             p: 1,
             borderRadius: 1.5,
-            transition: 'all 0.2s',
-            '&:hover': { bgcolor: alpha('#4CAF50', 0.08) },
+            ...neuInteractive('xs'),
           }}
         >
           <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
@@ -362,7 +361,7 @@ const TrendingSidebar = () => {
             </Button>
             <IconButton
               size="small"
-              sx={{ border: '1px solid', borderColor: 'divider' }}
+              sx={{ ...neuRaised('xs') }}
               onClick={() => navigate(`/messages?user=${farmer._id}`)}
             >
               <Message sx={{ fontSize: 16 }} />
@@ -381,7 +380,7 @@ const TrendingSidebar = () => {
       {!loadingNotifs && notifications.length > 0 && (
         <Paper
           elevation={0}
-          sx={{ p: 2, mb: 2, border: '2px solid', borderColor: 'warning.light', bgcolor: alpha('#FF9800', 0.04) }}
+          sx={{ p: 2, mb: 2 }}
         >
           <Box display="flex" alignItems="center" gap={1} mb={1.5}>
             <Badge badgeContent={notifications.length} color="error">
@@ -436,7 +435,7 @@ const TrendingSidebar = () => {
         </Paper>
       )}
 
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <TrendingUp sx={{ color: 'primary.main' }} />
           <Typography variant="subtitle1" fontWeight="bold">Trending Topics</Typography>
@@ -446,12 +445,12 @@ const TrendingSidebar = () => {
           : renderSection(false, 'No trending topics yet.', topicsContent)}
       </Paper>
 
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Suggested Groups</Typography>
         {renderSection(loadingGroups, 'No groups available.', groupsContent)}
       </Paper>
 
-      <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: 2 }}>
         {/* Header */}
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1" fontWeight="bold">People You May Know</Typography>
@@ -588,7 +587,7 @@ const TrendingSidebar = () => {
                       </Button>
                       <IconButton
                         size="small"
-                        sx={{ border: '1px solid', borderColor: 'divider' }}
+                        sx={{ ...neuRaised('xs') }}
                         onClick={() => navigate(`/messages?user=${farmer._id}`)}
                       >
                         <Message sx={{ fontSize: 16 }} />

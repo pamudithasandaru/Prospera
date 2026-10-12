@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Container, Paper, Typography, Avatar, Button, IconButton, Tab, Tabs,
   Grid, Divider, TextField, Chip, CircularProgress,
-  Alert, Snackbar, Badge, Tooltip, alpha,
+  Alert, Snackbar, Badge, Tooltip,
 } from '@mui/material';
 import {
   Edit, CameraAlt, ThumbUp, ChatBubbleOutline, Share,
@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { neuColors, neuRaised, neuInset, raised } from '../../neumorphic';
 
 /* ─────────────────────────────────────────────
    Helpers
@@ -33,8 +34,7 @@ const MiniPostCard = ({ post }) => {
   return (
     <Paper
       elevation={0}
-      sx={{ p: 2.5, mb: 2, border: '1px solid', borderColor: 'divider',
-        '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }, transition: 'box-shadow .3s' }}
+      sx={{ p: 2.5, mb: 2 }}
     >
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>
         {new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -69,7 +69,7 @@ const MiniPostCard = ({ post }) => {
    Connection Card
 ───────────────────────────────────────────── */
 const ConnectionCard = ({ farmer }) => (
-  <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', textAlign: 'center', borderRadius: 2 }}>
+  <Paper elevation={0} sx={{ p: 2, textAlign: 'center', borderRadius: 2 }}>
     <Avatar src={farmer.avatar} sx={{ width: 64, height: 64, mx: 'auto', mb: 1 }}>
       {farmer.name?.charAt(0)}
     </Avatar>
@@ -93,7 +93,7 @@ const ConnectionCard = ({ farmer }) => (
    Group Card
 ───────────────────────────────────────────── */
 const GroupCard = ({ group }) => (
-  <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+  <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
     <Box display="flex" gap={1.5} alignItems="center">
       <Avatar sx={{ bgcolor: 'primary.light', width: 48, height: 48, fontSize: '1.4rem' }}>
         {group.image || group.name?.charAt(0)}
@@ -249,7 +249,7 @@ const ProfilePage = () => {
   const avatarSrc = form.profilePicture || user?.profile?.profilePicture || user?.avatar || null;
 
   return (
-    <Box sx={{ bgcolor: 'grey.100', minHeight: '100vh', pb: 6 }}>
+    <Box sx={{ bgcolor: neuColors.base, minHeight: '100vh', pb: 6 }}>
       {/* ── Cover + Avatar ── */}
       <Box sx={{ position: 'relative', maxWidth: 1100, mx: 'auto' }}>
         {/* Cover Photo */}
@@ -258,26 +258,26 @@ const ProfilePage = () => {
             height: { xs: 160, sm: 240, md: 300 },
             borderRadius: { xs: 0, md: '0 0 16px 16px' },
             overflow: 'hidden',
-            backgroundImage: coverSrc
-              ? `url(${coverSrc})`
-              : 'linear-gradient(135deg, #1B5E20 0%, #4CAF50 60%, #8BC34A 100%)',
+            ...(coverSrc ? { backgroundImage: `url(${coverSrc})` } : neuInset('lg')),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             position: 'relative',
           }}
         >
-          <Box sx={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.35) 100%)',
-          }} />
+          {coverSrc && (
+            <Box sx={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.35) 100%)',
+            }} />
+          )}
           <input type="file" hidden accept="image/*" ref={coverInputRef} onChange={handleCoverChange} />
           <Tooltip title="Change cover photo">
             <IconButton
               onClick={() => coverInputRef.current.click()}
               sx={{
                 position: 'absolute', bottom: 12, right: 16,
-                bgcolor: 'rgba(0,0,0,0.55)', color: 'white',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.75)' },
+                ...neuRaised('sm'), color: 'primary.main',
+                '&:hover': { boxShadow: raised('md') },
               }}
             >
               <PhotoCamera />
@@ -293,9 +293,6 @@ const ProfilePage = () => {
             px: { xs: 2, sm: 4 },
             pt: 0,
             pb: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
           }}
         >
           <Box
@@ -314,8 +311,8 @@ const ProfilePage = () => {
                   <IconButton
                     size="small"
                     onClick={() => avatarInputRef.current.click()}
-                    sx={{ bgcolor: 'background.paper', border: '2px solid white', width: 32, height: 32,
-                      '&:hover': { bgcolor: 'grey.100' } }}
+                    sx={{ ...neuRaised('xs'), width: 32, height: 32,
+                      '&:hover': { boxShadow: raised('sm') } }}
                   >
                     <CameraAlt sx={{ fontSize: 15 }} />
                   </IconButton>
@@ -325,7 +322,7 @@ const ProfilePage = () => {
               <Avatar
                 src={avatarSrc}
                 sx={{ width: { xs: 100, sm: 140 }, height: { xs: 100, sm: 140 },
-                  border: '4px solid white', bgcolor: 'primary.main', fontSize: '3rem',
+                  ...neuRaised('md'), bgcolor: 'primary.main', fontSize: '3rem',
                   cursor: 'pointer' }}
                 onClick={() => avatarInputRef.current?.click()}
               >
@@ -375,7 +372,7 @@ const ProfilePage = () => {
               </Button>
               <Tooltip title="Settings">
                 <IconButton onClick={() => setTab(3)}
-                  sx={{ border: '1px solid', borderColor: 'divider' }}>
+                  sx={{ ...neuRaised('xs') }}>
                   <Settings />
                 </IconButton>
               </Tooltip>
@@ -403,7 +400,7 @@ const ProfilePage = () => {
           <Grid container spacing={3}>
             {/* Left: intro card */}
             <Grid item xs={12} md={4}>
-              <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2 }}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Intro</Typography>
                 {user?.profile?.bio && (
                   <Typography variant="body2" color="text.secondary" mb={1.5} sx={{ fontStyle: 'italic' }}>
@@ -440,7 +437,7 @@ const ProfilePage = () => {
               {loadingPosts ? (
                 <Box textAlign="center" py={4}><CircularProgress /></Box>
               ) : posts.length === 0 ? (
-                <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Paper elevation={0} sx={{ p: 5, textAlign: 'center', borderRadius: 2 }}>
                   <Article sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                   <Typography color="text.secondary">No posts yet. Share your first experience!</Typography>
                 </Paper>
@@ -460,7 +457,7 @@ const ProfilePage = () => {
             {loadingConnections ? (
               <Box textAlign="center" py={4}><CircularProgress /></Box>
             ) : connections.length === 0 ? (
-              <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ p: 5, textAlign: 'center', borderRadius: 2 }}>
                 <People sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                 <Typography color="text.secondary">No connections yet.</Typography>
               </Paper>
@@ -488,7 +485,7 @@ const ProfilePage = () => {
             {loadingGroups ? (
               <Box textAlign="center" py={4}><CircularProgress /></Box>
             ) : groups.length === 0 ? (
-              <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ p: 5, textAlign: 'center', borderRadius: 2 }}>
                 <Groups sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
                 <Typography color="text.secondary">Not joined any groups yet.</Typography>
               </Paper>
@@ -509,7 +506,7 @@ const ProfilePage = () => {
           <Grid container spacing={3}>
             {/* Profile Settings */}
             <Grid item xs={12} md={7}>
-              <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 3 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, mb: 3 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={3}>
                   <Person sx={{ color: 'primary.main' }} />
                   <Typography variant="h6" fontWeight="bold">Profile Information</Typography>
@@ -517,10 +514,10 @@ const ProfilePage = () => {
 
                 {/* Avatar preview */}
                 <Box display="flex" alignItems="center" gap={2} mb={3}
-                  sx={{ p: 2, bgcolor: alpha('#4CAF50', 0.05), borderRadius: 2, border: '1px dashed', borderColor: 'primary.light' }}>
+                  sx={{ ...neuInset('sm'), p: 2, borderRadius: 2 }}>
                   <Avatar
                     src={avatarSrc}
-                    sx={{ width: 72, height: 72, border: '3px solid white', boxShadow: 2 }}
+                    sx={{ ...neuRaised('sm'), width: 72, height: 72 }}
                   >
                     {user?.name?.charAt(0)}
                   </Avatar>
@@ -599,7 +596,7 @@ const ProfilePage = () => {
               </Paper>
 
               {/* Change Password */}
-              <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={3}>
                   <Lock sx={{ color: 'primary.main' }} />
                   <Typography variant="h6" fontWeight="bold">Change Password</Typography>
@@ -647,7 +644,7 @@ const ProfilePage = () => {
 
             {/* Right: quick stats */}
             <Grid item xs={12} md={5}>
-              <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 2 }}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Account Overview</Typography>
                 {[
                   { label: 'Total Posts', value: posts.length, icon: <Article sx={{ color: 'primary.main' }} /> },
@@ -656,7 +653,7 @@ const ProfilePage = () => {
                   { label: 'Connections', value: connections.length, icon: <People sx={{ color: 'success.main' }} /> },
                 ].map(({ label, value, icon }) => (
                   <Box key={label} display="flex" justifyContent="space-between" alignItems="center"
-                    sx={{ py: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { border: 0 } }}>
+                    sx={{ py: 1.5 }}>
                     <Box display="flex" alignItems="center" gap={1.5}>
                       {icon}
                       <Typography variant="body2">{label}</Typography>
@@ -666,8 +663,7 @@ const ProfilePage = () => {
                 ))}
               </Paper>
 
-              <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2,
-                bgcolor: alpha('#F44336', 0.04) }}>
+              <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2 }}>
                 <Typography variant="subtitle2" fontWeight="bold" color="error.main" gutterBottom>
                   Danger Zone
                 </Typography>

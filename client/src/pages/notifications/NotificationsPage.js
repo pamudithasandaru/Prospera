@@ -14,7 +14,6 @@ import {
   Divider,
   Chip,
   Skeleton,
-  alpha,
 } from '@mui/material';
 import {
   Favorite,
@@ -28,6 +27,7 @@ import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { formatDistanceToNow } from 'date-fns';
 import { resolveAvatar } from '../../utils/avatarUtils';
+import { neuRaised, neuInteractive } from '../../neumorphic';
 
 const ICON_MAP = {
   like: <Favorite sx={{ fontSize: 16, color: '#e53935' }} />,
@@ -82,9 +82,9 @@ const NotificationsPage = () => {
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+      <Paper elevation={0} sx={{ overflow: 'hidden' }}>
         {/* Header */}
-        <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h5" fontWeight="bold" flex={1}>
             Notifications
           </Typography>
@@ -130,9 +130,9 @@ const NotificationsPage = () => {
                     alignItems: 'center',
                     gap: 1.5,
                     cursor: !notif.read ? 'pointer' : 'default',
-                    bgcolor: notif.read ? 'transparent' : alpha('#4CAF50', 0.04),
-                    transition: 'background 0.2s',
-                    '&:hover': { bgcolor: alpha('#000', 0.02) },
+                    m: 1,
+                    borderRadius: 2,
+                    ...(notif.read ? {} : neuInteractive('sm')),
                   }}
                 >
                   {/* Avatar + icon badge */}
@@ -145,15 +145,13 @@ const NotificationsPage = () => {
                         position: 'absolute',
                         bottom: -2,
                         right: -2,
-                        bgcolor: 'background.paper',
+                        ...neuRaised('xs'),
                         borderRadius: '50%',
                         width: 20,
                         height: 20,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px solid',
-                        borderColor: 'divider',
                       }}
                     >
                       {ICON_MAP[notif.type] || <Notifications sx={{ fontSize: 12 }} />}

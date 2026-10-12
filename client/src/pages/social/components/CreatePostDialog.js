@@ -27,6 +27,7 @@ import {
   AttachFile,
   EmojiEmotions,
 } from '@mui/icons-material';
+import { neuRaised, neuInset, raised } from '../../../neumorphic';
 
 const CreatePostDialog = ({ 
   open, 
@@ -203,8 +204,8 @@ const CreatePostDialog = ({
                 position: 'absolute',
                 top: 8,
                 right: 8,
-                bgcolor: 'background.paper',
-                '&:hover': { bgcolor: 'background.paper' },
+                ...neuRaised('xs'),
+                '&:hover': { boxShadow: raised('sm') },
               }}
               onClick={() => setSelectedImage(null)}
             >
@@ -219,8 +220,7 @@ const CreatePostDialog = ({
           gap={1} 
           sx={{ 
             p: 2, 
-            border: '1px solid',
-            borderColor: 'divider',
+            ...neuInset('sm'),
             borderRadius: 2,
           }}
         >

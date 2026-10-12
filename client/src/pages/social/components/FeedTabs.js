@@ -11,8 +11,6 @@ const FeedTabs = ({ value, onChange }) => {
       elevation={0} 
       sx={{ 
         mb: 2,
-        border: '1px solid',
-        borderColor: 'divider',
       }}
     >
       <Tabs 

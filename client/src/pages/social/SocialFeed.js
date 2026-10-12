@@ -228,7 +228,7 @@ const SocialFeed = () => {
 
           {/* Posts Feed */}
           {loading ? (
-            <Paper elevation={0} sx={{ p: 4, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+            <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">Loading posts...</Typography>
             </Paper>
           ) : posts.length === 0 ? (
@@ -237,8 +237,6 @@ const SocialFeed = () => {
               sx={{ 
                 p: 6, 
                 textAlign: 'center',
-                border: '1px solid',
-                borderColor: 'divider',
               }}
             >
               <Typography variant="h6" color="text.secondary" gutterBottom>
