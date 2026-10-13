@@ -11,6 +11,7 @@ import { SocketProvider } from './context/SocketContext';
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import SproutChat from './components/SproutChat';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Auth Pages
@@ -213,6 +214,7 @@ function AppContent() {
       </Box>
       {!hideFooter && <Footer />}
       <ScrollReveal />
+      {!hideNavbar && <SproutChat />}
     </Box>
   );
 }
