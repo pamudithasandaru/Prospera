@@ -28,6 +28,12 @@ import api from '../../services/api';
 const WeatherDashboard = () => {
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState([]);
+  // Chart needs flat numeric fields; forecast entries carry temp as {max, min}.
+  const trendData = forecast.length > 0
+    ? forecast.map((d) => ({ date: d.date, max: d.temp?.max ?? d.temp, min: d.temp?.min ?? d.temp }))
+    : [28, 30, 29, 27, 26, 28, 30].map((t, i) => ({
+        date: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i], max: t + 2, min: t - 4,
+      }));
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -238,20 +244,13 @@ const WeatherDashboard = () => {
               Temperature Trend
             </Typography>
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={forecast.length > 0 ? forecast : [
-                { date: 'Mon', temp: 28 },
-                { date: 'Tue', temp: 30 },
-                { date: 'Wed', temp: 29 },
-                { date: 'Thu', temp: 27 },
-                { date: 'Fri', temp: 26 },
-                { date: 'Sat', temp: 28 },
-                { date: 'Sun', temp: 30 },
-              ]}>
+              <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={neuColors.dark} strokeOpacity={0.4} />
                 <XAxis dataKey="date" stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
                 <YAxis stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text }} />
-                <Line type="monotone" dataKey="temp" stroke="#2e7d32" strokeWidth={2} />
+                <Line type="monotone" dataKey="max" name="Max °C" stroke="#c62828" strokeWidth={2} />
+                <Line type="monotone" dataKey="min" name="Min °C" stroke="#0277bd" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </Paper>
