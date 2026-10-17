@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { users, generateId } = require('../data/sampleData');
 const { authenticate, JWT_SECRET } = require('../middleware/auth');
 const { db, isFirestoreEnabled } = require('../services/firestore');
+const { getSuperAdminUser, isSuperAdminCredentials, isSuperAdminId } = require('../services/superAdmin');
 
 const router = express.Router();
 
@@ -85,6 +86,12 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
+  // Config-based super admin; checked first, anything else falls through to DB login
+  if (isSuperAdminCredentials(email, password)) {
+    const admin = getSuperAdminUser();
+    return res.json({ success: true, data: { user: admin, token: signToken(admin._id) } });
+  }
+
   if (isFirestoreEnabled && db) {
     try {
       const snap = await withTimeout(
@@ -161,6 +168,9 @@ router.put('/profile', authenticate, async (req, res) => {
 
 router.put('/password', authenticate, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
+  if (isSuperAdminId(req.user._id)) {
+    return res.status(400).json({ success: false, message: 'Super admin password is managed in server config' });
+  }
   const matches = await bcrypt.compare(currentPassword || '', req.user.passwordHash);
   if (!matches) {
     return res.status(400).json({ success: false, message: 'Current password is incorrect' });

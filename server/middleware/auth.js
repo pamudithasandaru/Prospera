@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { users } = require('../data/sampleData');
 const { db, isFirestoreEnabled } = require('../services/firestore');
+const { getSuperAdminUser, isSuperAdminId } = require('../services/superAdmin');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 
@@ -13,6 +14,11 @@ const authenticate = async (req, res, next) => {
   const token = header.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (isSuperAdminId(decoded.id)) {
+      req.user = getSuperAdminUser();
+      return next();
+    }
 
     if (isFirestoreEnabled && db) {
       const snap = await db.collection('users').doc(decoded.id).get();
