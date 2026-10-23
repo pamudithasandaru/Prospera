@@ -24,7 +24,7 @@ router.get('/products', async (req, res) => {
 });
 
 // ── POST /api/marketplace/cart — add to cart ────────────────────────────────
-// The Firestore version only echoed the payload back; the cart now persists.
+// The cart persists in the database; earlier revisions only echoed the payload.
 router.post('/cart', authenticate, async (req, res) => {
   const { productId, quantity = 1 } = req.body;
   const qty = Number(quantity);

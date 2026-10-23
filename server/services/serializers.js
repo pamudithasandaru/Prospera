@@ -100,8 +100,8 @@ function serializeGroup(g) {
 }
 
 /**
- * Connections are stored as an ordered (userA, userB) pair. The client still
- * expects Firestore's `users` array, so rebuild it.
+ * Connections are stored as an ordered (userA, userB) pair. The client reads a
+ * two-element `users` array, so rebuild that shape here.
  */
 function serializeConnection(c, viewerId) {
   if (!c) return null;
