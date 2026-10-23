@@ -1,665 +1,440 @@
 const express = require('express');
-const { socialPosts, users, groups, connectionRequests, connections, generateId } = require('../data/sampleData');
+const { prisma } = require('../services/prisma');
 const { authenticate } = require('../middleware/auth');
-const { db, isFirestoreEnabled, admin } = require('../services/firestore');
-
-const FIRESTORE_TIMEOUT = 5000;
-const withTimeout = (p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Firestore timeout')), FIRESTORE_TIMEOUT))]);
+const { SUPER_ADMIN_ID } = require('../services/superAdmin');
+const {
+  serializePost,
+  serializeComment,
+  serializeGroup,
+  serializeUser,
+  serializeConnection,
+  serializeConnectionRequest,
+} = require('../services/serializers');
 
 const router = express.Router();
 
-const getUserFromRequest = (req) => req.user || users[0];
+const VALID_POST_TYPES = ['post', 'question', 'alert', 'article'];
+const VALID_VISIBILITY = ['public', 'connections', 'private'];
+const VALID_ROLES = ['farmer', 'buyer', 'consultant', 'expert', 'admin'];
 
+/**
+ * Connections are symmetric but stored once, with the smaller id in user_a_id.
+ * Ordering the pair here keeps the unique constraint meaningful.
+ */
+const orderPair = (a, b) => (a < b ? [a, b] : [b, a]);
+
+/** Everything needed to rebuild the legacy post shape in one round trip. */
+const POST_INCLUDE = {
+  author: true,
+  likes: true,
+  comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
+};
+
+// ── GET /api/social/posts ────────────────────────────────────────────────────
 router.get('/posts', async (req, res) => {
-  const { sortBy, userId } = req.query;
+  const { userId } = req.query;
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
 
-  if (isFirestoreEnabled && db) {
-    try {
-      let query = db.collection('socialPosts').orderBy('createdAt', 'desc');
-      if (userId) query = db.collection('socialPosts').where('user._id', '==', userId).orderBy('createdAt', 'desc');
-      const snap = await withTimeout(query.get());
-      let data = snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
-      if (sortBy === 'trending') {
-        data = data.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
-      }
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('Firestore posts error:', err.message);
-    }
+  try {
+    const posts = await prisma.socialPost.findMany({
+      where: userId ? { authorId: userId } : undefined,
+      include: POST_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return res.json({ success: true, data: posts.map(serializePost) });
+  } catch (err) {
+    console.error('Fetch posts error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch posts' });
   }
-
-  let data = userId
-    ? socialPosts.filter((p) => (p.user?._id || p.author?._id) === userId)
-    : [...socialPosts];
-  if (sortBy === 'trending') {
-    data = data.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
-  } else {
-    data = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-  return res.json({ success: true, data });
 });
 
+// ── POST /api/social/post ────────────────────────────────────────────────────
 router.post('/post', authenticate, async (req, res) => {
-  const user = getUserFromRequest(req);
   const { content = {}, type = 'post', category = 'general', visibility = 'public' } = req.body;
-  if (!content.text && !content.images?.length) {
+  const text = (content.text || '').trim();
+  const images = Array.isArray(content.images) ? content.images : [];
+
+  if (!text && images.length === 0) {
     return res.status(400).json({ success: false, message: 'Content is required' });
   }
-
-  // Resolve avatar from multiple possible field paths — user.avatar (flat),
-  // profile.profilePicture (set via PUT /auth/profile), profile.avatar, photoURL
-  const resolvedAvatar =
-    user.avatar ||
-    user.profile?.profilePicture ||
-    user.profile?.avatar ||
-    user.photoURL ||
-    '';
-
-  const newPost = {
-    user: {
-      _id: user._id,
-      name: user.name,
-      role: user.role,
-      avatar: resolvedAvatar,
-    },
-    content,
-    type,
-    category,
-    visibility,
-    likes: [],
-    comments: [],
-    createdAt: new Date(),
-  };
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const docRef = db.collection('socialPosts').doc();
-      await withTimeout(docRef.set(newPost));
-      return res.status(201).json({ success: true, data: { _id: docRef.id, ...newPost } });
-    } catch (err) {
-      console.error('Firestore create-post error:', err.message);
-    }
+  if (!VALID_POST_TYPES.includes(type)) {
+    return res.status(400).json({ success: false, message: 'Invalid post type' });
+  }
+  if (!VALID_VISIBILITY.includes(visibility)) {
+    return res.status(400).json({ success: false, message: 'Invalid visibility' });
   }
 
-  const inMemoryPost = { _id: generateId('post'), ...newPost };
-  socialPosts.unshift(inMemoryPost);
-  return res.status(201).json({ success: true, data: inMemoryPost });
+  try {
+    const post = await prisma.socialPost.create({
+      data: { authorId: req.user.id, text, images, type, category, visibility },
+      include: POST_INCLUDE,
+    });
+    return res.status(201).json({ success: true, data: serializePost(post) });
+  } catch (err) {
+    console.error('Create post error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to create post' });
+  }
 });
 
+// ── POST /api/social/post/:id/like — toggles ─────────────────────────────────
 router.post('/post/:id/like', authenticate, async (req, res) => {
-  const userId = req.user._id;
+  const postId = req.params.id;
+  const userId = req.user.id;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const docRef = db.collection('socialPosts').doc(req.params.id);
-      const snap = await withTimeout(docRef.get());
-      if (!snap.exists) {
-        return res.status(404).json({ success: false, message: 'Post not found' });
-      }
-      const post = { _id: snap.id, ...snap.data() };
-      const already = (post.likes || []).find((like) => like.user === userId);
-      const updatedLikes = already
-        ? post.likes.filter((like) => like.user !== userId)
-        : [...(post.likes || []), { user: userId, date: new Date() }];
-      await withTimeout(docRef.update({ likes: updatedLikes }));
-      return res.json({ success: true, data: { ...post, likes: updatedLikes } });
-    } catch (err) {
-      console.error('Firestore like error:', err.message);
+  try {
+    const existing = await prisma.postLike.findUnique({
+      where: { postId_userId: { postId, userId } },
+    });
+
+    if (existing) {
+      await prisma.postLike.delete({ where: { postId_userId: { postId, userId } } });
+    } else {
+      await prisma.postLike.create({ data: { postId, userId } });
     }
-  }
 
-  const post = socialPosts.find((p) => p._id === req.params.id);
-  if (!post) {
-    return res.status(404).json({ success: false, message: 'Post not found' });
+    const post = await prisma.socialPost.findUnique({ where: { id: postId }, include: POST_INCLUDE });
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    return res.json({ success: true, data: serializePost(post) });
+  } catch (err) {
+    // P2003 = FK violation, i.e. the post does not exist
+    if (err.code === 'P2003' || err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    console.error('Like error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to like post' });
   }
-  const already = post.likes?.find((like) => like.user === userId);
-  if (already) {
-    post.likes = post.likes.filter((like) => like.user !== userId);
-  } else {
-    post.likes = [...(post.likes || []), { user: userId, date: new Date() }];
-  }
-  return res.json({ success: true, data: post });
 });
 
+// ── POST /api/social/post/:id/comment ────────────────────────────────────────
 router.post('/post/:id/comment', authenticate, async (req, res) => {
   const text = (req.body.text || '').trim();
   if (!text) {
     return res.status(400).json({ success: false, message: 'Comment text is required' });
   }
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const docRef = db.collection('socialPosts').doc(req.params.id);
-      const snap = await withTimeout(docRef.get());
-      if (!snap.exists) {
-        return res.status(404).json({ success: false, message: 'Post not found' });
-      }
-      const comment = {
-        _id: generateId('comment'),
-        user: {
-          _id: req.user._id,
-          name: req.user.name,
-          avatar: req.user.avatar || req.user.profile?.profilePicture || req.user.profile?.avatar || '',
-        },
-        text,
-        createdAt: new Date(),
-      };
-      const comments = [...(snap.data().comments || []), comment];
-      await withTimeout(docRef.update({ comments }));
-      return res.status(201).json({ success: true, data: comment });
-    } catch (err) {
-      console.error('Firestore comment error:', err.message);
-    }
-  }
-
-  const post = socialPosts.find((p) => p._id === req.params.id);
-  if (!post) {
-    return res.status(404).json({ success: false, message: 'Post not found' });
-  }
-  const comment = {
-    _id: generateId('comment'),
-    user: {
-      _id: req.user._id,
-      name: req.user.name,
-      avatar: req.user.avatar || req.user.profile?.profilePicture || req.user.profile?.avatar || '',
-    },
-    text,
-    createdAt: new Date(),
-  };
-  post.comments = [...(post.comments || []), comment];
-  return res.status(201).json({ success: true, data: comment });
-});
-
-router.delete('/post/:id', authenticate, async (req, res) => {
-  const userId = req.user._id;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const docRef = db.collection('socialPosts').doc(req.params.id);
-      const snap = await withTimeout(docRef.get());
-      if (!snap.exists) {
-        return res.status(404).json({ success: false, message: 'Post not found' });
-      }
-      const post = snap.data();
-      // Ownership check: handle both user._id and author._id variants
-      const authorId = post.user?._id || post.author?._id || post.author || post.user;
-      if (authorId !== userId) {
-        return res.status(403).json({ success: false, message: 'Unauthorized: You can only delete your own posts' });
-      }
-      await withTimeout(docRef.delete());
-      return res.json({ success: true, message: 'Post deleted successfully' });
-    } catch (err) {
-      console.error('Firestore delete-post error:', err.message);
-      return res.status(500).json({ success: false, message: 'Internal server error' });
-    }
-  }
-
-  const idx = socialPosts.findIndex((p) => p._id === req.params.id);
-  if (idx === -1) {
-    return res.status(404).json({ success: false, message: 'Post not found' });
-  }
-  const post = socialPosts[idx];
-  const authorId = post.user?._id || post.author?._id || post.author || post.user;
-  if (authorId !== userId) {
-    return res.status(403).json({ success: false, message: 'Unauthorized' });
-  }
-  socialPosts.splice(idx, 1);
-  return res.json({ success: true, message: 'Post deleted successfully' });
-});
-
-// GET suggested groups
-router.get('/groups', async (req, res) => {
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(db.collection('groups').orderBy('memberCount', 'desc').limit(10).get());
-      if (!snap.empty) {
-        const data = snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
-        return res.json({ success: true, data });
-      }
-      // Firestore enabled but no groups collection yet — seed it from sample data then return
-      const batch = db.batch();
-      groups.forEach((g) => {
-        const ref = db.collection('groups').doc(g._id);
-        batch.set(ref, g, { merge: true });
-      });
-      await withTimeout(batch.commit());
-      return res.json({ success: true, data: groups });
-    } catch (err) {
-      console.error('Firestore groups error:', err.message);
-    }
-  }
-  return res.json({ success: true, data: groups });
-});
-
-// GET suggested users — returns all registered users except current user
-// Supports farmers, buyers, experts seeing relevant connections
-// Kept at /farmers path for backward-compatibility with existing frontend code
-router.get('/farmers', authenticate, async (req, res) => {
-  const currentUserId = req.user._id;
-  const roleFilter = req.query.role; // optional ?role=farmer to filter
-
-  if (isFirestoreEnabled && db) {
-    try {
-      let query = db.collection('users').limit(20);
-      // Optional role filter — if not provided, return all roles
-      if (roleFilter) {
-        query = db.collection('users').where('role', '==', roleFilter).limit(20);
-      }
-      const snap = await withTimeout(query.get());
-      const data = snap.docs
-        .map((doc) => ({ _id: doc.id, ...doc.data() }))
-        .filter((u) => u._id !== currentUserId)
-        .map(({ passwordHash, ...safe }) => safe)
-        .slice(0, 10);
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('Firestore suggested-users error:', err.message);
-    }
-  }
-
-  // In-memory fallback — return all non-current users (or filter by role)
-  const data = users
-    .filter((u) => u._id !== currentUserId && (!roleFilter || u.role === roleFilter))
-    .map(({ passwordHash, ...safe }) => safe)
-    .slice(0, 10);
-  return res.json({ success: true, data });
-});
-
-// ─── PEOPLE YOU MAY KNOW — Mutual Connections Algorithm ─────────────────────
-// Score = number of shared connections between current user and candidate.
-// Candidates are sorted descending by score; top 10 are returned.
-// Only users not already connected / with pending requests are included.
-router.get('/suggestions', authenticate, async (req, res) => {
-  const myId = req.user._id;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      // 1. Get my current connections list (array of partner IDs)
-      const myConnSnap = await withTimeout(
-        db.collection('connections').where('users', 'array-contains', myId).get()
-      );
-      const myConnectionIds = new Set(
-        myConnSnap.docs.map((d) => d.data().users.find((id) => id !== myId)).filter(Boolean)
-      );
-
-      // 2. Get pending request IDs (sent or received) to exclude them
-      const [sentSnap, recvSnap] = await Promise.all([
-        withTimeout(db.collection('connectionRequests').where('senderId', '==', myId).where('status', '==', 'pending').get()),
-        withTimeout(db.collection('connectionRequests').where('receiverId', '==', myId).where('status', '==', 'pending').get()),
-      ]);
-      const pendingIds = new Set([
-        ...sentSnap.docs.map((d) => d.data().receiverId),
-        ...recvSnap.docs.map((d) => d.data().senderId),
-      ]);
-
-      // 3. Fetch all users except me, already-connected, and pending
-      const allUsersSnap = await withTimeout(db.collection('users').limit(100).get());
-      const candidates = allUsersSnap.docs
-        .map((doc) => ({ _id: doc.id, ...doc.data() }))
-        .filter((u) => u._id !== myId && !myConnectionIds.has(u._id) && !pendingIds.has(u._id))
-        .map(({ passwordHash, ...safe }) => safe);
-
-      // 4. For each candidate, count mutual connections
-      // Fetch their connection lists in parallel
-      const scored = await Promise.all(
-        candidates.map(async (candidate) => {
-          try {
-            const theirSnap = await withTimeout(
-              db.collection('connections').where('users', 'array-contains', candidate._id).get()
-            );
-            const theirConnectionIds = new Set(
-              theirSnap.docs.map((d) => d.data().users.find((id) => id !== candidate._id)).filter(Boolean)
-            );
-            // Count overlap
-            let mutualCount = 0;
-            myConnectionIds.forEach((id) => { if (theirConnectionIds.has(id)) mutualCount++; });
-            return { ...candidate, mutualCount };
-          } catch {
-            return { ...candidate, mutualCount: 0 };
-          }
-        })
-      );
-
-      // 5. Sort by mutualCount desc, take top 5
-      scored.sort((a, b) => b.mutualCount - a.mutualCount);
-      return res.json({ success: true, data: scored.slice(0, 5) });
-
-    } catch (err) {
-      console.error('Firestore suggestions error:', err.message);
-    }
-  }
-
-  // ── In-memory fallback ─────────────────────────────────────────────────────
-  // Build my connection set
-  const myConnectionIds = new Set(
-    connections
-      .filter((c) => c.users.includes(myId))
-      .map((c) => c.users.find((id) => id !== myId))
-      .filter(Boolean)
-  );
-
-  // Pending request IDs
-  const pendingIds = new Set(
-    connectionRequests
-      .filter((r) => r.status === 'pending' && (r.senderId === myId || r.receiverId === myId))
-      .map((r) => (r.senderId === myId ? r.receiverId : r.senderId))
-  );
-
-  // Candidates = everyone except me, already connected, pending
-  const candidates = users
-    .filter((u) => u._id !== myId && !myConnectionIds.has(u._id) && !pendingIds.has(u._id))
-    .map(({ passwordHash, ...safe }) => safe);
-
-  // Score by mutual connections
-  const scored = candidates.map((candidate) => {
-    const theirConnectionIds = new Set(
-      connections
-        .filter((c) => c.users.includes(candidate._id))
-        .map((c) => c.users.find((id) => id !== candidate._id))
-        .filter(Boolean)
-    );
-    let mutualCount = 0;
-    myConnectionIds.forEach((id) => { if (theirConnectionIds.has(id)) mutualCount++; });
-    return { ...candidate, mutualCount };
-  });
-
-  scored.sort((a, b) => b.mutualCount - a.mutualCount);
-  return res.json({ success: true, data: scored.slice(0, 5) });
-});
-
-
-// ─── CONNECTION ROUTES ───────────────────────────────────────────────────────
-
-// GET my pending incoming connection requests (notifications)
-router.get('/notifications', authenticate, async (req, res) => {
-  const myId = req.user._id;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('receiverId', '==', myId)
-          .where('status', '==', 'pending')
-          .get()  // no orderBy to avoid needing a composite index
-      );
-      const data = snap.docs
-        .map((d) => ({ _id: d.id, ...d.data() }))
-        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('Firestore notifications error:', err.message);
-    }
-  }
-
-  const data = connectionRequests.filter(
-    (r) => r.receiverId === myId && r.status === 'pending'
-  );
-  return res.json({ success: true, data });
-});
-
-// GET my accepted connections (enriched with other user's profile)
-router.get('/connections', authenticate, async (req, res) => {
-  const myId = req.user._id;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('connections').where('users', 'array-contains', myId).get()
-      );
-      const connDocs = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
-
-      // Enrich with other user's profile
-      const enriched = await Promise.all(
-        connDocs.map(async (conn) => {
-          const otherId = conn.users.find((id) => id !== myId);
-          if (!otherId) return { ...conn, otherUser: null };
-          try {
-            const userSnap = await withTimeout(db.collection('users').doc(otherId).get());
-            if (userSnap.exists) {
-              const { passwordHash, ...safe } = userSnap.data();
-              return { ...conn, otherUser: { _id: otherId, ...safe } };
-            }
-          } catch (_) {}
-          return { ...conn, otherUser: { _id: otherId, name: otherId } };
-        })
-      );
-      return res.json({ success: true, data: enriched });
-    } catch (err) {
-      console.error('Firestore connections error:', err.message);
-    }
-  }
-
-  // In-memory fallback: enrich with user lookup
-  const data = connections
-    .filter((c) => c.users.includes(myId))
-    .map((conn) => {
-      const otherId = conn.users.find((id) => id !== myId);
-      const otherUser = users.find((u) => u._id === otherId);
-      if (otherUser) {
-        const { passwordHash, ...safe } = otherUser;
-        return { ...conn, otherUser: safe };
-      }
-      return { ...conn, otherUser: { _id: otherId, name: otherId } };
+  try {
+    const comment = await prisma.comment.create({
+      data: { postId: req.params.id, authorId: req.user.id, text },
+      include: { author: true },
     });
-  return res.json({ success: true, data });
+    return res.status(201).json({ success: true, data: serializeComment(comment) });
+  } catch (err) {
+    if (err.code === 'P2003') {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    console.error('Comment error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to add comment' });
+  }
 });
 
-// GET connection status with a specific user: 'none' | 'sent' | 'received' | 'connected'
+// ── DELETE /api/social/post/:id — author only ────────────────────────────────
+router.delete('/post/:id', authenticate, async (req, res) => {
+  try {
+    const post = await prisma.socialPost.findUnique({
+      where: { id: req.params.id },
+      select: { authorId: true },
+    });
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    if (post.authorId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You can only delete your own posts' });
+    }
+
+    // Likes and comments cascade via the schema.
+    await prisma.socialPost.delete({ where: { id: req.params.id } });
+    return res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (err) {
+    console.error('Delete post error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to delete post' });
+  }
+});
+
+// ── GET /api/social/groups ───────────────────────────────────────────────────
+router.get('/groups', async (req, res) => {
+  try {
+    const groups = await prisma.group.findMany({
+      orderBy: { memberCount: 'desc' },
+      take: 10,
+    });
+    return res.json({ success: true, data: groups.map(serializeGroup) });
+  } catch (err) {
+    console.error('Fetch groups error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch groups' });
+  }
+});
+
+// ── GET /api/social/farmers — suggested users (any role) ─────────────────────
+// Path kept for backward compatibility with the existing frontend.
+router.get('/farmers', authenticate, async (req, res) => {
+  const roleFilter = req.query.role;
+
+  // `role` is an enum column — an unknown value would make Prisma throw.
+  if (roleFilter && !VALID_ROLES.includes(roleFilter)) {
+    return res.status(400).json({ success: false, message: 'Invalid role filter' });
+  }
+
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        // The super admin row exists only for referential integrity — it is
+        // not a real member and must stay out of discovery.
+        id: { notIn: [req.user.id, SUPER_ADMIN_ID] },
+        ...(roleFilter ? { role: roleFilter } : {}),
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: users.map(serializeUser) });
+  } catch (err) {
+    console.error('Fetch farmers error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch users' });
+  }
+});
+
+// ── GET /api/social/suggestions — people you may know ────────────────────────
+// Ranked by mutual-connection count. One query replaces what used to be a
+// per-candidate fan-out of reads.
+router.get('/suggestions', authenticate, async (req, res) => {
+  const myId = req.user.id;
+
+  try {
+    const rows = await prisma.$queryRaw`
+      WITH edges AS (
+        SELECT user_a_id AS person, user_b_id AS friend FROM connections
+        UNION ALL
+        SELECT user_b_id AS person, user_a_id AS friend FROM connections
+      ),
+      my_friends AS (
+        SELECT friend FROM edges WHERE person = ${myId}
+      ),
+      excluded AS (
+        -- CAST so Postgres can type the bare parameter in this UNION branch.
+        SELECT CAST(${myId} AS text) AS id
+        -- The super admin row is infrastructure, not a member to suggest.
+        UNION SELECT CAST(${SUPER_ADMIN_ID} AS text)
+        UNION SELECT friend FROM my_friends
+        UNION SELECT receiver_id FROM connection_requests
+          WHERE sender_id = ${myId} AND status = 'pending'
+        UNION SELECT sender_id FROM connection_requests
+          WHERE receiver_id = ${myId} AND status = 'pending'
+      )
+      SELECT u.id, u.name, u.email, u.role, u.language, u.avatar,
+             u.bio, u.profile_picture, u.cover_photo, u.district,
+             u.connection_count, u.created_at,
+             COUNT(e.friend) FILTER (
+               WHERE e.friend IN (SELECT friend FROM my_friends)
+             )::int AS mutual_count
+      FROM users u
+      LEFT JOIN edges e ON e.person = u.id
+      WHERE u.id NOT IN (SELECT id FROM excluded)
+      GROUP BY u.id
+      ORDER BY mutual_count DESC, u.created_at DESC
+      LIMIT 5
+    `;
+
+    // Raw rows come back snake_cased — map to the serializer's expected shape.
+    const data = rows.map((r) => ({
+      ...serializeUser({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        role: r.role,
+        language: r.language,
+        avatar: r.avatar,
+        bio: r.bio,
+        profilePicture: r.profile_picture,
+        coverPhoto: r.cover_photo,
+        district: r.district,
+        connectionCount: r.connection_count,
+        createdAt: r.created_at,
+      }),
+      mutualCount: r.mutual_count,
+    }));
+
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('Suggestions error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch suggestions' });
+  }
+});
+
+// ── GET /api/social/notifications — pending incoming connection requests ─────
+router.get('/notifications', authenticate, async (req, res) => {
+  try {
+    const requests = await prisma.connectionRequest.findMany({
+      where: { receiverId: req.user.id, status: 'pending' },
+      include: { sender: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: requests.map(serializeConnectionRequest) });
+  } catch (err) {
+    console.error('Connection notifications error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch notifications' });
+  }
+});
+
+// ── GET /api/social/connections ──────────────────────────────────────────────
+router.get('/connections', authenticate, async (req, res) => {
+  const myId = req.user.id;
+
+  try {
+    const conns = await prisma.connection.findMany({
+      where: { OR: [{ userAId: myId }, { userBId: myId }] },
+      include: { userA: true, userB: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: conns.map((c) => serializeConnection(c, myId)) });
+  } catch (err) {
+    console.error('Fetch connections error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch connections' });
+  }
+});
+
+// ── GET /api/social/connection-status/:userId ────────────────────────────────
 router.get('/connection-status/:userId', authenticate, async (req, res) => {
-  const myId = req.user._id;
+  const myId = req.user.id;
   const otherId = req.params.userId;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      // Check if already connected
-      const connSnap = await withTimeout(
-        db.collection('connections').where('users', 'array-contains', myId).get()
-      );
-      const isConnected = connSnap.docs.some((d) => d.data().users.includes(otherId));
-      if (isConnected) return res.json({ success: true, status: 'connected' });
+  if (myId === otherId) return res.json({ success: true, status: 'none' });
 
-      // Check outgoing request
-      const sentSnap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('senderId', '==', myId)
-          .where('receiverId', '==', otherId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-      );
-      if (!sentSnap.empty) return res.json({ success: true, status: 'sent' });
+  try {
+    const [a, b] = orderPair(myId, otherId);
+    const connection = await prisma.connection.findUnique({
+      where: { userAId_userBId: { userAId: a, userBId: b } },
+    });
+    if (connection) return res.json({ success: true, status: 'connected' });
 
-      // Check incoming request
-      const recvSnap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('senderId', '==', otherId)
-          .where('receiverId', '==', myId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-      );
-      if (!recvSnap.empty) return res.json({ success: true, status: 'received' });
+    const pending = await prisma.connectionRequest.findFirst({
+      where: {
+        status: 'pending',
+        OR: [
+          { senderId: myId, receiverId: otherId },
+          { senderId: otherId, receiverId: myId },
+        ],
+      },
+    });
+    if (!pending) return res.json({ success: true, status: 'none' });
 
-      return res.json({ success: true, status: 'none' });
-    } catch (err) {
-      console.error('Firestore connection-status error:', err.message);
-    }
+    return res.json({ success: true, status: pending.senderId === myId ? 'sent' : 'received' });
+  } catch (err) {
+    console.error('Connection status error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to check status' });
   }
-
-  const isConnected = connections.some(
-    (c) => c.users.includes(myId) && c.users.includes(otherId)
-  );
-  if (isConnected) return res.json({ success: true, status: 'connected' });
-
-  const sent = connectionRequests.find(
-    (r) => r.senderId === myId && r.receiverId === otherId && r.status === 'pending'
-  );
-  if (sent) return res.json({ success: true, status: 'sent' });
-
-  const received = connectionRequests.find(
-    (r) => r.senderId === otherId && r.receiverId === myId && r.status === 'pending'
-  );
-  if (received) return res.json({ success: true, status: 'received' });
-
-  return res.json({ success: true, status: 'none' });
 });
 
-// POST send a connection request
+// ── POST /api/social/connect/:userId — send a request ────────────────────────
 router.post('/connect/:userId', authenticate, async (req, res) => {
-  const myId = req.user._id;
+  const myId = req.user.id;
   const otherId = req.params.userId;
 
   if (myId === otherId) {
     return res.status(400).json({ success: false, message: 'Cannot connect with yourself' });
   }
 
-  if (isFirestoreEnabled && db) {
-    try {
-      // Already connected?
-      const connSnap = await withTimeout(
-        db.collection('connections').where('users', 'array-contains', myId).get()
-      );
-      if (connSnap.docs.some((d) => d.data().users.includes(otherId))) {
-        return res.status(400).json({ success: false, message: 'Already connected' });
-      }
+  try {
+    const target = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
+    if (!target) return res.status(404).json({ success: false, message: 'User not found' });
 
-      // Already requested?
-      const existSnap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('senderId', '==', myId)
-          .where('receiverId', '==', otherId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-      );
-      if (!existSnap.empty) {
-        return res.status(400).json({ success: false, message: 'Request already sent' });
-      }
+    const [a, b] = orderPair(myId, otherId);
+    const existing = await prisma.connection.findUnique({
+      where: { userAId_userBId: { userAId: a, userBId: b } },
+    });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Already connected' });
+    }
 
-      const request = {
-        senderId: myId,
-        senderName: req.user.name,
-        senderAvatar: req.user.avatar || '',
-        receiverId: otherId,
+    const pending = await prisma.connectionRequest.findFirst({
+      where: {
         status: 'pending',
-        createdAt: new Date(),
-      };
-      const docRef = db.collection('connectionRequests').doc();
-      await withTimeout(docRef.set(request));
-      return res.json({ success: true, data: { _id: docRef.id, ...request } });
-    } catch (err) {
-      console.error('Firestore send-connect error:', err.message);
+        OR: [
+          { senderId: myId, receiverId: otherId },
+          { senderId: otherId, receiverId: myId },
+        ],
+      },
+    });
+    if (pending) {
+      return res.status(400).json({
+        success: false,
+        message: pending.senderId === myId ? 'Request already sent' : 'This user has already sent you a request',
+      });
     }
-  }
 
-  // In-memory fallback
-  if (connections.some((c) => c.users.includes(myId) && c.users.includes(otherId))) {
-    return res.status(400).json({ success: false, message: 'Already connected' });
-  }
-  if (connectionRequests.find((r) => r.senderId === myId && r.receiverId === otherId && r.status === 'pending')) {
-    return res.status(400).json({ success: false, message: 'Request already sent' });
-  }
+    // A previously declined request is reused rather than duplicated — the
+    // (sender, receiver) pair is unique.
+    const request = await prisma.connectionRequest.upsert({
+      where: { senderId_receiverId: { senderId: myId, receiverId: otherId } },
+      update: { status: 'pending', createdAt: new Date(), acceptedAt: null },
+      create: { senderId: myId, receiverId: otherId, status: 'pending' },
+      include: { sender: true },
+    });
 
-  const newRequest = {
-    _id: generateId('req'),
-    senderId: myId,
-    senderName: req.user.name,
-    senderAvatar: req.user.avatar || '',
-    receiverId: otherId,
-    status: 'pending',
-    createdAt: new Date(),
-  };
-  connectionRequests.push(newRequest);
-  return res.json({ success: true, data: newRequest });
+    return res.json({ success: true, data: serializeConnectionRequest(request) });
+  } catch (err) {
+    console.error('Send connection request error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to send request' });
+  }
 });
 
-// POST accept a connection request (senderId = the person who sent me the request)
+// ── POST /api/social/connect/:userId/accept ──────────────────────────────────
+// :userId is the person who sent the request.
 router.post('/connect/:userId/accept', authenticate, async (req, res) => {
-  const myId = req.user._id;
+  const myId = req.user.id;
   const senderId = req.params.userId;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('senderId', '==', senderId)
-          .where('receiverId', '==', myId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-      );
-      if (snap.empty) {
-        return res.status(404).json({ success: false, message: 'Connection request not found' });
-      }
-      const reqDoc = snap.docs[0];
-      await withTimeout(reqDoc.ref.update({ status: 'accepted', acceptedAt: new Date() }));
-
-      // Create connection
-      const connRef = db.collection('connections').doc();
-      const conn = { users: [myId, senderId], createdAt: new Date() };
-      await withTimeout(connRef.set(conn));
-
-      // Increment connectionCount on both users
-      await withTimeout(db.collection('users').doc(myId).update({ connectionCount: admin.firestore.FieldValue.increment(1) }));
-      await withTimeout(db.collection('users').doc(senderId).update({ connectionCount: admin.firestore.FieldValue.increment(1) }));
-
-      return res.json({ success: true, data: { _id: connRef.id, ...conn } });
-    } catch (err) {
-      console.error('Firestore accept-connect error:', err.message);
+  try {
+    const request = await prisma.connectionRequest.findFirst({
+      where: { senderId, receiverId: myId, status: 'pending' },
+    });
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Connection request not found' });
     }
+
+    const [a, b] = orderPair(myId, senderId);
+
+    // Accepting the request, creating the edge and bumping both counters must
+    // succeed or fail together — otherwise connectionCount drifts.
+    const connection = await prisma.$transaction(async (tx) => {
+      await tx.connectionRequest.update({
+        where: { id: request.id },
+        data: { status: 'accepted', acceptedAt: new Date() },
+      });
+
+      const conn = await tx.connection.create({ data: { userAId: a, userBId: b } });
+
+      await tx.user.update({ where: { id: myId }, data: { connectionCount: { increment: 1 } } });
+      await tx.user.update({ where: { id: senderId }, data: { connectionCount: { increment: 1 } } });
+
+      return conn;
+    });
+
+    return res.json({
+      success: true,
+      data: { _id: connection.id, users: [connection.userAId, connection.userBId], createdAt: connection.createdAt },
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return res.status(400).json({ success: false, message: 'Already connected' });
+    }
+    console.error('Accept connection error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to accept request' });
   }
-
-  // In-memory fallback
-  const reqIdx = connectionRequests.findIndex(
-    (r) => r.senderId === senderId && r.receiverId === myId && r.status === 'pending'
-  );
-  if (reqIdx === -1) {
-    return res.status(404).json({ success: false, message: 'Connection request not found' });
-  }
-  connectionRequests[reqIdx].status = 'accepted';
-  connectionRequests[reqIdx].acceptedAt = new Date();
-
-  const conn = { _id: generateId('conn'), users: [myId, senderId], createdAt: new Date() };
-  connections.push(conn);
-
-  // Increment connectionCount on both users in-memory
-  [myId, senderId].forEach((uid) => {
-    const u = users.find((u) => u._id === uid);
-    if (u) u.connectionCount = (u.connectionCount || 0) + 1;
-  });
-
-  return res.json({ success: true, data: conn });
 });
 
-// POST decline a connection request
+// ── POST /api/social/connect/:userId/decline ─────────────────────────────────
 router.post('/connect/:userId/decline', authenticate, async (req, res) => {
-  const myId = req.user._id;
-  const senderId = req.params.userId;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('connectionRequests')
-          .where('senderId', '==', senderId)
-          .where('receiverId', '==', myId)
-          .where('status', '==', 'pending')
-          .limit(1)
-          .get()
-      );
-      if (!snap.empty) {
-        await withTimeout(snap.docs[0].ref.update({ status: 'declined' }));
-      }
-      return res.json({ success: true });
-    } catch (err) {
-      console.error('Firestore decline-connect error:', err.message);
-    }
+  try {
+    await prisma.connectionRequest.updateMany({
+      where: { senderId: req.params.userId, receiverId: req.user.id, status: 'pending' },
+      data: { status: 'declined' },
+    });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Decline connection error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to decline request' });
   }
-
-  const reqIdx = connectionRequests.findIndex(
-    (r) => r.senderId === senderId && r.receiverId === myId && r.status === 'pending'
-  );
-  if (reqIdx !== -1) connectionRequests[reqIdx].status = 'declined';
-  return res.json({ success: true });
 });
 
 module.exports = router;

@@ -1,171 +1,220 @@
 const express = require('express');
-const { db, isFirestoreEnabled } = require('../services/firestore');
+const { prisma } = require('../services/prisma');
 const { authenticate } = require('../middleware/auth');
+const { serializeCourse } = require('../services/serializers');
 
 const router = express.Router();
 
-// ── GET all courses ──────────────────────────────────────────────────────────
+const VALID_LEVELS = ['beginner', 'intermediate', 'advanced'];
+const COURSE_INCLUDE = {
+  createdBy: true,
+  videos: { orderBy: { position: 'asc' } },
+  materials: { orderBy: { position: 'asc' } },
+};
+
+/** Course authoring stays restricted to the `expert` role, as before. */
+const canAuthor = (user) => user.role === 'expert';
+
+/** Maps the client's {title,url,...} arrays onto ordered child rows. */
+const toVideoRows = (videos) =>
+  videos.map((v, i) => ({
+    title: v.title || `Video ${i + 1}`,
+    url: v.url || '',
+    duration: v.duration != null ? Number(v.duration) : null,
+    position: i,
+  }));
+
+const toMaterialRows = (materials) =>
+  materials.map((m, i) => ({
+    title: m.title || `Material ${i + 1}`,
+    url: m.url || '',
+    type: m.type || null,
+    position: i,
+  }));
+
+// ── GET /api/learning/courses ───────────────────────────────────────────────
 router.get('/courses', async (req, res) => {
   try {
-    if (isFirestoreEnabled && db) {
-      const snap = await db.collection('courses').orderBy('createdAt', 'desc').get().catch(() =>
-        // Fallback if createdAt index doesn't exist yet
-        db.collection('courses').get()
-      );
-      const data = snap.docs.map((doc) => ({ _id: doc.id, ...doc.data() }));
-      return res.json({ success: true, data });
-    }
-    return res.json({ success: true, data: [] });
+    const courses = await prisma.course.findMany({
+      include: COURSE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: courses.map(serializeCourse) });
   } catch (err) {
-    console.error('Error fetching courses:', err);
+    console.error('Error fetching courses:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to fetch courses' });
   }
 });
 
-// ── GET single course by ID ──────────────────────────────────────────────────
+// ── GET /api/learning/courses/:id ───────────────────────────────────────────
 router.get('/courses/:id', async (req, res) => {
   try {
-    if (isFirestoreEnabled && db) {
-      const doc = await db.collection('courses').doc(req.params.id).get();
-      if (!doc.exists) {
-        return res.status(404).json({ success: false, message: 'Course not found' });
-      }
-      return res.json({ success: true, data: { _id: doc.id, ...doc.data() } });
+    const course = await prisma.course.findUnique({
+      where: { id: req.params.id },
+      include: COURSE_INCLUDE,
+    });
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    return res.status(404).json({ success: false, message: 'Course not found' });
+    return res.json({ success: true, data: serializeCourse(course) });
   } catch (err) {
-    console.error('Error fetching course:', err);
+    console.error('Error fetching course:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to fetch course' });
   }
 });
 
-// ── POST create a new course (expert only) ───────────────────────────────────
+// ── POST /api/learning/courses — expert only ────────────────────────────────
 router.post('/courses', authenticate, async (req, res) => {
+  if (!canAuthor(req.user)) {
+    return res.status(403).json({ success: false, message: 'Only experts can create courses' });
+  }
+
+  const { title, description, category, level, duration, thumbnail, videos, materials } = req.body;
+
+  if (!title || !description || !category || !level || duration === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: 'Title, description, category, level, and duration are required',
+    });
+  }
+  if (!VALID_LEVELS.includes(level)) {
+    return res.status(400).json({ success: false, message: 'Invalid level' });
+  }
+  const hours = Number(duration);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return res.status(400).json({ success: false, message: 'Duration must be a positive number' });
+  }
+
   try {
-    // Role check
-    if (req.user.role !== 'expert') {
-      return res.status(403).json({ success: false, message: 'Only experts can create courses' });
-    }
+    const course = await prisma.course.create({
+      data: {
+        title,
+        description,
+        category,
+        level,
+        duration: Math.round(hours),
+        thumbnail: thumbnail || null,
+        instructorName: req.user.name,
+        createdById: req.user.id,
+        ...(Array.isArray(videos) && videos.length
+          ? { videos: { create: toVideoRows(videos) } }
+          : {}),
+        ...(Array.isArray(materials) && materials.length
+          ? { materials: { create: toMaterialRows(materials) } }
+          : {}),
+      },
+      include: COURSE_INCLUDE,
+    });
 
-    if (!isFirestoreEnabled || !db) {
-      return res.status(503).json({ success: false, message: 'Database not available' });
-    }
-
-    const { title, description, category, level, duration, thumbnail, videos, materials } = req.body;
-
-    if (!title || !description || !category || !level || !duration) {
-      return res.status(400).json({ success: false, message: 'Title, description, category, level, and duration are required' });
-    }
-
-    const courseData = {
-      title,
-      description,
-      category,
-      level,
-      duration: Number(duration),
-      thumbnail: thumbnail || '',
-      videos: videos || [],
-      materials: materials || [],
-      rating: { average: 0, count: 0 },
-      instructor: { name: req.user.name },
-      enrolledStudents: 0,
-      createdBy: req.user._id,
-      createdByName: req.user.name,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const docRef = await db.collection('courses').add(courseData);
     return res.status(201).json({
       success: true,
       message: 'Course created successfully',
-      data: { _id: docRef.id, ...courseData },
+      data: serializeCourse(course),
     });
   } catch (err) {
-    console.error('Error creating course:', err);
+    console.error('Error creating course:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to create course' });
   }
 });
 
-// ── PUT update a course (owner only) ─────────────────────────────────────────
+// ── PUT /api/learning/courses/:id — author only ─────────────────────────────
 router.put('/courses/:id', authenticate, async (req, res) => {
+  if (!canAuthor(req.user)) {
+    return res.status(403).json({ success: false, message: 'Only experts can update courses' });
+  }
+
+  const courseId = req.params.id;
+
   try {
-    if (req.user.role !== 'expert') {
-      return res.status(403).json({ success: false, message: 'Only experts can update courses' });
-    }
-
-    if (!isFirestoreEnabled || !db) {
-      return res.status(503).json({ success: false, message: 'Database not available' });
-    }
-
-    const docRef = db.collection('courses').doc(req.params.id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
+    const existing = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { createdById: true },
+    });
+    if (!existing) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-
-    // Ownership check
-    const courseData = doc.data();
-    if (courseData.createdBy && courseData.createdBy !== req.user._id) {
+    // Seeded courses have no creator and stay editable by any expert.
+    if (existing.createdById && existing.createdById !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You can only edit courses you created' });
     }
 
     const { title, description, category, level, duration, thumbnail, videos, materials } = req.body;
 
-    const updates = {};
-    if (title !== undefined) updates.title = title;
-    if (description !== undefined) updates.description = description;
-    if (category !== undefined) updates.category = category;
-    if (level !== undefined) updates.level = level;
-    if (duration !== undefined) updates.duration = Number(duration);
-    if (thumbnail !== undefined) updates.thumbnail = thumbnail;
-    if (videos !== undefined) updates.videos = videos;
-    if (materials !== undefined) updates.materials = materials;
-    updates.updatedAt = new Date().toISOString();
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (description !== undefined) data.description = description;
+    if (category !== undefined) data.category = category;
+    if (level !== undefined) {
+      if (!VALID_LEVELS.includes(level)) {
+        return res.status(400).json({ success: false, message: 'Invalid level' });
+      }
+      data.level = level;
+    }
+    if (duration !== undefined) {
+      const hours = Number(duration);
+      if (!Number.isFinite(hours) || hours <= 0) {
+        return res.status(400).json({ success: false, message: 'Duration must be a positive number' });
+      }
+      data.duration = Math.round(hours);
+    }
+    if (thumbnail !== undefined) data.thumbnail = thumbnail;
 
-    await docRef.update(updates);
+    const updated = await prisma.$transaction(async (tx) => {
+      if (Object.keys(data).length) {
+        await tx.course.update({ where: { id: courseId }, data });
+      }
+      if (Array.isArray(videos)) {
+        await tx.courseVideo.deleteMany({ where: { courseId } });
+        if (videos.length) {
+          await tx.courseVideo.createMany({
+            data: toVideoRows(videos).map((v) => ({ ...v, courseId })),
+          });
+        }
+      }
+      if (Array.isArray(materials)) {
+        await tx.courseMaterial.deleteMany({ where: { courseId } });
+        if (materials.length) {
+          await tx.courseMaterial.createMany({
+            data: toMaterialRows(materials).map((m) => ({ ...m, courseId })),
+          });
+        }
+      }
+      return tx.course.findUnique({ where: { id: courseId }, include: COURSE_INCLUDE });
+    });
 
-    const updatedDoc = await docRef.get();
     return res.json({
       success: true,
       message: 'Course updated successfully',
-      data: { _id: updatedDoc.id, ...updatedDoc.data() },
+      data: serializeCourse(updated),
     });
   } catch (err) {
-    console.error('Error updating course:', err);
+    console.error('Error updating course:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to update course' });
   }
 });
 
-// ── DELETE a course (owner only) ─────────────────────────────────────────────
+// ── DELETE /api/learning/courses/:id — author only ──────────────────────────
 router.delete('/courses/:id', authenticate, async (req, res) => {
+  if (!canAuthor(req.user)) {
+    return res.status(403).json({ success: false, message: 'Only experts can delete courses' });
+  }
+
   try {
-    if (req.user.role !== 'expert') {
-      return res.status(403).json({ success: false, message: 'Only experts can delete courses' });
-    }
-
-    if (!isFirestoreEnabled || !db) {
-      return res.status(503).json({ success: false, message: 'Database not available' });
-    }
-
-    const docRef = db.collection('courses').doc(req.params.id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
+    const existing = await prisma.course.findUnique({
+      where: { id: req.params.id },
+      select: { createdById: true },
+    });
+    if (!existing) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-
-    // Ownership check
-    const courseData = doc.data();
-    if (courseData.createdBy && courseData.createdBy !== req.user._id) {
+    if (existing.createdById && existing.createdById !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You can only delete courses you created' });
     }
 
-    await docRef.delete();
+    await prisma.course.delete({ where: { id: req.params.id } });
     return res.json({ success: true, message: 'Course deleted successfully' });
   } catch (err) {
-    console.error('Error deleting course:', err);
+    console.error('Error deleting course:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to delete course' });
   }
 });

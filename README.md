@@ -2,7 +2,7 @@
 <img width="1024" height="289" alt="logo" src="https://github.com/user-attachments/assets/dcefe31b-895f-4b2b-9114-9e1134efdc7b" />
 
 
-Comprehensive agriculture platform with a MERN-based web app and optional Python ML service for plant disease prediction.
+Comprehensive agriculture platform with a React + Express web app backed by PostgreSQL (Neon), plus an optional Python ML service for plant disease prediction.
 
 ## Current Modules
 
@@ -21,7 +21,7 @@ Comprehensive agriculture platform with a MERN-based web app and optional Python
 
 - Frontend: React 19, MUI, React Router, Axios
 - Backend: Node.js, Express, JWT auth, Socket.io
-- Data: MongoDB (+ Firebase/Firestore fallback support in server)
+- Data: PostgreSQL on Neon, accessed through Prisma ORM
 - Optional ML: FastAPI + TensorFlow (`ml-service`)
 
 ## Repository Structure
@@ -31,7 +31,8 @@ Prospera/
 ├── client/                 # React frontend
 ├── server/                 # Express API
 ├── ml-service/             # Optional Python ML service
-├── scripts/                # Utility scripts (Firebase, diagnostics)
+├── prisma/                 # Prisma schema, migrations and seed script
+├── scripts/                # Utility scripts
 ├── docs/                   # Additional setup docs
 ├── API_DOCUMENTATION.md
 ├── INSTALLATION.md
@@ -43,7 +44,7 @@ Prospera/
 
 - Node.js 18+
 - npm 9+
-- MongoDB (local or Atlas)
+- A Neon PostgreSQL database (free tier is fine) — https://neon.tech
 - Python 3.10+ (only if using `ml-service`)
 
 ## Environment Setup
@@ -53,8 +54,10 @@ Prospera/
 3. Recommended local defaults:
    - `PORT=5000`
    - `CLIENT_URL=http://localhost:3001`
-   - `MONGODB_URI=mongodb://127.0.0.1:27017/prospera`
-4. If using Firestore features, keep a Firebase Admin SDK JSON file in root or configure `FIREBASE_SERVICE_ACCOUNT_B64`.
+4. Add your Neon connection strings (Neon console → your project → Connection Details):
+   - `DATABASE_URL` — the **pooled** endpoint (host contains `-pooler`), used at runtime
+   - `DIRECT_URL` — the **direct** endpoint, used by Prisma Migrate to run DDL
+5. Copy `client/.env.example` to `client/.env`.
 
 ## Install Dependencies
 
@@ -65,6 +68,17 @@ npm run install-all
 ```
 
 This installs both root and `client` dependencies.
+
+## Set Up the Database
+
+With `DATABASE_URL` and `DIRECT_URL` set in `.env`:
+
+```bash
+npm run db:migrate    # create the tables
+npm run db:seed       # load demo users, posts, farms, courses, listings
+```
+
+Browse the data any time with `npm run db:studio`.
 
 ## Run in VS Code (Recommended)
 
@@ -119,12 +133,18 @@ Use this only when testing Python-based disease prediction flow.
 - `npm run build` - build frontend production bundle
 - `npm start` - start backend in production mode
 - `npm run install-all` - install all dependencies
-- `npm run setup:firebase` - Firebase credential helper
-- `npm run test:firebase` - test Firestore connection
+
+### Database scripts
+
+- `npm run db:migrate` - create and apply a migration in development
+- `npm run db:deploy` - apply existing migrations (production)
+- `npm run db:push` - sync the schema without creating a migration
+- `npm run db:seed` - load demo data (idempotent, safe to re-run)
+- `npm run db:studio` - browse the database in Prisma Studio
+- `npm run db:reset` - drop, re-migrate and re-seed
 
 ## Notes
 
-- `npm run seed` is defined in `package.json` but currently points to a missing file (`server/seed.js`). Update or remove it before using.
 - Keep `.env` and credential files private.
 - For API details, see `API_DOCUMENTATION.md`.
 
@@ -133,7 +153,4 @@ Use this only when testing Python-based disease prediction flow.
 - Port conflict: close conflicting process or change ports in `.env`
 - CORS issue: ensure `CLIENT_URL` matches frontend URL (`http://localhost:3001`)
 - API connection issue: verify frontend API base URL (`REACT_APP_API_URL`) if you changed backend port
-
----
-
-If you want, I can next update `QUICKSTART.md` and `INSTALLATION.md` to match this README so all docs stay consistent.
+- Database connection issue: confirm `DATABASE_URL` uses the pooled Neon host and ends with `?sslmode=require`
