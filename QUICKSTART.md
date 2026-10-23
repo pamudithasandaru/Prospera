@@ -1,285 +1,167 @@
-# 🚀 Quick Start Guide - Prospera
+# 🚀 Quick Start Guide — Prospera
 
-## Prerequisites Checklist
+## Prerequisites
 
-- [x] Node.js v18+ installed
-- [x] MongoDB installed or MongoDB Atlas account
-- [x] Git installed
+- Node.js 18+ and npm 9+
+- A Neon PostgreSQL database — free tier is fine: https://neon.tech
+- Python 3.10+ (only if you want the ML service)
 
-## 🔧 Initial Setup (First Time Only)
+No local database install is needed. Neon is hosted.
 
-### 1. Install All Dependencies
+## 1. Install Dependencies
 
 ```powershell
-cd D:\Prospera
 npm run install-all
 ```
 
-This installs:
-- Backend dependencies (~15 packages)
-- Frontend dependencies (~50 packages)
+Installs backend (~370 packages) and frontend (~1550 packages). Takes 2–3 minutes.
 
-**Expected time:** 2-3 minutes
+## 2. Create a Neon Database
 
-### 2. Start MongoDB
+1. Sign in at https://console.neon.tech and create a project.
+2. Open **Connection Details** and copy **both** connection strings:
+   - the **pooled** one (host contains `-pooler`)
+   - the **direct** one (no `-pooler`)
 
-**Option A - Local MongoDB (Recommended for development):**
+## 3. Configure Environment
+
+Copy the templates:
+
 ```powershell
-# Start MongoDB service
-net start MongoDB
-
-# Or if you installed MongoDB manually
-mongod
+Copy-Item .env.example .env
+Copy-Item client\.env.example client\.env
 ```
 
-**Option B - MongoDB Atlas (Cloud):**
-- Your `.env` already has an Atlas connection string
-- Make sure the cluster is running and network access is configured
+Then set these in `.env`:
 
-### 3. Seed Test Data
+```ini
+DATABASE_URL="postgresql://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@ep-xxxx.REGION.aws.neon.tech/neondb?sslmode=require"
 
-```powershell
-cd D:\Prospera
-npm run seed
+JWT_SECRET=<generate your own>
 ```
 
-This creates:
-- 5 test users (farmer, buyer, expert, admin)
-- 2 farms with crops and financial data
-- Market listings
-- Social posts and groups
-- 2 courses
-- 3 marketplace products
-- Government schemes
-
-**Test login credentials:**
-- Farmer: `sunil@farmer.lk` / `password123`
-- Expert: `nimal@expert.lk` / `password123`
-- Buyer: `raj@buyer.lk` / `password123`
-
-## 🎯 Running the Application
-
-### Start Both Backend & Frontend
+Generate a secret with:
 
 ```powershell
-cd D:\Prospera
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+`DATABASE_URL` is the pooled endpoint used at runtime. `DIRECT_URL` is the direct
+endpoint — Prisma Migrate needs a session connection to run DDL and will fail
+against the pooler.
+
+## 4. Create the Tables and Seed Data
+
+```powershell
+npm run db:migrate
+npm run db:seed
+```
+
+`db:seed` is idempotent — re-run it whenever you want the demo data back.
+
+It creates 6 users, 3 posts with likes and comments, 3 groups, 1 farm with crops
+and finances, 4 courses, 4 market listings, 4 marketplace products, 3 government
+schemes, 3 loans and 3 support tickets.
+
+**Test logins** (all seeded users):
+
+| Role   | Email                | Password        |
+| ------ | -------------------- | --------------- |
+| Farmer | `demo@prospera.lk`   | `Prospera123!`  |
+| Expert | `expert@prospera.lk` | `ExpertPass123!` |
+| Farmer | `sunil@prospera.lk`  | `Sunil123!`     |
+| Farmer | `latha@prospera.lk`  | `Latha123!`     |
+| Farmer | `rajith@prospera.lk` | `Rajith123!`    |
+| Farmer | `kamala@prospera.lk` | `Kamala123!`    |
+
+Most demo content (farm, loans, tickets, applications, credit score) belongs to
+`demo@prospera.lk` — these are now scoped per user, so other accounts see their
+own empty lists.
+
+## 5. Run the App
+
+```powershell
 npm run dev
 ```
 
-This starts:
 - **Backend API:** http://localhost:5000
-- **Frontend React:** http://localhost:3001
+- **Frontend:** http://localhost:3001
 
-**Note:** Client runs on port 3001 (not 3000) to avoid conflicts.
+Run them separately with `npm run server` and `npm run client`.
+Use `npm run dev:all` to also start the Python ML service.
 
-### Or Run Separately
+## ✅ Verify
 
-**Backend only:**
 ```powershell
-npm run server
+Invoke-WebRequest http://localhost:5000/api/health | Select-Object -ExpandProperty Content
 ```
 
-**Frontend only:**
+Expect `"database":"up"`. A `503` with `"database":"down"` means the connection
+string is wrong or the Neon project is suspended.
+
+Then open http://localhost:3001 and sign in with a test account.
+
+## 🔍 Inspecting the Database
+
 ```powershell
-npm run client
+npm run db:studio
 ```
 
-## ✅ Verify Setup
-
-1. **Check Backend Health:**
-   ```powershell
-   Invoke-WebRequest http://localhost:5000/api/health
-   ```
-   Should return: `{"status":"OK","message":"Prospera API is running"}`
-
-2. **Open Frontend:**
-   - Navigate to: http://localhost:3001
-   - You should see the login page
-   - Login with test credentials
-
-3. **Test API:**
-   - After login, check browser console (F12)
-   - No errors should appear
-   - JWT token should be stored in localStorage
+Opens Prisma Studio at http://localhost:5555 to browse and edit rows.
 
 ## 🐛 Troubleshooting
 
-### MongoDB Connection Error
-```
-❌ MongoDB Connection Error: connect ECONNREFUSED
-```
-**Solution:**
-- Start MongoDB: `net start MongoDB`
-- Or update `MONGODB_URI` in `.env` file
+### `DATABASE_URL is not set`
+`.env` is missing or the variable is empty. The server exits deliberately rather
+than starting without a database.
 
-### Port Already in Use (5000)
-```
-Error: listen EADDRINUSE :::5000
-```
-**Solution:**
+### `Can't reach database server`
+- Check the host, password and that the URL ends with `?sslmode=require`.
+- Neon free-tier projects suspend when idle; the first query wakes them and may
+  take a few seconds.
+
+### Prisma Migrate errors about a pooled connection
+`DIRECT_URL` is missing or is pointing at the `-pooler` host. Migrations need the
+direct endpoint.
+
+### Schema changed but the client disagrees
 ```powershell
-# Find and kill process on port 5000
-$pid = (Get-NetTCPConnection -LocalPort 5000 -State Listen).OwningProcess
-Stop-Process -Id $pid -Force
+npm run db:generate
 ```
 
-### Port Already in Use (3001)
-```
-Something is already running on port 3001
-```
-**Solution:**
+### Port already in use (5000 or 3001)
 ```powershell
-# Find and kill process on port 3001
-$pid = (Get-NetTCPConnection -LocalPort 3001 -State Listen).OwningProcess
-Stop-Process -Id $pid -Force
+$p = (Get-NetTCPConnection -LocalPort 5000 -State Listen).OwningProcess
+Stop-Process -Id $p -Force
 ```
 
-### Client Dependencies Error
-```
-Module not found: Error: Can't resolve '@mui/material'
-```
-**Solution:**
-```powershell
-cd D:\Prospera\client
-npm install
-```
+### CORS error in the browser console
+Ensure `CLIENT_URL` in `.env` matches the frontend origin (`http://localhost:3001`)
+and restart the backend.
 
-### CORS Error in Browser Console
-**Solution:**
-- Check `CLIENT_URL` in `.env` matches frontend port (3001)
-- Restart backend server
-
-## 📦 What's Working Now
-
-### ✅ Backend (100% Complete)
-- All 80+ API endpoints functional
-- JWT authentication
-- MongoDB connection
-- Socket.io real-time features ready
-- File upload configured (Cloudinary)
-- Email service configured
-
-### ✅ Frontend (Core Complete)
-- Login/Register pages ✅
-- Authentication flow ✅
-- Protected routes ✅
-- Navigation menu ✅
-- Dashboard page ✅
-- Material-UI theme ✅
-- API service layer ✅
-
-### 🚧 In Progress
-- Farm Management UI
-- Market Listings UI
-- Social Network UI
-- Learning Hub UI
-- Remaining 6 modules
-
-## 🔑 Key Features to Test
-
-1. **Authentication:**
-   - Register new account at http://localhost:3001/register
-   - Login with test account
-   - Navigate between pages
-   - Logout and login again
-
-2. **Role-Based Access:**
-   - Login as farmer → see "Farm Management" in menu
-   - Login as buyer → see "Wholesale Market" in menu
-   - Login as expert → see "AI Tools Lab" in menu
-
-3. **Dashboard:**
-   - View user stats
-   - See quick action cards
-   - Click cards to navigate
-
-## 📁 Project Structure
-
-```
-Prospera/
-├── server/                    # Backend
-│   ├── models/               # MongoDB schemas (9 files)
-│   ├── routes/               # API endpoints (11 files)
-│   ├── middleware/           # Auth middleware
-│   ├── utils/                # Helpers, email, upload
-│   ├── index.js              # Express server
-│   └── seed.js               # Test data seeder
-├── client/                   # Frontend
-│   └── src/
-│       ├── components/       # Navbar, ProtectedRoute
-│       ├── pages/            # Login, Register, Dashboard
-│       ├── services/         # API service, Auth service
-│       ├── context/          # AuthContext
-│       ├── App.js            # Main routing
-│       └── theme.js          # Material-UI theme
-├── .env                      # Environment variables
-└── package.json              # Root package file
-```
-
-## 🎨 Next Steps for Development
-
-1. **Build Farm Management Module:**
-   ```
-   - Farm dashboard with charts
-   - Crop planner
-   - Expense tracker
-   - Disease reporting
-   ```
-
-2. **Build Wholesale Market Module:**
-   ```
-   - Product listings
-   - Search and filters
-   - Price tracking charts
-   - Contract management
-   ```
-
-3. **Build Social Network:**
-   ```
-   - Newsfeed with posts
-   - Groups
-   - Knowledge articles
-   - Expert sessions
-   ```
-
-## 📝 Development Commands
+## 📝 Command Reference
 
 ```powershell
-# Install all dependencies
-npm run install-all
+npm run install-all   # install root + client dependencies
+npm run dev           # backend + frontend
+npm run dev:all       # backend + frontend + ML service
+npm run server        # backend only (nodemon)
+npm run client        # frontend only (port 3001)
+npm run build         # production frontend bundle
 
-# Seed database with test data
-npm run seed
-
-# Run backend and frontend together
-npm run dev
-
-# Run backend only
-npm run server
-
-# Run frontend only
-npm run client
-
-# Build production frontend
-npm run build
-
-# Start production server
-npm start
+npm run db:migrate    # create/apply a migration (development)
+npm run db:deploy     # apply migrations (production)
+npm run db:push       # sync schema without a migration
+npm run db:seed       # load demo data
+npm run db:studio     # browse the database
+npm run db:reset      # drop, re-migrate, re-seed
 ```
 
 ## 🌐 URLs
 
-- **Frontend:** http://localhost:3001
-- **Backend API:** http://localhost:5000
-- **API Health:** http://localhost:5000/api/health
-- **API Docs:** See `API_DOCUMENTATION.md`
-
-## 📧 Support
-
-- Installation Guide: `INSTALLATION.md`
-- API Documentation: `API_DOCUMENTATION.md`
-- Project Summary: `PROJECT_SUMMARY.md`
-
----
-
-**You're all set! Start building amazing features for Sri Lankan farmers! 🌾**
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:5000
+- Health check: http://localhost:5000/api/health
+- Prisma Studio: http://localhost:5555
+- API docs: `API_DOCUMENTATION.md`

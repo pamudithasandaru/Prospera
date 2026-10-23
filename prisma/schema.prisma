@@ -1,0 +1,656 @@
+// Prospera — PostgreSQL schema (Neon)
+//
+// Replaces the former Firestore document model. Embedded arrays that Firestore
+// stored inside documents (post likes/comments, conversation participants,
+// story views, farm crops/expenses/revenue) are normalised into their own
+// tables with real foreign keys, so counts, joins and ownership checks are
+// enforced by the database rather than by application code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  farmer
+  buyer
+  consultant
+  expert
+  admin
+}
+
+enum Language {
+  EN
+  SI
+  TA
+}
+
+enum PostType {
+  post
+  question
+  alert
+  article
+}
+
+enum Visibility {
+  public
+  connections
+  private
+}
+
+enum ConnectionRequestStatus {
+  pending
+  accepted
+  declined
+}
+
+enum MediaType {
+  image
+  video
+  audio
+  file
+  text
+}
+
+enum NotificationType {
+  like
+  comment
+  follow
+  message
+  story_view
+  connection_request
+}
+
+enum CropStatus {
+  planned
+  growing
+  harvested
+  failed
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum ListingType {
+  export
+  domestic
+}
+
+enum SchemeType {
+  subsidy
+  loan
+  training
+  insurance
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum LoanStatus {
+  pending
+  approved
+  active
+  rejected
+  closed
+}
+
+enum TicketStatus {
+  open
+  pending
+  resolved
+  closed
+}
+
+// ─── Users & social graph ────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(farmer)
+  language     Language @default(EN)
+  avatar       String?
+
+  // Flattened from the Firestore `profile` sub-document. The API still returns
+  // these nested under `profile` — see server/services/serializers.js.
+  bio            String?
+  profilePicture String? @map("profile_picture")
+  coverPhoto     String? @map("cover_photo")
+  district       String?
+
+  // Denormalised counter kept in step with the Connection table inside a
+  // transaction. Cheap to read on every profile render.
+  connectionCount Int @default(0) @map("connection_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  posts              SocialPost[]
+  postLikes          PostLike[]
+  comments           Comment[]
+  groupMemberships   GroupMember[]
+  connectionsA       Connection[]              @relation("ConnectionA")
+  connectionsB       Connection[]              @relation("ConnectionB")
+  sentRequests       ConnectionRequest[]       @relation("RequestSender")
+  receivedRequests   ConnectionRequest[]       @relation("RequestReceiver")
+  conversations      ConversationParticipant[]
+  messages           Message[]
+  messageReads       MessageRead[]
+  stories            Story[]
+  storyViews         StoryView[]
+  notifications      Notification[]            @relation("NotificationRecipient")
+  sentNotifications  Notification[]            @relation("NotificationSender")
+  farms              Farm[]
+  createdCourses     Course[]
+  enrolments         CourseEnrolment[]
+  listings           MarketListing[]
+  cartItems          CartItem[]
+  schemeApplications SchemeApplication[]
+  loans              Loan[]
+  creditScore        CreditScore?
+  tickets            Ticket[]
+
+  @@map("users")
+}
+
+model SocialPost {
+  id         String     @id @default(cuid())
+  authorId   String     @map("author_id")
+  text       String     @default("")
+  images     String[]   @default([])
+  type       PostType   @default(post)
+  category   String     @default("general")
+  visibility Visibility @default(public)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author   User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes    PostLike[]
+  comments Comment[]
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("social_posts")
+}
+
+model PostLike {
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post   SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@map("comments")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  category    String   @default("general")
+  memberCount Int      @default(0) @map("member_count")
+  image       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  members GroupMember[]
+
+  @@index([memberCount(sort: Desc)])
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+// An accepted, symmetric connection between two users.
+// userAId is always the lexicographically smaller id so the pair is unique
+// regardless of who initiated it — this replaces Firestore's `users` array.
+model Connection {
+  id        String   @id @default(cuid())
+  userAId   String   @map("user_a_id")
+  userBId   String   @map("user_b_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userA User @relation("ConnectionA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("ConnectionB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@map("connections")
+}
+
+model ConnectionRequest {
+  id         String                  @id @default(cuid())
+  senderId   String                  @map("sender_id")
+  receiverId String                  @map("receiver_id")
+  status     ConnectionRequestStatus @default(pending)
+  createdAt  DateTime                @default(now()) @map("created_at")
+  acceptedAt DateTime?               @map("accepted_at")
+
+  sender   User @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("RequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@map("connection_requests")
+}
+
+// ─── Messaging ───────────────────────────────────────────────────────────────
+
+model Conversation {
+  id            String    @id @default(cuid())
+  lastMessage   String?   @map("last_message")
+  lastMessageAt DateTime? @map("last_message_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId String   @map("conversation_id")
+  userId         String   @map("user_id")
+  unreadCount    Int      @default(0) @map("unread_count")
+  joinedAt       DateTime @default(now()) @map("joined_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String     @id @default(cuid())
+  conversationId String     @map("conversation_id")
+  senderId       String     @map("sender_id")
+  text           String     @default("")
+  mediaUrl       String?    @map("media_url")
+  mediaType      MediaType? @map("media_type")
+  fileName       String?    @map("file_name")
+  fileSize       Int?       @map("file_size")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readBy       MessageRead[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model MessageRead {
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@map("message_reads")
+}
+
+// ─── Stories ─────────────────────────────────────────────────────────────────
+
+model Story {
+  id              String    @id @default(cuid())
+  authorId        String    @map("author_id")
+  mediaUrl        String    @map("media_url")
+  mediaType       MediaType @map("media_type")
+  text            String    @default("")
+  backgroundColor String    @default("#1B5E20") @map("background_color")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  expiresAt       DateTime  @map("expires_at")
+
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views  StoryView[]
+
+  @@index([expiresAt])
+  @@index([authorId])
+  @@map("stories")
+}
+
+model StoryView {
+  storyId  String   @map("story_id")
+  userId   String   @map("user_id")
+  viewedAt DateTime @default(now()) @map("viewed_at")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+  @@map("story_views")
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String           @map("recipient_id")
+  senderId    String?          @map("sender_id")
+  type        NotificationType
+  message     String
+  postId      String?          @map("post_id")
+  read        Boolean          @default(false)
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender    User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, read])
+  @@map("notifications")
+}
+
+// ─── Farms ───────────────────────────────────────────────────────────────────
+
+model Farm {
+  id        String   @id @default(cuid())
+  ownerId   String   @map("owner_id")
+  name      String
+  location  String
+  landSize  Decimal  @map("land_size") @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  crops    FarmCrop[]
+  expenses FarmExpense[]
+  revenues FarmRevenue[]
+
+  @@index([ownerId])
+  @@map("farms")
+}
+
+model FarmCrop {
+  id          String     @id @default(cuid())
+  farmId      String     @map("farm_id")
+  cropName    String     @map("crop_name")
+  variety     String?
+  area        Decimal    @db.Decimal(10, 2)
+  plantedDate DateTime?  @map("planted_date")
+  status      CropStatus @default(growing)
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@map("farm_crops")
+}
+
+model FarmExpense {
+  id       String   @id @default(cuid())
+  farmId   String   @map("farm_id")
+  category String
+  amount   Decimal  @db.Decimal(14, 2)
+  note     String?
+  spentAt  DateTime @default(now()) @map("spent_at")
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@map("farm_expenses")
+}
+
+model FarmRevenue {
+  id          String   @id @default(cuid())
+  farmId      String   @map("farm_id")
+  label       String
+  totalAmount Decimal  @map("total_amount") @db.Decimal(14, 2)
+  earnedAt    DateTime @default(now()) @map("earned_at")
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@map("farm_revenues")
+}
+
+// ─── Learning ────────────────────────────────────────────────────────────────
+
+model Course {
+  id               String      @id @default(cuid())
+  title            String
+  description      String
+  category         String
+  level            CourseLevel @default(beginner)
+  duration         Int
+  thumbnail        String?
+  ratingAverage    Decimal     @default(0) @map("rating_average") @db.Decimal(3, 2)
+  ratingCount      Int         @default(0) @map("rating_count")
+  instructorName   String      @map("instructor_name")
+  enrolledStudents Int         @default(0) @map("enrolled_students")
+  createdById      String?     @map("created_by_id")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  createdBy  User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  videos     CourseVideo[]
+  materials  CourseMaterial[]
+  enrolments CourseEnrolment[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("courses")
+}
+
+model CourseVideo {
+  id       String  @id @default(cuid())
+  courseId String  @map("course_id")
+  title    String
+  url      String
+  duration Int?
+  position Int     @default(0)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, position])
+  @@map("course_videos")
+}
+
+model CourseMaterial {
+  id       String  @id @default(cuid())
+  courseId String  @map("course_id")
+  title    String
+  url      String
+  type     String?
+  position Int     @default(0)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, position])
+  @@map("course_materials")
+}
+
+model CourseEnrolment {
+  courseId   String   @map("course_id")
+  userId     String   @map("user_id")
+  progress   Int      @default(0)
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, userId])
+  @@index([userId])
+  @@map("course_enrolments")
+}
+
+// ─── Market & marketplace ────────────────────────────────────────────────────
+
+model MarketListing {
+  id                 String      @id @default(cuid())
+  sellerId           String?     @map("seller_id")
+  type               ListingType
+  productName        String      @map("product_name")
+  productCategory    String      @map("product_category")
+  productDescription String      @default("") @map("product_description")
+  images             String[]    @default([])
+  sellerVerified     Boolean     @default(false) @map("seller_verified")
+  pricePerUnit       Decimal     @map("price_per_unit") @db.Decimal(12, 2)
+  quantityAmount     Decimal     @map("quantity_amount") @db.Decimal(12, 2)
+  quantityUnit       String      @map("quantity_unit")
+  qualityGrade       String?     @map("quality_grade")
+  district           String?
+  createdAt          DateTime    @default(now()) @map("created_at")
+
+  seller User? @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([productCategory])
+  @@map("market_listings")
+}
+
+model MarketplaceProduct {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  description   String   @default("")
+  images        String[] @default([])
+  price         Decimal  @db.Decimal(12, 2)
+  originalPrice Decimal? @map("original_price") @db.Decimal(12, 2)
+  stock         Int      @default(0)
+  freeShipping  Boolean  @default(false) @map("free_shipping")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  cartItems CartItem[]
+
+  @@index([category])
+  @@map("marketplace_products")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product MarketplaceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
+
+// ─── Government schemes ──────────────────────────────────────────────────────
+
+model Scheme {
+  id                 String     @id @default(cuid())
+  type               SchemeType
+  category           String
+  name               String
+  description        String
+  benefitAmount      Decimal?   @map("benefit_amount") @db.Decimal(14, 2)
+  benefitDescription String?    @map("benefit_description")
+  eligibility        String[]   @default([])
+  createdAt          DateTime   @default(now()) @map("created_at")
+
+  applications SchemeApplication[]
+
+  @@map("schemes")
+}
+
+model SchemeApplication {
+  id        String            @id @default(cuid())
+  schemeId  String            @map("scheme_id")
+  userId    String            @map("user_id")
+  status    ApplicationStatus @default(pending)
+  appliedAt DateTime          @default(now()) @map("applied_at")
+
+  scheme Scheme @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("scheme_applications")
+}
+
+// ─── Fintech ─────────────────────────────────────────────────────────────────
+
+model Loan {
+  id        String     @id @default(cuid())
+  userId    String     @map("user_id")
+  purpose   String
+  amount    Decimal    @db.Decimal(14, 2)
+  duration  Int
+  status    LoanStatus @default(pending)
+  appliedAt DateTime   @default(now()) @map("applied_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("loans")
+}
+
+model CreditScore {
+  userId      String   @id @map("user_id")
+  score       Int
+  rating      String
+  lastUpdated DateTime @default(now()) @map("last_updated")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_scores")
+}
+
+// ─── Support ─────────────────────────────────────────────────────────────────
+
+model Ticket {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  subject     String
+  category    String       @default("general")
+  description String       @default("")
+  status      TicketStatus @default(open)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("tickets")
+}
