@@ -1,184 +1,135 @@
 /**
  * server/routes/messages.js
  * REST endpoints for private messaging. Real-time delivery happens via Socket.IO.
- * Supports both Firestore (primary) and in-memory fallback.
  */
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
-const { db, isFirestoreEnabled } = require('../services/firestore');
 const { body, validationResult } = require('express-validator');
-const { users, generateId } = require('../data/sampleData');
+const { prisma } = require('../services/prisma');
+const { authenticate } = require('../middleware/auth');
+const { serializeConversation, serializeMessage } = require('../services/serializers');
 
 const router = express.Router();
-const TIMEOUT = 6000;
-const withTimeout = (p) =>
-  Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Firestore timeout')), TIMEOUT))]);
 
-// ── In-memory fallback store ──────────────────────────────────────────────────
-const memConversations = [];
-const memMessages = [];
+const CONV_INCLUDE = { participants: { include: { user: true } } };
+const MESSAGE_INCLUDE = { sender: true, readBy: true };
 
-// ── Helper: Populate participant info ─────────────────────────────────────────
-async function populateConversations(convs, currentUserId) {
-  const result = [];
-  for (const conv of convs) {
-    const otherId = conv.participants.find((id) => id !== currentUserId);
-    let otherUser = null;
+/** Short label shown in the conversation list. */
+const previewFor = (text, mediaType, fileName) => {
+  if (text) return text;
+  if (mediaType === 'image') return '🖼 Image';
+  if (mediaType === 'video') return '🎬 Video';
+  if (mediaType === 'audio') return '🎙 Voice message';
+  if (mediaType === 'file') return `📎 ${fileName || 'File'}`;
+  return '📎 Media';
+};
 
-    if (isFirestoreEnabled && db) {
-      try {
-        const doc = await withTimeout(db.collection('users').doc(otherId).get());
-        if (doc.exists) {
-          const { passwordHash, ...safe } = doc.data();
-          otherUser = { _id: doc.id, ...safe };
-        }
-      } catch (err) {
-        console.error('Populate error:', err.message);
-      }
-    }
-
-    if (!otherUser) {
-      const u = users.find((x) => x._id === otherId);
-      if (u) {
-        const { passwordHash, ...safe } = u;
-        otherUser = safe;
-      }
-    }
-
-    result.push({
-      ...conv,
-      otherUser: otherUser || { _id: otherId, name: 'User' },
-    });
-  }
-  return result;
-}
-
-// ── Helper: get or create a conversation between two users ───────────────────
+/** Finds the existing 1:1 conversation between two users, or creates it. */
 async function getOrCreateConversation(userId1, userId2) {
-  if (isFirestoreEnabled && db) {
-    // Find existing
-    const snap = await withTimeout(
-      db.collection('conversations')
-        .where('participants', 'array-contains', userId1)
-        .get()
-    );
-    const existing = snap.docs
-      .map((d) => ({ _id: d.id, ...d.data() }))
-      .find((c) => c.participants.includes(userId2));
-    if (existing) return existing;
-
-    // Create new
-    const conv = {
-      participants: [userId1, userId2],
-      createdAt: new Date(),
-      lastMessage: null,
-      lastMessageAt: null,
-      unreadCounts: { [userId1]: 0, [userId2]: 0 },
-    };
-    const ref = db.collection('conversations').doc();
-    await withTimeout(ref.set(conv));
-    return { _id: ref.id, ...conv };
-  }
-
-  // In-memory fallback
-  const existing = memConversations.find(
-    (c) => c.participants.includes(userId1) && c.participants.includes(userId2)
-  );
+  const existing = await prisma.conversation.findFirst({
+    where: {
+      AND: [
+        { participants: { some: { userId: userId1 } } },
+        { participants: { some: { userId: userId2 } } },
+      ],
+    },
+    include: CONV_INCLUDE,
+  });
   if (existing) return existing;
-  const conv = {
-    _id: generateId('conv'),
-    participants: [userId1, userId2],
-    createdAt: new Date(),
-    lastMessage: null,
-    lastMessageAt: null,
-    unreadCounts: { [userId1]: 0, [userId2]: 0 },
-  };
-  memConversations.push(conv);
-  return conv;
+
+  return prisma.conversation.create({
+    data: {
+      participants: { create: [{ userId: userId1 }, { userId: userId2 }] },
+    },
+    include: CONV_INCLUDE,
+  });
 }
 
-// ── GET /api/messages/conversations — list all conversations for current user ─
+/** True when the user is a participant — every read/write path checks this. */
+async function isParticipant(conversationId, userId) {
+  const row = await prisma.conversationParticipant.findUnique({
+    where: { conversationId_userId: { conversationId, userId } },
+  });
+  return Boolean(row);
+}
+
+// ── GET /api/messages/conversations ─────────────────────────────────────────
 router.get('/conversations', authenticate, async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user.id;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('conversations').where('participants', 'array-contains', userId).get()
-      );
-      const rawConvs = snap.docs
-        .map((d) => ({ _id: d.id, ...d.data() }))
-        .sort((a, b) => {
-          const aTime = a.lastMessageAt?.seconds || a.createdAt?.seconds || 0;
-          const bTime = b.lastMessageAt?.seconds || b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        });
-      const data = await populateConversations(rawConvs, userId);
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('Firestore conversations error:', err.message);
-    }
+  try {
+    const convs = await prisma.conversation.findMany({
+      where: { participants: { some: { userId } } },
+      include: CONV_INCLUDE,
+      orderBy: [{ lastMessageAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+    return res.json({ success: true, data: convs.map((c) => serializeConversation(c, userId)) });
+  } catch (err) {
+    console.error('Fetch conversations error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to load conversations' });
   }
-
-  const rawConvs = memConversations
-    .filter((c) => c.participants.includes(userId))
-    .sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
-  const data = await populateConversations(rawConvs, userId);
-  return res.json({ success: true, data });
 });
 
-// ── GET /api/messages/conversation/:userId — get/create DM with another user ─
+// ── GET /api/messages/conversation/:userId — get or create a DM ─────────────
 router.get('/conversation/:userId', authenticate, async (req, res) => {
-  const myId = req.user._id;
+  const myId = req.user.id;
   const otherId = req.params.userId;
+
   if (myId === otherId) {
     return res.status(400).json({ success: false, message: 'Cannot chat with yourself' });
   }
+
   try {
+    const other = await prisma.user.findUnique({ where: { id: otherId }, select: { id: true } });
+    if (!other) return res.status(404).json({ success: false, message: 'User not found' });
+
     const conv = await getOrCreateConversation(myId, otherId);
-    const [populated] = await populateConversations([conv], myId);
-    return res.json({ success: true, data: populated });
+    return res.json({ success: true, data: serializeConversation(conv, myId) });
   } catch (err) {
     console.error('Get/create conversation error:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to load conversation' });
   }
 });
 
-// ── GET /api/messages/:conversationId — get message history ──────────────────
+// ── GET /api/messages/:conversationId — message history ─────────────────────
 router.get('/:conversationId', authenticate, async (req, res) => {
   const { conversationId } = req.params;
-  const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+  const userId = req.user.id;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('messages')
-          .where('conversationId', '==', conversationId)
-          .orderBy('createdAt', 'asc')
-          .limitToLast(limit)
-          .get()
-      );
-      const data = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('Firestore messages error:', err.message);
+  try {
+    if (!(await isParticipant(conversationId, userId))) {
+      return res.status(403).json({ success: false, message: 'Not a participant in this conversation' });
     }
-  }
 
-  const data = memMessages
-    .filter((m) => m.conversationId === conversationId)
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-    .slice(-limit);
-  return res.json({ success: true, data });
+    // Take the newest `limit` messages, then flip back to chronological order.
+    const rows = await prisma.message.findMany({
+      where: { conversationId },
+      include: MESSAGE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    rows.reverse();
+
+    // Opening the thread clears its unread badge.
+    await prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: { unreadCount: 0 },
+    });
+
+    return res.json({ success: true, data: rows.map(serializeMessage) });
+  } catch (err) {
+    console.error('Fetch messages error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to load messages' });
+  }
 });
 
-// ── POST /api/messages/:conversationId — send a message ─────────────────────
+// ── POST /api/messages/:conversationId — send ───────────────────────────────
 router.post(
   '/:conversationId',
   authenticate,
   [
     body('text').optional().isString().trim(),
-    body('mediaUrl').optional().isString(), // accepts both URLs and base64 data URIs
+    body('mediaUrl').optional().isString(), // accepts URLs and base64 data URIs
     body('mediaType').optional().isIn(['image', 'video', 'audio', 'file']),
     body('fileName').optional().isString(),
     body('fileSize').optional().isNumeric(),
@@ -191,70 +142,59 @@ router.post(
 
     const { conversationId } = req.params;
     const { text, mediaUrl, mediaType, fileName, fileSize } = req.body;
-    const senderId = req.user._id;
+    const senderId = req.user.id;
 
     if (!text && !mediaUrl) {
       return res.status(400).json({ success: false, message: 'Message must have text or media' });
     }
 
-    const message = {
-      conversationId,
-      senderId,
-      senderName: req.user.name,
-      senderAvatar: req.user.avatar || req.user.profile?.profilePicture || '',
-      text: text || '',
-      mediaUrl: mediaUrl || null,
-      mediaType: mediaType || null,
-      fileName: fileName || null,
-      fileSize: fileSize || null,
-      readBy: [senderId],
-      createdAt: new Date(),
-    };
-
-    let savedMessage = message;
-
-    if (isFirestoreEnabled && db) {
-      try {
-        const ref = db.collection('messages').doc();
-        await withTimeout(ref.set(message));
-        savedMessage = { _id: ref.id, ...message };
-
-        // Update conversation's lastMessage
-        const previewText = text ||
-          (mediaType === 'image' ? '🖼 Image' :
-           mediaType === 'audio' ? '🎙 Voice message' :
-           mediaType === 'file' ? `📎 ${fileName || 'File'}` : '📎 Media');
-        await withTimeout(
-          db.collection('conversations').doc(conversationId).update({
-            lastMessage: previewText,
-            lastMessageAt: new Date(),
-          })
-        );
-      } catch (err) {
-        console.error('Firestore send-message error:', err.message);
+    try {
+      if (!(await isParticipant(conversationId, senderId))) {
+        return res.status(403).json({ success: false, message: 'Not a participant in this conversation' });
       }
-    } else {
-      savedMessage = { _id: generateId('msg'), ...message };
-      memMessages.push(savedMessage);
 
-      const previewText = text ||
-        (mediaType === 'image' ? '🖼 Image' :
-         mediaType === 'audio' ? '🎙 Voice message' :
-         mediaType === 'file' ? `📎 ${fileName || 'File'}` : '📎 Media');
-      const conv = memConversations.find((c) => c._id === conversationId);
-      if (conv) {
-        conv.lastMessage = previewText;
-        conv.lastMessageAt = new Date();
-      }
+      const preview = previewFor(text, mediaType, fileName);
+
+      // Message, read-receipt, conversation preview and unread counters move
+      // together so the list view can never disagree with the thread.
+      const saved = await prisma.$transaction(async (tx) => {
+        const message = await tx.message.create({
+          data: {
+            conversationId,
+            senderId,
+            text: text || '',
+            mediaUrl: mediaUrl || null,
+            mediaType: mediaType || null,
+            fileName: fileName || null,
+            fileSize: fileSize ? Number(fileSize) : null,
+            readBy: { create: [{ userId: senderId }] },
+          },
+          include: MESSAGE_INCLUDE,
+        });
+
+        await tx.conversation.update({
+          where: { id: conversationId },
+          data: { lastMessage: preview, lastMessageAt: message.createdAt },
+        });
+
+        await tx.conversationParticipant.updateMany({
+          where: { conversationId, userId: { not: senderId } },
+          data: { unreadCount: { increment: 1 } },
+        });
+
+        return message;
+      });
+
+      const payload = serializeMessage(saved);
+
+      const io = req.app.get('io');
+      if (io) io.to(`conv:${conversationId}`).emit('message:new', payload);
+
+      return res.status(201).json({ success: true, data: payload });
+    } catch (err) {
+      console.error('Send message error:', err.message);
+      return res.status(500).json({ success: false, message: 'Failed to send message' });
     }
-
-    // Emit real-time event via Socket.IO (attached to app in index.js)
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`conv:${conversationId}`).emit('message:new', savedMessage);
-    }
-
-    return res.status(201).json({ success: true, data: savedMessage });
   }
 );
 

@@ -1,49 +1,57 @@
 /**
  * server/routes/stories.js
- * 24-hour disappearing stories. TTL enforced via `expiresAt` timestamp.
+ * 24-hour disappearing stories. TTL enforced via the `expiresAt` column.
  */
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
-const { db, isFirestoreEnabled } = require('../services/firestore');
 const { body, validationResult } = require('express-validator');
-const { generateId } = require('../data/sampleData');
+const { prisma } = require('../services/prisma');
+const { authenticate } = require('../middleware/auth');
+const { serializeStory } = require('../services/serializers');
 
 const router = express.Router();
-const TIMEOUT = 5000;
-const withTimeout = (p) =>
-  Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Firestore timeout')), TIMEOUT))]);
 
 const STORY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// In-memory fallback
-let memStories = [];
+const STORY_INCLUDE = { author: true, views: true };
 
-// ── GET /api/stories — get all active stories (not expired) ──────────────────
-router.get('/', authenticate, async (req, res) => {
-  const now = new Date();
+/** Groups stories by author and flags which rings the viewer hasn't opened. */
+function groupByAuthor(stories, viewerId) {
+  const map = new Map();
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const snap = await withTimeout(
-        db.collection('stories')
-          .where('expiresAt', '>', now)
-          .orderBy('expiresAt', 'asc')
-          .get()
-      );
-      const data = snap.docs.map((d) => ({ _id: d.id, ...d.data() }));
-      // Group by author
-      const grouped = groupByAuthor(data);
-      return res.json({ success: true, data: grouped });
-    } catch (err) {
-      console.error('Firestore stories error:', err.message);
+  for (const story of stories) {
+    const authorId = story.author?._id;
+    if (!authorId) continue;
+
+    if (!map.has(authorId)) {
+      map.set(authorId, { author: story.author, stories: [], hasUnviewed: false });
+    }
+    const entry = map.get(authorId);
+    entry.stories.push(story);
+    if (!story.views.some((v) => v.userId === viewerId)) {
+      entry.hasUnviewed = true;
     }
   }
 
-  const active = memStories.filter((s) => new Date(s.expiresAt) > now);
-  return res.json({ success: true, data: groupByAuthor(active) });
+  return Array.from(map.values());
+}
+
+// ── GET /api/stories — active (unexpired) stories, grouped by author ────────
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const rows = await prisma.story.findMany({
+      where: { expiresAt: { gt: new Date() } },
+      include: STORY_INCLUDE,
+      orderBy: { createdAt: 'asc' },
+    });
+    const stories = rows.map(serializeStory);
+    return res.json({ success: true, data: groupByAuthor(stories, req.user.id) });
+  } catch (err) {
+    console.error('Fetch stories error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch stories' });
+  }
 });
 
-// ── POST /api/stories — create a new story ──────────────────────────────────
+// ── POST /api/stories ───────────────────────────────────────────────────────
 router.post(
   '/',
   authenticate,
@@ -60,112 +68,72 @@ router.post(
     }
 
     const { mediaUrl, mediaType, text, backgroundColor } = req.body;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + STORY_TTL_MS);
 
-    const story = {
-      author: {
-        _id: req.user._id,
-        name: req.user.name,
-        avatar: req.user.avatar || '',
-      },
-      mediaUrl,
-      mediaType,
-      text: text || '',
-      backgroundColor: backgroundColor || '#1B5E20',
-      views: [],
-      createdAt: now,
-      expiresAt,
-    };
-
-    if (isFirestoreEnabled && db) {
-      try {
-        const ref = db.collection('stories').doc();
-        await withTimeout(ref.set(story));
-        return res.status(201).json({ success: true, data: { _id: ref.id, ...story } });
-      } catch (err) {
-        console.error('Firestore create-story error:', err.message);
-      }
+    try {
+      const story = await prisma.story.create({
+        data: {
+          authorId: req.user.id,
+          mediaUrl,
+          mediaType,
+          text: text || '',
+          backgroundColor: backgroundColor || '#1B5E20',
+          expiresAt: new Date(Date.now() + STORY_TTL_MS),
+        },
+        include: STORY_INCLUDE,
+      });
+      return res.status(201).json({ success: true, data: serializeStory(story) });
+    } catch (err) {
+      console.error('Create story error:', err.message);
+      return res.status(500).json({ success: false, message: 'Failed to create story' });
     }
-
-    const saved = { _id: generateId('story'), ...story };
-    memStories.push(saved);
-    return res.status(201).json({ success: true, data: saved });
   }
 );
 
-// ── POST /api/stories/:id/view — mark a story as viewed ─────────────────────
+// ── POST /api/stories/:id/view ──────────────────────────────────────────────
 router.post('/:id/view', authenticate, async (req, res) => {
-  const viewerId = req.user._id;
+  const storyId = req.params.id;
+  const userId = req.user.id;
 
-  if (isFirestoreEnabled && db) {
-    try {
-      const ref = db.collection('stories').doc(req.params.id);
-      const snap = await withTimeout(ref.get());
-      if (!snap.exists) {
-        return res.status(404).json({ success: false, message: 'Story not found' });
-      }
-      const views = snap.data().views || [];
-      if (!views.find((v) => v.userId === viewerId)) {
-        await withTimeout(
-          ref.update({ views: [...views, { userId: viewerId, viewedAt: new Date() }] })
-        );
-      }
-      return res.json({ success: true });
-    } catch (err) {
-      console.error('Firestore view-story error:', err.message);
+  try {
+    const story = await prisma.story.findUnique({ where: { id: storyId }, select: { id: true } });
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
     }
-  }
 
-  const story = memStories.find((s) => s._id === req.params.id);
-  if (!story) return res.status(404).json({ success: false, message: 'Story not found' });
-  if (!story.views.find((v) => v.userId === viewerId)) {
-    story.views.push({ userId: viewerId, viewedAt: new Date() });
+    // The composite primary key makes a repeat view a no-op.
+    await prisma.storyView.upsert({
+      where: { storyId_userId: { storyId, userId } },
+      update: {},
+      create: { storyId, userId },
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('View story error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to record view' });
   }
-  return res.json({ success: true });
 });
 
-// ── DELETE /api/stories/:id — delete own story ───────────────────────────────
+// ── DELETE /api/stories/:id — author only ───────────────────────────────────
 router.delete('/:id', authenticate, async (req, res) => {
-  const userId = req.user._id;
-
-  if (isFirestoreEnabled && db) {
-    try {
-      const ref = db.collection('stories').doc(req.params.id);
-      const snap = await withTimeout(ref.get());
-      if (!snap.exists) return res.status(404).json({ success: false, message: 'Story not found' });
-      if (snap.data().author?._id !== userId) {
-        return res.status(403).json({ success: false, message: 'Not authorized' });
-      }
-      await withTimeout(ref.delete());
-      return res.json({ success: true });
-    } catch (err) {
-      console.error('Firestore delete-story error:', err.message);
+  try {
+    const story = await prisma.story.findUnique({
+      where: { id: req.params.id },
+      select: { authorId: true },
+    });
+    if (!story) {
+      return res.status(404).json({ success: false, message: 'Story not found' });
     }
-  }
+    if (story.authorId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
 
-  const idx = memStories.findIndex((s) => s._id === req.params.id && s.author._id === userId);
-  if (idx === -1) return res.status(404).json({ success: false, message: 'Story not found' });
-  memStories.splice(idx, 1);
-  return res.json({ success: true });
+    await prisma.story.delete({ where: { id: req.params.id } });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Delete story error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to delete story' });
+  }
 });
-
-// ── Helper: group stories by author ─────────────────────────────────────────
-function groupByAuthor(stories) {
-  const map = {};
-  for (const story of stories) {
-    const authorId = story.author?._id;
-    if (!authorId) continue;
-    if (!map[authorId]) {
-      map[authorId] = {
-        author: story.author,
-        stories: [],
-        hasUnviewed: false,
-      };
-    }
-    map[authorId].stories.push(story);
-  }
-  return Object.values(map);
-}
 
 module.exports = router;

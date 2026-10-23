@@ -5,7 +5,7 @@
 Before you begin, ensure you have the following installed:
 
 - **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
-- **MongoDB** (v6 or higher) - [Download](https://www.mongodb.com/try/download/community)
+- **A Neon PostgreSQL database** - free tier at [neon.tech](https://neon.tech) (nothing to install locally)
 - **Git** - [Download](https://git-scm.com/)
 - **npm** or **yarn** package manager
 
@@ -50,8 +50,11 @@ Edit `.env` with your configuration:
 PORT=5000
 NODE_ENV=development
 
-# Database
-MONGODB_URI=mongodb://localhost:27017/prospera
+# Database - Neon PostgreSQL
+# DATABASE_URL = pooled endpoint (host contains "-pooler"), used at runtime
+# DIRECT_URL   = direct endpoint, used by Prisma Migrate for DDL
+DATABASE_URL="postgresql://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@ep-xxxx.REGION.aws.neon.tech/neondb?sslmode=require"
 
 # JWT Secret (generate a random string)
 JWT_SECRET=your_super_secret_jwt_key_here_minimum_32_characters
@@ -76,46 +79,52 @@ STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
 WEATHER_API_KEY=your_openweather_api_key
 
 # Frontend URL
-CLIENT_URL=http://localhost:3000
+CLIENT_URL=http://localhost:3001
 ```
 
 ## Step 4: Database Setup
 
-### Start MongoDB
+### Create a Neon project
 
-**Windows:**
+1. Sign in at [console.neon.tech](https://console.neon.tech) and create a project.
+2. Open **Connection Details** and copy both the **pooled** connection string
+   (host contains `-pooler`) and the **direct** one.
+3. Put them in `.env` as `DATABASE_URL` and `DIRECT_URL`.
+
+### Create the tables
+
 ```bash
-# Start MongoDB service
-net start MongoDB
+npm run db:migrate
 ```
 
-**Mac/Linux:**
+This applies the Prisma schema in `prisma/schema.prisma`. Migrations run over
+`DIRECT_URL` — they will fail against the pooled endpoint.
+
+### Verify the connection
+
 ```bash
-sudo systemctl start mongod
-# Or
-mongod --dbpath /path/to/data/directory
+npm run db:studio
 ```
 
-### Verify MongoDB Connection
-```bash
-mongosh
-# You should see MongoDB shell
-# Type 'exit' to quit
-```
+Prisma Studio opens at http://localhost:5555 and lists every table.
 
 ## Step 5: Seed Initial Data (Optional)
 
 If you want to start with sample data:
 
 ```bash
-node server/seeders/seed.js
+npm run db:seed
 ```
 
-This will create:
-- Sample users (farmers, buyers, experts)
-- Sample farms and crops
-- Sample courses and articles
-- Sample marketplace products
+This is idempotent — re-run it any time to restore the demo data. It creates:
+- 6 users (farmers and an expert)
+- 3 social posts with likes and comments, plus 3 groups
+- 1 farm with crops, expenses and revenue
+- 4 courses, 4 market listings, 4 marketplace products
+- 3 government schemes, 3 loans, 3 support tickets
+
+Demo login: `demo@prospera.lk` / `Prospera123!` (see `QUICKSTART.md` for the
+full list of accounts).
 
 ## Step 6: Run the Application
 
@@ -237,8 +246,10 @@ taskkill /PID <PID> /F
 lsof -ti:5000 | xargs kill -9
 ```
 
-### MongoDB Connection Error
-- Ensure MongoDB is running
+### Database Connection Error
+- Check `DATABASE_URL` is the pooled Neon host and ends with `?sslmode=require`
+- Neon free-tier projects suspend when idle; the first query wakes them
+- Migration errors about pooling mean `DIRECT_URL` is missing or wrong
 - Check MONGODB_URI in .env
 - Verify firewall settings
 
@@ -267,7 +278,7 @@ Set NODE_ENV=production and update all API keys and secrets
 - [ ] Set up CORS properly
 - [ ] Use environment variables for all secrets
 - [ ] Enable rate limiting
-- [ ] Set up backup strategy for MongoDB
+- [ ] Confirm Neon backups / point-in-time restore for the project
 - [ ] Configure Cloudinary for production
 - [ ] Set up monitoring and logging
 
@@ -287,7 +298,7 @@ railway up
 ```
 
 **DigitalOcean/AWS/Azure:**
-- Deploy MongoDB on Atlas (free tier available)
+- Neon is already hosted; use a separate project or branch for production
 - Deploy backend on App Platform/EC2/App Service
 - Deploy frontend on CDN/Static hosting
 

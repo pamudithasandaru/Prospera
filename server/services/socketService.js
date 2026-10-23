@@ -3,7 +3,7 @@
  * Manages Socket.IO server: user-socket mapping, room management, JWT auth middleware.
  */
 const jwt = require('jsonwebtoken');
-const { db, isFirestoreEnabled } = require('./firestore');
+
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 

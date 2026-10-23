@@ -1,6 +1,5 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
-const { isFirestoreEnabled } = require('./services/firestore');
 
 const http = require('http');
 const express = require('express');
@@ -10,6 +9,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+
+const { prisma, connectDb, disconnectDb } = require('./services/prisma');
+const { ensureSuperAdminRow } = require('./services/superAdmin');
 
 // ── Rate Limiters ─────────────────────────────────────────────────────────────
 // Skip rate limiting entirely for localhost during development.
@@ -46,7 +48,6 @@ const writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many write operations, please slow down.' },
 });
-const dns = require('dns');
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 const authRoutes = require('./routes/auth');
@@ -77,32 +78,48 @@ const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 const CLIENT_URL_DEV = 'http://localhost:3001';
 
-// Force reliable public DNS for SRV lookups (avoids local DNS issues)
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+const allowedOrigins = [...new Set([CLIENT_URL, CLIENT_URL_DEV])];
 
 app.use(helmet());
-app.use(cors({ origin: [CLIENT_URL, 'http://localhost:3001'], credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 app.use(morgan('dev'));
 app.use(generalLimiter);
 
-if (!isFirestoreEnabled) {
-  console.warn('⚠️  Firestore is disabled. Check your service account credentials.');
-  console.warn('   The application will use in-memory mock data.');
-}
+// ── Socket.IO ─────────────────────────────────────────────────────────────────
+// Routes reach the server through req.app.get('io').
+const io = new SocketIOServer(server, {
+  cors: { origin: allowedOrigins, credentials: true },
+});
+initSocket(io);
+app.set('io', io);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
+app.get('/api/health', async (req, res) => {
+  let database = 'down';
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    database = 'up';
+  } catch {
+    database = 'down';
+  }
+
+  res.status(database === 'up' ? 200 : 503).json({
+    success: database === 'up',
     message: 'API is running',
-    firestore: isFirestoreEnabled,
+    database,
     realtime: true,
     timestamp: new Date().toISOString(),
   });
 });
+
+// ── Write-operation rate limiters ─────────────────────────────────────────────
+// Registered before the routers — mounting them afterwards would mean the
+// router had already answered and the limiter never ran.
+app.post('/api/social/post', writeLimiter);
+app.post('/api/stories', writeLimiter);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);
@@ -125,9 +142,6 @@ app.use('/api/search', searchRoutes);
 
 // ML prediction
 app.post('/api/ml/predict', authenticate, upload.single('file'), predictPlantDisease);
-// Write-operation rate limiters (POST only)
-app.post('/api/social/post', writeLimiter);
-app.post('/api/stories', writeLimiter);
 
 // ── Error Handlers ────────────────────────────────────────────────────────────
 app.use((req, res) => {
@@ -142,14 +156,31 @@ app.use((err, req, res, next) => {
 // ── Start Server ──────────────────────────────────────────────────────────────
 const startServer = async () => {
   try {
+    await connectDb();
+    await ensureSuperAdminRow(prisma);
+
     server.listen(PORT, () => {
       console.log(`🚀 API server listening on port ${PORT}`);
       console.log(`🔌 Socket.IO ready`);
+      console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
     });
   } catch (err) {
-    console.error('Failed to start server:', err);
+    console.error('Failed to start server:', err.message);
+    await disconnectDb().catch(() => {});
     process.exit(1);
   }
 };
+
+// Close the pool cleanly so Neon does not hold the connections open.
+const shutdown = async (signal) => {
+  console.log(`\n${signal} received — shutting down.`);
+  server.close();
+  io.close();
+  await disconnectDb().catch(() => {});
+  process.exit(0);
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 startServer();
