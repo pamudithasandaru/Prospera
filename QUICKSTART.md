@@ -1,10 +1,22 @@
-# 🚀 Quick Start Guide — Prospera
+# 🚀 Quick Start Guide — හරිත භූමි (Haritha Bhoomi)
+
+Haritha Bhoomi is made of four parts:
+
+| Part | Folder | Local port | Needed for |
+| ---- | ------ | ---------- | ---------- |
+| React frontend | `client/` | 3001 | the website |
+| Node/Express API + Socket.IO | `server/` | 5000 | everything (auth, farm, market, social…) |
+| Plant-disease ML service (FastAPI) | `ml-service/` | 8000 | AI Tools Lab (optional) |
+| Sprout chatbot (FastAPI + Qdrant + OpenAI) | `sprout/backend/` | 8001 | floating chat widget (optional) |
+
+You only need the first two to run the app. The ML service and Sprout are optional.
 
 ## Prerequisites
 
 - Node.js 18+ and npm 9+
 - A Neon PostgreSQL database — free tier is fine: https://neon.tech
-- Python 3.10+ (only if you want the ML service)
+- Python 3.10–3.13 (only for the ML service / Sprout; very new Python releases may lack wheels for some packages)
+- For Sprout only: an OpenAI API key and a Qdrant instance (Docker locally, or a free cluster at https://cloud.qdrant.io)
 
 No local database install is needed. Neon is hosted.
 
@@ -12,9 +24,12 @@ No local database install is needed. Neon is hosted.
 
 ```powershell
 npm run install-all
+npx prisma generate
 ```
 
-Installs backend (~370 packages) and frontend (~1550 packages). Takes 2–3 minutes.
+Installs backend and frontend packages. Takes 2–3 minutes. `prisma generate` builds
+the database client — without it the server crashes with
+`Cannot find module '@prisma/client'`.
 
 ## 2. Create a Neon Database
 
@@ -39,6 +54,11 @@ DATABASE_URL="postgresql://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/neo
 DIRECT_URL="postgresql://USER:PASSWORD@ep-xxxx.REGION.aws.neon.tech/neondb?sslmode=require"
 
 JWT_SECRET=<generate your own>
+JWT_EXPIRE=30d
+
+# Super admin — never stored in the database; login is disabled if either is empty
+SUPERADMIN_EMAIL=superadmin@prospera.lk
+SUPERADMIN_PASSWORD=<choose a strong password>
 ```
 
 Generate a secret with:
@@ -50,6 +70,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 `DATABASE_URL` is the pooled endpoint used at runtime. `DIRECT_URL` is the direct
 endpoint — Prisma Migrate needs a session connection to run DDL and will fail
 against the pooler.
+
+Never commit `.env`, and never put real keys in `.env.example`.
 
 ## 4. Create the Tables and Seed Data
 
@@ -76,8 +98,10 @@ schemes, 3 loans and 3 support tickets.
 | Farmer | `kamala@prospera.lk` | `Kamala123!`    |
 
 Most demo content (farm, loans, tickets, applications, credit score) belongs to
-`demo@prospera.lk` — these are now scoped per user, so other accounts see their
+`demo@prospera.lk` — these are scoped per user, so other accounts see their
 own empty lists.
+
+The super admin signs in with `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` from `.env`.
 
 ## 5. Run the App
 
@@ -89,7 +113,49 @@ npm run dev
 - **Frontend:** http://localhost:3001
 
 Run them separately with `npm run server` and `npm run client`.
-Use `npm run dev:all` to also start the Python ML service.
+
+## 6. Optional: Plant-Disease ML Service (AI Tools Lab)
+
+```powershell
+cd ml-service
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python app.py
+```
+
+Runs on http://127.0.0.1:8000 (`/health` reports whether the ONNX model loaded).
+The backend reaches it through `ML_SERVICE_URL` (defaults to `http://localhost:8000`).
+Add it to `.env` if you run the service elsewhere.
+
+> `npm run ml` / `npm run dev:all` start `app_optimized.py`, which expects a different
+> model file. Use `python app.py` (the quantized ONNX model in `ml-service/models/`)
+> unless you know you need the other one.
+
+## 7. Optional: Sprout Chatbot
+
+Sprout answers questions from the documents in `sprout/knowledge/`. See
+`sprout/README.md` for the full guide; the short version:
+
+```powershell
+cd sprout
+docker compose up -d                       # starts Qdrant on :6333
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env                # set OPENAI_API_KEY and ADMIN_API_KEY
+python -m app.cli ..\knowledge             # load the starter documents (do this once)
+uvicorn app.main:app --port 8001 --reload
+```
+
+The widget in the frontend talks to `REACT_APP_SPROUT_URL` (`client/.env`,
+default `http://localhost:8001`). Check it with http://localhost:8001/api/health —
+you want `"qdrant": true` and `"openai_key_set": true`.
+
+Using a cloud Qdrant cluster instead of Docker? Set `QDRANT_URL`
+(`https://<cluster>.cloud.qdrant.io:6333`) and `QDRANT_API_KEY` in
+`sprout/backend/.env` before running the ingest.
 
 ## ✅ Verify
 
@@ -110,7 +176,64 @@ npm run db:studio
 
 Opens Prisma Studio at http://localhost:5555 to browse and edit rows.
 
+## ☁️ Deploying (Vercel + Render)
+
+| Part | Host | Settings |
+| ---- | ---- | -------- |
+| Frontend | Vercel | Root directory `client`, framework Create React App, output `build` |
+| Node API | Render Web Service | Root directory blank, start `npm start` |
+| ML service | Render Web Service | Root directory `ml-service`, start `uvicorn app:app --host 0.0.0.0 --port $PORT` |
+| Sprout | Render Web Service | Root directory `sprout/backend`, start `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
+**Node API (Render)**
+
+- Build command:
+  ```
+  npm install --include=dev && npx prisma generate && npx prisma migrate deploy
+  ```
+  (`--include=dev` is needed because the `prisma` CLI is a dev dependency and Render
+  sets `NODE_ENV=production`.)
+- Environment variables: `NODE_ENV=production`, `DATABASE_URL` (pooled),
+  `DIRECT_URL` (direct), `JWT_SECRET`, `JWT_EXPIRE`, `CLIENT_URL`,
+  `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `ML_SERVICE_URL`, `DEMO_LOGIN_ENABLED=false`,
+  plus the Cloudinary / email / Stripe / weather keys you use.
+- Do **not** set `PORT` — Render provides it.
+- `CLIENT_URL` must be your exact Vercel URL — `https://<app>.vercel.app`, `https`, **no trailing slash**.
+  It drives CORS and Socket.IO.
+- `ML_SERVICE_URL` is the ML service's base URL, with no path.
+
+**Sprout (Render)**
+
+`OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION=sprout_kb`,
+`ADMIN_API_KEY`, and `CORS_ORIGINS=https://<app>.vercel.app`.
+Leave `CHAT_API_KEY` empty (anything the browser sends is public). Run the ingest once
+from your machine against the cloud Qdrant (step 7).
+
+**Frontend (Vercel)**
+
+Environment variables (baked in at build time — **redeploy after changing them**):
+
+```ini
+REACT_APP_API_URL=https://<node-api>.onrender.com/api      # must end in /api
+REACT_APP_SOCKET_URL=https://<node-api>.onrender.com       # no /api
+REACT_APP_SPROUT_URL=https://<sprout>.onrender.com
+```
+
+`client/vercel.json` already sets the build command (`CI=false npm run build`, so lint
+warnings don't fail the build) and rewrites every path to `index.html` so deep links
+and refreshes work with React Router.
+
+Free Render instances sleep after ~15 minutes idle; the first request afterwards can
+take 30–60 seconds.
+
 ## 🐛 Troubleshooting
+
+### `Cannot find module '@prisma/client'`
+Dependencies aren't installed or the client isn't generated:
+```powershell
+npm install
+npx prisma generate
+```
 
 ### `DATABASE_URL is not set`
 `.env` is missing or the variable is empty. The server exits deliberately rather
@@ -137,19 +260,40 @@ Stop-Process -Id $p -Force
 ```
 
 ### CORS error in the browser console
-Ensure `CLIENT_URL` in `.env` matches the frontend origin (`http://localhost:3001`)
-and restart the backend.
+- **Local:** `CLIENT_URL` in `.env` must match the frontend origin (`http://localhost:3001`);
+  restart the backend.
+- **Deployed:** `CLIENT_URL` on the Render Node service must be exactly your Vercel URL
+  (https, no trailing slash). For Sprout, set `CORS_ORIGINS` the same way.
+
+### `Route not found` (404) on login/register after deploying
+`REACT_APP_API_URL` is missing the `/api` suffix. Fix it in Vercel and **redeploy**.
+
+### Sprout: "Could not reach Sprout" or `Connection refused`
+- "Could not reach" in the browser → CORS: set `CORS_ORIGINS` on Sprout.
+- `[Errno 111] Connection refused` in the chat → Sprout can't reach Qdrant: set `QDRANT_URL`
+  and `QDRANT_API_KEY`. `/api/health` should show `"qdrant": true`.
+- Chat works but answers nothing → Qdrant is empty: run `python -m app.cli ..\knowledge`.
+
+### AI Tools Lab: "ML service request failed"
+- Free-tier cold start: open the ML service's `/health` to wake it, wait for
+  `"model_loaded": true`, then retry. The first prediction can take 30–60 seconds.
+- Check `ML_SERVICE_URL` on the Node API (base URL only, no `/api/predict`).
+- Out-of-memory crashes in the ML logs mean the 512 MB free tier is too small.
+
+### Vercel build fails with lint "errors"
+Vercel sets `CI=true`, which makes Create React App treat warnings as errors.
+`client/vercel.json` sets `CI=false` for the build; keep it.
 
 ## 📝 Command Reference
 
 ```powershell
 npm run install-all   # install root + client dependencies
 npm run dev           # backend + frontend
-npm run dev:all       # backend + frontend + ML service
 npm run server        # backend only (nodemon)
 npm run client        # frontend only (port 3001)
 npm run build         # production frontend bundle
 
+npm run db:generate   # regenerate the Prisma client
 npm run db:migrate    # create/apply a migration (development)
 npm run db:deploy     # apply migrations (production)
 npm run db:push       # sync schema without a migration
@@ -163,5 +307,7 @@ npm run db:reset      # drop, re-migrate, re-seed
 - Frontend: http://localhost:3001
 - Backend API: http://localhost:5000
 - Health check: http://localhost:5000/api/health
+- ML service: http://localhost:8000/health
+- Sprout: http://localhost:8001/api/health
 - Prisma Studio: http://localhost:5555
 - API docs: `API_DOCUMENTATION.md`
