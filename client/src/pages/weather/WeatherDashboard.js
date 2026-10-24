@@ -70,6 +70,12 @@ const getWeatherIcon = (condition, size = 80) => {
   }
 };
 
+// Whichever provider answered must be credited (MET Norway data is CC BY 4.0).
+const CREDITS = {
+  'Open-Meteo': { label: 'Open-Meteo.com', url: 'https://open-meteo.com/' },
+  'MET Norway': { label: 'MET Norway', url: 'https://www.met.no/en' },
+};
+
 const severityColor = { low: 'info', medium: 'warning', high: 'error' };
 const toneColor = { success: 'success.main', info: 'info.main', warning: 'warning.main', error: 'error.main' };
 
@@ -349,7 +355,9 @@ const WeatherDashboard = () => {
 
           <Typography variant="caption" color="text.secondary" display="block" mt={3}>
             Weather data by{' '}
-            <Link href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</Link>
+            <Link href={(CREDITS[weather.source] || CREDITS['Open-Meteo']).url} target="_blank" rel="noopener noreferrer">
+              {(CREDITS[weather.source] || CREDITS['Open-Meteo']).label}
+            </Link>
             {weather.updatedAt && ` · Updated ${formatDistanceToNow(new Date(weather.updatedAt), { addSuffix: true })}`}
           </Typography>
         </>

@@ -1,8 +1,12 @@
 /**
  * server/services/weatherService.js
- * Live weather from Open-Meteo (https://open-meteo.com — free, no API key,
- * non-commercial use). Results are cached per district so a busy page makes at
- * most one upstream call per district every 15 minutes.
+ * Live weather, with two free providers that need no API key:
+ *   1. Open-Meteo (https://open-meteo.com) — primary.
+ *   2. MET Norway (https://api.met.no) — fallback, used when Open-Meteo refuses
+ *      us. Shared hosting IPs (e.g. Render's) are often over Open-Meteo's
+ *      per-IP free limit and get HTTP 429.
+ * Results are cached per district so a busy page makes at most one upstream
+ * call per district every 15 minutes.
  *
  * Alerts and the "agricultural insights" are generated here from the real
  * forecast with simple rules. They are general guidance, not official warnings.
@@ -10,6 +14,10 @@
 const axios = require('axios');
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
+const MET_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+// MET Norway's terms require an identifying User-Agent with contact info.
+const MET_USER_AGENT = process.env.WEATHER_USER_AGENT || 'HarithaBhoomi/1.0 (+https://github.com/pamudithasandaru/Prospera)';
+const OPEN_METEO_COOLDOWN_MS = 10 * 60 * 1000; // after a 429, skip Open-Meteo for a while
 const FORECAST_DAYS = 10;
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const STALE_OK_MS = 3 * 60 * 60 * 1000; // serve old data this long if the provider is down
@@ -141,22 +149,24 @@ const buildInsights = (current, forecast) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** One retry after a short pause: shared hosting IPs occasionally get a transient failure or a 429. */
-const getWithRetry = async (config, attempts = 2) => {
+const getWithRetry = async (config, attempts = 2, url = OPEN_METEO_URL) => {
   let lastErr;
   for (let i = 1; i <= attempts; i += 1) {
     try {
-      return await axios.get(OPEN_METEO_URL, config);
+      return await axios.get(url, config);
     } catch (err) {
       lastErr = err;
       const why = err.response ? `HTTP ${err.response.status}` : err.code || err.message;
-      console.warn(`Open-Meteo attempt ${i}/${attempts} failed (${why})`);
+      console.warn(`Weather request ${i}/${attempts} to ${new URL(url).hostname} failed (${why})`);
+      // 4xx (including 429) won't fix itself in 700 ms: give up at once and let the caller fall back.
+      if (err.response && err.response.status < 500) break;
       if (i < attempts) await sleep(700);
     }
   }
   throw lastErr;
 };
 
-const fetchFromProvider = async (loc) => {
+const fetchFromOpenMeteo = async (loc) => {
   const { data } = await getWithRetry({
     timeout: REQUEST_TIMEOUT_MS,
     params: {
@@ -205,6 +215,139 @@ const fetchFromProvider = async (loc) => {
   };
 };
 
+// ── MET Norway (fallback) ───────────────────────────────────────────────────
+const LK_OFFSET_MS = 5.5 * 3600 * 1000; // Asia/Colombo is UTC+5:30 all year
+const localOf = (iso) => new Date(Date.parse(iso) + LK_OFFSET_MS);
+const localDate = (iso) => localOf(iso).toISOString().slice(0, 10);
+const localHour = (iso) => localOf(iso).getUTCHours();
+
+/** MET symbol codes ("heavyrainshowers_day", "partlycloudy_night"...) -> the labels the UI knows. */
+const describeMetSymbol = (code, isDay = true) => {
+  const base = String(code || '').replace(/_(day|night|polartwilight)$/, '');
+  if (base.includes('thunder')) return 'Thunderstorm';
+  if (/rain|drizzle|sleet|snow|showers/.test(base)) return 'Rainy';
+  if (base === 'fog') return 'Foggy';
+  if (base === 'partlycloudy') return 'Partly Cloudy';
+  if (base === 'cloudy') return 'Cloudy';
+  if (base === 'clearsky' || base === 'fair') return isDay ? 'Sunny' : 'Clear';
+  return 'Cloudy';
+};
+
+const CONDITION_SEVERITY = ['Sunny', 'Clear', 'Partly Cloudy', 'Cloudy', 'Foggy', 'Rainy', 'Thunderstorm'];
+
+/** Turn MET's hourly/6-hourly series into the same shape Open-Meteo gives us. */
+const normalizeMet = (json, loc) => {
+  const ts = json?.properties?.timeseries;
+  if (!Array.isArray(ts) || ts.length < 2) throw new Error('Unexpected response from MET Norway');
+
+  const first = ts[0].data;
+  const d0 = first.instant.details;
+  const next = first.next_1_hours || first.next_6_hours || first.next_12_hours || {};
+  const symbol0 = next.summary?.symbol_code || '';
+  const hour0 = localHour(ts[0].time);
+  const isDay = symbol0.endsWith('_night') ? false : symbol0.endsWith('_day') ? true : hour0 >= 6 && hour0 < 18;
+
+  const current = {
+    temperature: Math.round(d0.air_temperature),
+    condition: describeMetSymbol(symbol0, isDay),
+    humidity: Math.round(d0.relative_humidity),
+    windSpeed: Math.round(d0.wind_speed * 3.6), // m/s -> km/h
+    rainfall: round1(first.next_1_hours?.details?.precipitation_amount ?? 0),
+    pressure: Math.round(d0.air_pressure_at_sea_level),
+    isDay,
+  };
+
+  // Group by local (Asia/Colombo) day.
+  const days = new Map();
+  ts.forEach((entry, i) => {
+    const date = localDate(entry.time);
+    const day = days.get(date) || { temps: [], wind: [], rain: 0, symbols: [], n: 0 };
+    const data = entry.data;
+    day.n += 1;
+    day.temps.push(data.instant.details.air_temperature);
+    day.wind.push(data.instant.details.wind_speed * 3.6);
+
+    // Hourly entries carry next_1_hours; later 6-hourly ones carry next_6_hours. Using the
+    // block that matches the gap to the next entry avoids counting any rain twice.
+    const gapH = i < ts.length - 1 ? (Date.parse(ts[i + 1].time) - Date.parse(entry.time)) / 3600000 : 6;
+    const block = gapH <= 1 ? data.next_1_hours : data.next_6_hours;
+    day.rain += block?.details?.precipitation_amount ?? 0;
+
+    const h = localHour(entry.time);
+    const sym = (data.next_1_hours || data.next_6_hours)?.summary?.symbol_code;
+    if (sym && h >= 6 && h <= 20) day.symbols.push(sym);
+    days.set(date, day);
+  });
+
+  const forecast = [...days.entries()]
+    .filter(([, d]) => d.n >= 4) // skip a day we only have a sliver of
+    .slice(0, FORECAST_DAYS)
+    .map(([date, d]) => {
+      const rainfall = round1(d.rain);
+      // The most severe daytime condition wins, but a "Rainy" day needs real rain.
+      const ranked = d.symbols
+        .map((sym) => describeMetSymbol(sym, true))
+        .sort((a, b) => CONDITION_SEVERITY.indexOf(b) - CONDITION_SEVERITY.indexOf(a));
+      let condition = ranked.find((c) => c !== 'Rainy' || rainfall >= 1) || 'Cloudy';
+      if (condition === 'Thunderstorm' && rainfall < 1) condition = 'Cloudy';
+      return {
+        date,
+        temp: { max: Math.round(Math.max(...d.temps)), min: Math.round(Math.min(...d.temps)) },
+        condition,
+        rainfall,
+        windMax: Math.round(Math.max(...d.wind)),
+      };
+    });
+
+  if (forecast.length === 0) throw new Error('MET Norway returned no usable forecast days');
+
+  return {
+    location: loc.name,
+    coordinates: { lat: loc.lat, lon: loc.lon },
+    current,
+    forecast,
+    alerts: buildAdvisories(forecast),
+    insights: buildInsights(current, forecast),
+    updatedAt: new Date().toISOString(),
+    source: 'MET Norway',
+    stale: false,
+  };
+};
+
+const fetchFromMet = async (loc) => {
+  const { data } = await getWithRetry(
+    {
+      timeout: REQUEST_TIMEOUT_MS,
+      headers: { 'User-Agent': MET_USER_AGENT },
+      params: { lat: loc.lat.toFixed(4), lon: loc.lon.toFixed(4) },
+    },
+    2,
+    MET_URL,
+  );
+  return normalizeMet(data, loc);
+};
+
+// ── Provider orchestration ──────────────────────────────────────────────────
+let openMeteoBlockedUntil = 0;
+
+const failReason = (err) => (err.response ? `HTTP ${err.response.status}` : err.code || err.message);
+
+/** Open-Meteo first; MET Norway if it refuses us (or errors). Throws only if both fail. */
+const fetchLive = async (loc) => {
+  if (Date.now() >= openMeteoBlockedUntil) {
+    try {
+      return await fetchFromOpenMeteo(loc);
+    } catch (err) {
+      console.warn(`Open-Meteo failed for ${loc.name} (${failReason(err)}); trying MET Norway`);
+      if (err.response?.status === 429) {
+        openMeteoBlockedUntil = Date.now() + OPEN_METEO_COOLDOWN_MS;
+        console.warn(`Open-Meteo rate-limited this server; using MET Norway for ${OPEN_METEO_COOLDOWN_MS / 60000} min`);
+      }
+    }
+  }
+  return fetchFromMet(loc);
+};
+
 /**
  * Weather for a district object from data/lkLocations. Cached; falls back to
  * slightly old data if the provider is unreachable; throws if there is none.
@@ -216,7 +359,7 @@ const getWeather = async (loc) => {
 
   if (inflight.has(loc.name)) return inflight.get(loc.name);
 
-  const p = fetchFromProvider(loc)
+  const p = fetchLive(loc)
     .then((data) => {
       cache.set(loc.name, { at: Date.now(), data });
       return data;
@@ -234,4 +377,4 @@ const getWeather = async (loc) => {
   return p;
 };
 
-module.exports = { getWeather, describeCode, buildAdvisories, buildInsights };
+module.exports = { getWeather, describeCode, describeMetSymbol, normalizeMet, buildAdvisories, buildInsights };
