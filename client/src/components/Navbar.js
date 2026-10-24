@@ -76,7 +76,8 @@ const listItemSx = (active) => ({
 
 const Navbar = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // The full link bar needs ~1100px; below that (phones, tablets) the hamburger drawer is used.
+  const isMobile = useMediaQuery('(max-width:1099.95px)');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, defaultUser } = useAuth();
@@ -113,7 +114,10 @@ const Navbar = () => {
   const filteredMenuItems = menuItems.filter(
     (item) => currentUser?.role === 'admin' || !item.roles || item.roles.includes(currentUser?.role)
   );
-  const MAX_TOP_LINKS = 6;
+  // How many links fit in the bar depends on width; the rest go into "More".
+  const isWide = useMediaQuery('(min-width:1500px)');
+  const isMedium = useMediaQuery('(min-width:1200px)');
+  const MAX_TOP_LINKS = isWide ? 6 : isMedium ? 5 : 4;
   const topLinks = filteredMenuItems.slice(0, MAX_TOP_LINKS);
   const overflowLinks = filteredMenuItems.slice(MAX_TOP_LINKS);
 
@@ -232,6 +236,7 @@ const Navbar = () => {
                               color: location.pathname === item.path ? 'primary.main' : 'text.primary',
                               display: 'block',
                               textTransform: 'none',
+                              whiteSpace: 'nowrap',
                               borderRadius: '12px',
                               px: 2,
                               ...(location.pathname === item.path ? neuInset('sm') : { boxShadow: 'none', backgroundColor: 'transparent' }),
@@ -254,6 +259,7 @@ const Navbar = () => {
                                   color: overflowLinks.some((i) => i.path === location.pathname) ? 'primary.main' : 'text.primary',
                                   display: 'flex',
                                   textTransform: 'none',
+                                  whiteSpace: 'nowrap',
                                   borderRadius: '12px',
                                   px: 2,
                                   boxShadow: 'none',

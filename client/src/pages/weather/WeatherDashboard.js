@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Grid,
@@ -8,295 +8,352 @@ import {
   Card,
   CardContent,
   Alert,
+  AlertTitle,
   Divider,
-  Chip,
+  Button,
+  LinearProgress,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Link,
 } from '@mui/material';
 import {
   WbSunny,
   Cloud,
   Opacity,
   Air,
-  Thermostat,
-  Visibility,
   Compress,
   WaterDrop,
+  Thunderstorm,
+  BlurOn,
+  NightsStay,
 } from '@mui/icons-material';
 import { neuColors, raised } from '../../neumorphic';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatDistanceToNow } from 'date-fns';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+
+const DEFAULT_DISTRICT = 'Colombo';
+// Remembered per user, so people sharing a browser each keep their own choice.
+const storageKey = (userId) => `weatherDistrict:${userId || 'anon'}`;
+
+const readSaved = (userId) => {
+  try { return localStorage.getItem(storageKey(userId)) || ''; } catch { return ''; }
+};
+const save = (userId, v) => {
+  try { localStorage.setItem(storageKey(userId), v); } catch { /* storage unavailable: choice just isn't remembered */ }
+};
+
+const parseDay = (iso) => new Date(`${iso}T00:00:00`);
+const dayLabel = (iso, opts) => parseDay(iso).toLocaleDateString('en-US', opts);
+
+const getWeatherIcon = (condition, size = 80) => {
+  const sx = { fontSize: size };
+  switch (condition?.toLowerCase()) {
+    case 'sunny':
+      return <WbSunny sx={{ ...sx, color: '#FDB813' }} />;
+    case 'clear':
+      return <NightsStay sx={{ ...sx, color: '#5C6BC0' }} />;
+    case 'partly cloudy':
+    case 'cloudy':
+      return <Cloud sx={{ ...sx, color: '#B0BEC5' }} />;
+    case 'foggy':
+      return <BlurOn sx={{ ...sx, color: '#90A4AE' }} />;
+    case 'rainy':
+      return <Opacity sx={{ ...sx, color: '#2196F3' }} />;
+    case 'thunderstorm':
+      return <Thunderstorm sx={{ ...sx, color: '#5E35B1' }} />;
+    default:
+      return <Cloud sx={{ ...sx, color: '#B0BEC5' }} />;
+  }
+};
+
+const severityColor = { low: 'info', medium: 'warning', high: 'error' };
+const toneColor = { success: 'success.main', info: 'info.main', warning: 'warning.main', error: 'error.main' };
+
+const INSIGHTS = [
+  { key: 'planting', title: 'Planting Conditions' },
+  { key: 'irrigation', title: 'Irrigation Advisory' },
+  { key: 'pestRisk', title: 'Pest & Disease Risk' },
+];
 
 const WeatherDashboard = () => {
-  const [currentWeather, setCurrentWeather] = useState(null);
-  const [forecast, setForecast] = useState([]);
-  // Chart needs flat numeric fields; forecast entries carry temp as {max, min}.
-  const trendData = forecast.length > 0
-    ? forecast.map((d) => ({ date: d.date, max: d.temp?.max ?? d.temp, min: d.temp?.min ?? d.temp }))
-    : [28, 30, 29, 27, 26, 28, 30].map((t, i) => ({
-        date: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i], max: t + 2, min: t - 4,
-      }));
-  const [alerts, setAlerts] = useState([]);
+  const { user } = useAuth();
+  const profileDistrict = user?.profile?.location?.district || '';
+
+  // Which district to show: the user's last choice, else their profile district, else Colombo.
+  const saved = readSaved(user?._id);
+  const [district, setDistrict] = useState(saved || profileDistrict || DEFAULT_DISTRICT);
+  const [origin, setOrigin] = useState(saved ? 'saved' : profileDistrict ? 'profile' : 'default');
+
+  const [weather, setWeather] = useState(null);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetchWeatherData();
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    api
+      .get('/weather/current', { params: { district } })
+      .then((res) => {
+        if (cancelled) return;
+        setWeather(res.data.data);
+        setLocations(res.data.data.locations || []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // A profile district we don't have coordinates for: fall back to the default instead of failing.
+        if (err.response?.status === 400 && district !== DEFAULT_DISTRICT) {
+          setLocations(err.response.data?.locations || []);
+          setDistrict(DEFAULT_DISTRICT);
+          setOrigin('default');
+          return;
+        }
+        setError(err.response?.data?.message || 'Could not load weather data.');
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [district, reloadKey]);
 
-  const fetchWeatherData = async () => {
-    try {
-      const response = await api.get('/weather/current', {
-        params: { location: 'Colombo' } // Default location, should come from user profile
-      });
-      setCurrentWeather(response.data.data?.current || null);
-      setForecast(response.data.data?.forecast || []);
-      setAlerts(response.data.data?.alerts || []);
-    } catch (error) {
-      console.error('Error fetching weather:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const userId = user?._id;
+  const onPickDistrict = useCallback((value) => {
+    setDistrict(value);
+    setOrigin('saved');
+    save(userId, value);
+  }, [userId]);
 
-  const getWeatherIcon = (condition) => {
-    switch (condition?.toLowerCase()) {
-      case 'sunny':
-      case 'clear':
-        return <WbSunny sx={{ fontSize: 80, color: '#FDB813' }} />;
-      case 'cloudy':
-      case 'partly cloudy':
-        return <Cloud sx={{ fontSize: 80, color: '#B0BEC5' }} />;
-      case 'rainy':
-      case 'rain':
-        return <Opacity sx={{ fontSize: 80, color: '#2196F3' }} />;
-      default:
-        return <WbSunny sx={{ fontSize: 80, color: '#FDB813' }} />;
-    }
-  };
+  const current = weather?.current;
+  const forecast = weather?.forecast || [];
+  const alerts = weather?.alerts || [];
+  const insights = weather?.insights;
+  const shownDistrict = weather?.location || district;
 
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'low': return 'info';
-      case 'medium': return 'warning';
-      case 'high': return 'error';
-      default: return 'default';
-    }
-  };
+  const trendData = forecast.map((d) => ({
+    date: dayLabel(d.date, { weekday: 'short', day: 'numeric' }),
+    max: d.temp.max,
+    min: d.temp.min,
+  }));
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box mb={4}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Weather Portal
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Real-time weather updates and agricultural forecasts
-        </Typography>
+      {/* Header + location picker */}
+      <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+            Weather Portal
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Live weather and forecasts for Sri Lankan districts
+          </Typography>
+        </Box>
+        <Box sx={{ minWidth: { xs: '100%', sm: 240 } }}>
+          <FormControl size="small" fullWidth>
+            <InputLabel id="district-label">District</InputLabel>
+            <Select
+              labelId="district-label"
+              label="District"
+              value={locations.includes(district) || locations.length === 0 ? district : ''}
+              onChange={(e) => onPickDistrict(e.target.value)}
+            >
+              {(locations.length ? locations : [district]).map((name) => (
+                <MenuItem key={name} value={name}>{name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {origin === 'profile' && (
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Showing your profile district. Pick another to change it.
+            </Typography>
+          )}
+        </Box>
       </Box>
 
-      {/* Weather Alerts */}
-      {alerts.length > 0 && (
-        <Box mb={3}>
-          {alerts.map((alert, index) => (
-            <Alert key={index} severity={getSeverityColor(alert.severity)} sx={{ mb: 1 }}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                {alert.title}
-              </Typography>
-              <Typography variant="body2">
-                {alert.description}
-              </Typography>
-            </Alert>
-          ))}
-        </Box>
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+
+      {error && !weather && (
+        <Alert
+          severity="error"
+          action={<Button color="inherit" size="small" onClick={() => setReloadKey((k) => k + 1)}>Retry</Button>}
+        >
+          {error}
+        </Alert>
       )}
 
-      <Grid container spacing={3}>
-        {/* Current Weather */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Current Weather
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Colombo, Sri Lanka
-            </Typography>
+      {error && weather && (
+        <Alert severity="warning" sx={{ mb: 2 }}>{error} Showing the last data loaded.</Alert>
+      )}
 
-            <Box textAlign="center" my={3}>
-              {getWeatherIcon(currentWeather?.condition)}
-              <Typography variant="h2" fontWeight="bold" mt={2}>
-                {currentWeather?.temperature || 28}°C
-              </Typography>
-              <Typography variant="h6" color="text.secondary">
-                {currentWeather?.condition || 'Partly Cloudy'}
-              </Typography>
-            </Box>
+      {weather?.stale && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Live weather is temporarily unreachable, so this is slightly older data.
+        </Alert>
+      )}
 
-            <Divider sx={{ my: 2 }} />
-
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Opacity color="primary" />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Humidity
-                    </Typography>
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentWeather?.humidity || 75}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Air color="primary" />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Wind Speed
-                    </Typography>
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentWeather?.windSpeed || 15} km/h
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <WaterDrop color="primary" />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Rainfall
-                    </Typography>
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentWeather?.rainfall || 0} mm
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Compress color="primary" />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Pressure
-                    </Typography>
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentWeather?.pressure || 1013} hPa
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-
-        {/* 10-Day Forecast */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-              10-Day Forecast
-            </Typography>
-
-            <Grid container spacing={2} mt={1}>
-              {(forecast.length > 0 ? forecast : [
-                { date: '2024-01-16', temp: { max: 32, min: 24 }, condition: 'Sunny', rainfall: 0 },
-                { date: '2024-01-17', temp: { max: 31, min: 25 }, condition: 'Partly Cloudy', rainfall: 2 },
-                { date: '2024-01-18', temp: { max: 30, min: 24 }, condition: 'Cloudy', rainfall: 5 },
-                { date: '2024-01-19', temp: { max: 29, min: 23 }, condition: 'Rainy', rainfall: 15 },
-                { date: '2024-01-20', temp: { max: 28, min: 23 }, condition: 'Rainy', rainfall: 20 },
-                { date: '2024-01-21', temp: { max: 30, min: 24 }, condition: 'Partly Cloudy', rainfall: 3 },
-                { date: '2024-01-22', temp: { max: 31, min: 25 }, condition: 'Sunny', rainfall: 0 },
-              ]).map((day, index) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between" alignItems="center" my={1}>
-                        {getWeatherIcon(day.condition)}
-                      </Box>
-                      <Typography variant="h6" fontWeight="bold">
-                        {day.temp?.max || 30}° / {day.temp?.min || 24}°
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {day.condition}
-                      </Typography>
-                      {day.rainfall > 0 && (
-                        <Box display="flex" alignItems="center" gap={0.5} mt={1}>
-                          <WaterDrop fontSize="small" color="primary" />
-                          <Typography variant="caption">
-                            {day.rainfall}mm
-                          </Typography>
-                        </Box>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
+      {weather && (
+        <>
+          {/* Automatic advisories */}
+          {alerts.length > 0 && (
+            <Box mb={3}>
+              {alerts.map((alert) => (
+                <Alert key={alert.title} severity={severityColor[alert.severity] || 'info'} sx={{ mb: 1 }}>
+                  <AlertTitle sx={{ fontWeight: 'bold' }}>{alert.title}</AlertTitle>
+                  {alert.description}
+                </Alert>
               ))}
-            </Grid>
-          </Paper>
-        </Grid>
-
-        {/* Temperature Chart */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Temperature Trend
-            </Typography>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={neuColors.dark} strokeOpacity={0.4} />
-                <XAxis dataKey="date" stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
-                <YAxis stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text }} />
-                <Line type="monotone" dataKey="max" name="Max °C" stroke="#c62828" strokeWidth={2} />
-                <Line type="monotone" dataKey="min" name="Min °C" stroke="#0277bd" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-
-        {/* Agricultural Insights */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-              Agricultural Insights
-            </Typography>
-            <Box display="flex" flexDirection="column" gap={2} mt={2}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.success }}>
-                    Planting Conditions
-                  </Typography>
-                  <Typography variant="body2">
-                    Excellent - Good weather for rice planting
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.warning }}>
-                    Irrigation Advisory
-                  </Typography>
-                  <Typography variant="body2">
-                    Moderate - Rainfall expected in 2 days
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: neuColors.info }}>
-                    Pest Risk
-                  </Typography>
-                  <Typography variant="body2">
-                    Low - Dry conditions reduce pest activity
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Typography variant="caption" color="text.secondary">
+                Advisories are generated automatically from the forecast. They are general guidance, not official warnings.
+              </Typography>
             </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          )}
+
+          <Grid container spacing={3}>
+            {/* Current Weather */}
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, height: '100%' }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Current Weather
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {shownDistrict}, Sri Lanka
+                </Typography>
+
+                <Box textAlign="center" my={3}>
+                  {getWeatherIcon(current.condition)}
+                  <Typography variant="h2" fontWeight="bold" mt={2}>
+                    {current.temperature}°C
+                  </Typography>
+                  <Typography variant="h6" color="text.secondary">
+                    {current.condition}
+                  </Typography>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Grid container spacing={2}>
+                  {[
+                    { icon: <Opacity color="primary" />, label: 'Humidity', value: `${current.humidity}%` },
+                    { icon: <Air color="primary" />, label: 'Wind Speed', value: `${current.windSpeed} km/h` },
+                    { icon: <WaterDrop color="primary" />, label: 'Rainfall', value: `${current.rainfall} mm` },
+                    { icon: <Compress color="primary" />, label: 'Pressure', value: `${current.pressure} hPa` },
+                  ].map((m) => (
+                    <Grid item xs={6} key={m.label}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        {m.icon}
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">{m.label}</Typography>
+                          <Typography variant="h6" fontWeight="bold">{m.value}</Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+            </Grid>
+
+            {/* Forecast */}
+            <Grid item xs={12} md={8}>
+              <Paper sx={{ p: 3, height: '100%' }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  {forecast.length}-Day Forecast
+                </Typography>
+
+                <Grid container spacing={2} mt={1}>
+                  {forecast.map((day) => (
+                    <Grid item xs={6} sm={4} md={4} lg={3} key={day.date}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="caption" color="text.secondary">
+                            {dayLabel(day.date, { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </Typography>
+                          <Box display="flex" justifyContent="space-between" alignItems="center" my={1}>
+                            {getWeatherIcon(day.condition, 48)}
+                          </Box>
+                          <Typography variant="h6" fontWeight="bold">
+                            {day.temp.max}° / {day.temp.min}°
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {day.condition}
+                          </Typography>
+                          {day.rainfall > 0 && (
+                            <Box display="flex" alignItems="center" gap={0.5} mt={1}>
+                              <WaterDrop fontSize="small" color="primary" />
+                              <Typography variant="caption">{day.rainfall} mm</Typography>
+                            </Box>
+                          )}
+                          <Box display="flex" alignItems="center" gap={0.5} mt={day.rainfall > 0 ? 0.25 : 1}>
+                            <Air fontSize="small" color="action" />
+                            <Typography variant="caption" color="text.secondary">up to {day.windMax} km/h</Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+            </Grid>
+
+            {/* Temperature Chart */}
+            <Grid item xs={12} md={8}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Temperature Trend
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={neuColors.dark} strokeOpacity={0.4} />
+                    <XAxis dataKey="date" stroke={neuColors.textMuted} tickLine={false} axisLine={false} />
+                    <YAxis stroke={neuColors.textMuted} tickLine={false} axisLine={false} domain={['dataMin - 2', 'dataMax + 2']} />
+                    <Tooltip contentStyle={{ background: neuColors.base, border: 'none', borderRadius: 12, boxShadow: raised('sm'), color: neuColors.text }} />
+                    <Line type="monotone" dataKey="max" name="Max °C" stroke="#c62828" strokeWidth={2} />
+                    <Line type="monotone" dataKey="min" name="Min °C" stroke="#0277bd" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Paper>
+            </Grid>
+
+            {/* Agricultural Insights (derived from the forecast) */}
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Agricultural Insights
+                </Typography>
+                <Box display="flex" flexDirection="column" gap={2} mt={2}>
+                  {INSIGHTS.map(({ key, title }) => {
+                    const item = insights?.[key];
+                    if (!item) return null;
+                    return (
+                      <Card variant="outlined" key={key}>
+                        <CardContent>
+                          <Typography variant="subtitle2" fontWeight="bold" sx={{ color: toneColor[item.tone] }}>
+                            {title}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>{item.level}</strong> – {item.text}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Box>
+                <Typography variant="caption" color="text.secondary" display="block" mt={2}>
+                  General guidance worked out from the forecast for {shownDistrict}. Always check your own fields.
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          <Typography variant="caption" color="text.secondary" display="block" mt={3}>
+            Weather data by{' '}
+            <Link href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</Link>
+            {weather.updatedAt && ` · Updated ${formatDistanceToNow(new Date(weather.updatedAt), { addSuffix: true })}`}
+          </Typography>
+        </>
+      )}
     </Container>
   );
 };
