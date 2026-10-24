@@ -7,6 +7,8 @@ import {
   Button,
   Snackbar,
   Alert,
+  Box,
+  Chip,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -38,6 +40,10 @@ const SocialFeed = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [profileModalUser, setProfileModalUser] = useState(null);
+  const [selectedTag, setSelectedTag] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tag') ? params.get('tag').replace(/^#/, '') : null;
+  });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -228,6 +234,49 @@ const SocialFeed = () => {
             onChange={(e, v) => setTab(v)} 
           />
 
+          {/* Active Tag Filter Banner */}
+          {selectedTag && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 1.5,
+                mb: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'rgba(27, 94, 32, 0.08)',
+                border: '1px solid rgba(27, 94, 32, 0.25)',
+                borderRadius: 2.5,
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1}>
+                <Chip
+                  label={`#${selectedTag}`}
+                  color="primary"
+                  size="small"
+                  sx={{ fontWeight: 'bold' }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Showing {posts.filter((post) => {
+                    const norm = selectedTag.toLowerCase().replace(/^#/, '');
+                    const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
+                    const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
+                    const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
+                    return inTags || inCat || text.toLowerCase().includes(norm);
+                  }).length} posts
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => setSelectedTag(null)}
+                sx={{ textTransform: 'none', fontSize: '0.8rem', fontWeight: 600 }}
+              >
+                Clear Filter ✕
+              </Button>
+            </Paper>
+          )}
+
           {/* Posts Feed */}
           {loading ? (
             <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
@@ -256,23 +305,33 @@ const SocialFeed = () => {
               </Button>
             </Paper>
           ) : (
-            posts.map((post) => (
-              <PostCard
-                key={post._id}
-                post={post}
-                user={user}
-                isLiked={isPostLiked(post)}
-                onLike={() => handleLikePost(post._id)}
-                onShare={() => handleSharePost(post._id)}
-                onPostMenu={(e) => handlePostMenu(e, post._id)}
-                isCommentsExpanded={expandedComments[post._id]}
-                onToggleComments={() => toggleComments(post._id)}
-                commentText={commentText[post._id] || ''}
-                onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
-                onAddComment={() => handleAddComment(post._id)}
-                onViewProfile={(author) => setProfileModalUser(author)}
-              />
-            ))
+            posts
+              .filter((post) => {
+                if (!selectedTag) return true;
+                const norm = selectedTag.toLowerCase().replace(/^#/, '');
+                const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
+                const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
+                const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
+                return inTags || inCat || text.toLowerCase().includes(norm);
+              })
+              .map((post) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  user={user}
+                  isLiked={isPostLiked(post)}
+                  onLike={() => handleLikePost(post._id)}
+                  onShare={() => handleSharePost(post._id)}
+                  onPostMenu={(e) => handlePostMenu(e, post._id)}
+                  isCommentsExpanded={expandedComments[post._id]}
+                  onToggleComments={() => toggleComments(post._id)}
+                  commentText={commentText[post._id] || ''}
+                  onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
+                  onAddComment={() => handleAddComment(post._id)}
+                  onViewProfile={(author) => setProfileModalUser(author)}
+                  onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
+                />
+              ))
           )}
         </Grid>
 
