@@ -78,6 +78,8 @@ const StoriesBar = () => {
         mb: 2,
         overflow: 'hidden',
         position: 'relative',
+        ...neuRaised('md'),
+        borderRadius: 3,
       }}
     >
       {/* Scroll Left */}
@@ -118,16 +120,18 @@ const StoriesBar = () => {
             alignItems: 'center',
             gap: 0.5,
             cursor: 'pointer',
-            minWidth: 60,
+            minWidth: 64,
             userSelect: 'none',
+            transition: 'transform 0.2s ease',
+            '&:hover': { transform: 'scale(1.05)' },
           }}
         >
           <Box sx={{ position: 'relative' }}>
             <Avatar
               src={resolveAvatar(user)}
               sx={{
-                width: 56,
-                height: 56,
+                width: 58,
+                height: 58,
                 ...neuRaised('sm'),
                 transition: 'box-shadow 0.2s',
                 '&:hover': { boxShadow: raised('md') },
@@ -142,19 +146,20 @@ const StoriesBar = () => {
                 right: 0,
                 bgcolor: 'primary.main',
                 borderRadius: '50%',
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: raised('xs'),
+                border: '2px solid white',
               }}
             >
-              <Add sx={{ fontSize: 12, color: 'white' }} />
+              <Add sx={{ fontSize: 13, color: 'white' }} />
             </Box>
           </Box>
-          <Typography variant="caption" sx={{ fontSize: '0.65rem', textAlign: 'center', lineHeight: 1.2 }}>
-            Add Story
+          <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+            Your Story
           </Typography>
         </Box>
 
@@ -162,7 +167,7 @@ const StoriesBar = () => {
         {loading
           ? Array.from({ length: 5 }).map((_, i) => (
               <Box key={i} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, minWidth: 60 }}>
-                <Skeleton variant="circular" width={56} height={56} />
+                <Skeleton variant="circular" width={58} height={58} />
                 <Skeleton width={48} height={12} />
               </Box>
             ))
@@ -178,17 +183,19 @@ const StoriesBar = () => {
                     alignItems: 'center',
                     gap: 0.5,
                     cursor: 'pointer',
-                    minWidth: 60,
+                    minWidth: 64,
                     userSelect: 'none',
+                    transition: 'transform 0.2s ease',
+                    '&:hover': { transform: 'scale(1.06)' },
                   }}
                 >
                   <Box
                     sx={{
-                      p: '2px',
+                      p: '3px',
                       borderRadius: '50%',
                       background: isViewed ? STORY_RING.viewed : STORY_RING.unviewed,
-                      transition: 'all 0.2s',
-                      '&:hover': { transform: 'scale(1.05)' },
+                      boxShadow: isViewed ? 'none' : '0 0 8px rgba(76, 175, 80, 0.45)',
+                      transition: 'all 0.25s ease',
                     }}
                   >
                     <Avatar
@@ -205,10 +212,11 @@ const StoriesBar = () => {
                   <Typography
                     variant="caption"
                     sx={{
-                      fontSize: '0.65rem',
+                      fontSize: '0.68rem',
+                      fontWeight: 600,
                       textAlign: 'center',
                       lineHeight: 1.2,
-                      maxWidth: 60,
+                      maxWidth: 64,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
