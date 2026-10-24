@@ -72,6 +72,8 @@ const { authenticate } = require('./middleware/auth');
 const { initSocket } = require('./services/socketService');
 
 const app = express();
+// Behind Render's proxy: trust one hop so req.ip / rate limiting use the real client IP.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 const PORT = process.env.PORT || 5000;
