@@ -20,6 +20,7 @@ import Register from './pages/Register';
 
 // Pages
 import Dashboard from './pages/Dashboard';
+import AdminPanel from './pages/admin/AdminPanel';
 import Unauthorized from './pages/Unauthorized';
 
 // Farm Management
@@ -84,6 +85,15 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminPanel />
               </ProtectedRoute>
             }
           />

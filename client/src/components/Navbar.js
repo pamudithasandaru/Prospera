@@ -34,6 +34,7 @@ import {
   Cloud,
   Support,
   AccountBalanceWallet,
+  AdminPanelSettings,
   Logout,
   Person,
   Search as SearchIcon,
@@ -49,6 +50,7 @@ const ALL_ROLES = ['farmer', 'buyer', 'expert', 'consultant', 'admin', 'governme
 
 const menuItems = [
   { title: 'Dashboard',        path: '/dashboard', icon: <Dashboard />,           roles: ALL_ROLES },
+  { title: 'Admin Panel',      path: '/admin',     icon: <AdminPanelSettings />,  roles: ['admin'] },
   { title: 'Farm Management',  path: '/farm',      icon: <Terrain />,             roles: ['farmer'] },
   { title: 'Wholesale Market', path: '/market',    icon: <ShoppingCart />,        roles: ['farmer', 'buyer'] },
   // Social is open to all authenticated users
