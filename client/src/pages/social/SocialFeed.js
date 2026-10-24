@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container,
   Grid,
@@ -40,6 +40,14 @@ const SocialFeed = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [profileModalUser, setProfileModalUser] = useState(null);
+  const [connectionIds, setConnectionIds] = useState([]);
+  const [savedPostIds, setSavedPostIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('prospera_saved_posts') || '[]');
+    } catch {
+      return [];
+    }
+  });
   const [selectedTag, setSelectedTag] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tag') ? params.get('tag').replace(/^#/, '') : null;
@@ -47,10 +55,16 @@ const SocialFeed = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    fetchPosts();
-  }, [tab]);
+    api.get('/social/connections')
+      .then((res) => {
+        const conns = res.data.data || [];
+        const ids = conns.map((c) => c.otherUser?._id).filter(Boolean);
+        setConnectionIds(ids);
+      })
+      .catch(() => setConnectionIds([]));
+  }, []);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -64,7 +78,11 @@ const SocialFeed = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const handleCreatePost = async () => {
     if (!newPost.trim()) return;
@@ -208,6 +226,45 @@ const SocialFeed = () => {
     return post.likes?.some(like => like.user === user._id || like.user._id === user._id);
   };
 
+  const tabPosts = useMemo(() => {
+    let result = [...posts];
+    if (tab === 1) {
+      // Network tab: posts from author in connectionIds or user themselves
+      result = result.filter((p) => {
+        const authorId = p.author?._id || p.author?.id || p.user?._id || p.user?.id || p.authorId || p.userId;
+        return connectionIds.includes(authorId) || (user?._id && authorId === user._id);
+      });
+    } else if (tab === 2) {
+      // Trending: sort by likes + comments
+      result.sort((a, b) => {
+        const scoreA = (a.likes?.length || 0) + (a.comments?.length || 0) * 2;
+        const scoreB = (b.likes?.length || 0) + (b.comments?.length || 0) * 2;
+        return scoreB - scoreA;
+      });
+    } else if (tab === 3) {
+      // Q&A / Questions
+      result = result.filter((p) => p.type === 'question' || p.category === 'question');
+    } else if (tab === 4) {
+      // Success Stories
+      result = result.filter((p) => p.type === 'success-story');
+    } else if (tab === 5) {
+      // Saved Posts
+      result = result.filter((p) => savedPostIds.includes(p._id));
+    }
+    return result;
+  }, [posts, tab, connectionIds, user?._id, savedPostIds]);
+
+  const visiblePosts = useMemo(() => {
+    if (!selectedTag) return tabPosts;
+    const norm = selectedTag.toLowerCase().replace(/^#/, '');
+    return tabPosts.filter((post) => {
+      const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
+      const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
+      const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
+      return inTags || inCat || text.toLowerCase().includes(norm);
+    });
+  }, [tabPosts, selectedTag]);
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
@@ -234,7 +291,8 @@ const SocialFeed = () => {
           {/* Feed Tabs */}
           <FeedTabs 
             value={tab} 
-            onChange={(e, v) => setTab(v)} 
+            onChange={(e, v) => setTab(v)}
+            savedCount={savedPostIds.length}
           />
 
           {/* Active Tag Filter Banner */}
@@ -260,13 +318,7 @@ const SocialFeed = () => {
                   sx={{ fontWeight: 'bold' }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Showing {posts.filter((post) => {
-                    const norm = selectedTag.toLowerCase().replace(/^#/, '');
-                    const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
-                    const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
-                    const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
-                    return inTags || inCat || text.toLowerCase().includes(norm);
-                  }).length} posts
+                  Showing {visiblePosts.length} post{visiblePosts.length !== 1 ? 's' : ''}
                 </Typography>
               </Box>
               <Button
@@ -285,7 +337,7 @@ const SocialFeed = () => {
             <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">Loading posts...</Typography>
             </Paper>
-          ) : posts.length === 0 ? (
+          ) : visiblePosts.length === 0 ? (
             <Paper 
               elevation={0} 
               sx={{ 
@@ -294,47 +346,61 @@ const SocialFeed = () => {
               }}
             >
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                No posts yet
+                {tab === 1 
+                  ? 'No posts from your network yet'
+                  : tab === 3
+                  ? 'No questions asked yet'
+                  : tab === 4
+                  ? 'No success stories shared yet'
+                  : tab === 5
+                  ? 'No saved posts'
+                  : selectedTag
+                  ? `No posts tagged #${selectedTag}`
+                  : 'No posts yet'}
               </Typography>
               <Typography variant="body2" color="text.secondary" paragraph>
-                Be the first to share something!
+                {tab === 1 
+                  ? 'Connect with more farmers to see their updates here!'
+                  : tab === 3
+                  ? 'Got a farming challenge or question? Ask the community!'
+                  : tab === 4
+                  ? 'Share your harvest milestone or farming achievement!'
+                  : tab === 5
+                  ? 'Bookmark posts you want to refer back to later!'
+                  : 'Be the first to share something!'}
               </Typography>
               <Button 
                 variant="contained" 
-                onClick={() => setPostDialogOpen(true)}
+                onClick={() => {
+                  if (tab === 3) setPostType('question');
+                  else if (tab === 4) setPostType('success-story');
+                  else setPostType('post');
+                  setPostDialogOpen(true);
+                }}
                 sx={{ mt: 2 }}
               >
-                Create Post
+                {tab === 3 ? 'Ask Question' : tab === 4 ? 'Share Success' : 'Create Post'}
               </Button>
             </Paper>
           ) : (
-            posts
-              .filter((post) => {
-                if (!selectedTag) return true;
-                const norm = selectedTag.toLowerCase().replace(/^#/, '');
-                const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
-                const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
-                const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
-                return inTags || inCat || text.toLowerCase().includes(norm);
-              })
-              .map((post) => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  user={user}
-                  isLiked={isPostLiked(post)}
-                  onLike={() => handleLikePost(post._id)}
-                  onShare={() => handleSharePost(post._id)}
-                  onPostMenu={(e) => handlePostMenu(e, post._id)}
-                  isCommentsExpanded={expandedComments[post._id]}
-                  onToggleComments={() => toggleComments(post._id)}
-                  commentText={commentText[post._id] || ''}
-                  onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
-                  onAddComment={() => handleAddComment(post._id)}
-                  onViewProfile={(author) => setProfileModalUser(author)}
-                  onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
-                />
-              ))
+            visiblePosts.map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                user={user}
+                isLiked={isPostLiked(post)}
+                onLike={() => handleLikePost(post._id)}
+                onShare={() => handleSharePost(post._id)}
+                onPostMenu={(e) => handlePostMenu(e, post._id)}
+                isCommentsExpanded={expandedComments[post._id]}
+                onToggleComments={() => toggleComments(post._id)}
+                commentText={commentText[post._id] || ''}
+                onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
+                onAddComment={() => handleAddComment(post._id)}
+                onViewProfile={(author) => setProfileModalUser(author)}
+                onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
+              />
+            ))
           )}
         </Grid>
 
