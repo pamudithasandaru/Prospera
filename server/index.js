@@ -65,6 +65,7 @@ const messagesRoutes = require('./routes/messages');
 const storiesRoutes = require('./routes/stories');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
+const adminRoutes = require('./routes/admin');
 
 const { predictPlantDisease } = require('./controllers/predictionController');
 const upload = require('./middleware/upload');
@@ -141,6 +142,9 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/stories', storiesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/search', searchRoutes);
+
+// Admin panel API (admin role only — enforced inside the router)
+app.use('/api/admin', adminRoutes);
 
 // ML prediction
 app.post('/api/ml/predict', authenticate, upload.single('file'), predictPlantDisease);

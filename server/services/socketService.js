@@ -3,6 +3,7 @@
  * Manages Socket.IO server: user-socket mapping, room management, JWT auth middleware.
  */
 const jwt = require('jsonwebtoken');
+const { prisma } = require('./prisma');
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
@@ -16,18 +17,31 @@ const userSockets = new Map();
  */
 function initSocket(io) {
   // ── JWT Auth Middleware ──────────────────────────────────────────────────────
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
     if (!token) {
       return next(new Error('Authentication error: no token'));
     }
+    let decoded;
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      socket.userId = decoded.id;
-      next();
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch {
       return next(new Error('Authentication error: invalid token'));
     }
+
+    // Suspended / banned accounts must not hold a realtime connection either.
+    try {
+      const row = await prisma.user.findUnique({ where: { id: decoded.id }, select: { status: true } });
+      if (row && row.status !== 'active') {
+        return next(new Error('Authentication error: account not active'));
+      }
+    } catch (err) {
+      console.error('[Socket] status lookup failed:', err.message);
+      return next(new Error('Authentication error'));
+    }
+
+    socket.userId = decoded.id;
+    next();
   });
 
   io.on('connection', (socket) => {
