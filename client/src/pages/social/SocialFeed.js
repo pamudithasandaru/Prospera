@@ -337,7 +337,10 @@ const SocialFeed = () => {
 
         {/* Right Sidebar */}
         <Grid item xs={12} md={3}>
-          <TrendingSidebar />
+          <TrendingSidebar 
+            onSelectTag={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
+            onViewProfile={(author) => setProfileModalUser(author)}
+          />
         </Grid>
       </Grid>
 
