@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Prisma } = require('@prisma/client');
 const { prisma } = require('../services/prisma');
-const { authenticate, JWT_SECRET } = require('../middleware/auth');
+const { authenticate, blockedReason, JWT_SECRET } = require('../middleware/auth');
 const { serializeUser } = require('../services/serializers');
 const {
   getSuperAdminUser,
@@ -13,7 +13,9 @@ const {
 
 const router = express.Router();
 
-const VALID_ROLES = ['farmer', 'buyer', 'consultant', 'expert', 'admin'];
+// Roles a person may pick for themselves. 'admin' is deliberately absent: admins
+// are promoted by an existing admin (or configured via SUPERADMIN_* env vars).
+const REGISTRATION_ROLES = ['farmer', 'buyer', 'consultant', 'expert'];
 const VALID_LANGUAGES = ['EN', 'SI', 'TA'];
 
 const signToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
@@ -25,7 +27,7 @@ router.post('/register', async (req, res) => {
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
   }
-  if (!VALID_ROLES.includes(role)) {
+  if (!REGISTRATION_ROLES.includes(role)) {
     return res.status(400).json({ success: false, message: 'Invalid role' });
   }
   if (!VALID_LANGUAGES.includes(language)) {
@@ -81,6 +83,12 @@ router.post('/login', async (req, res) => {
 
     if (!user || !isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Checked only after the password matched, so it doesn't reveal which emails exist.
+    const blocked = blockedReason(user);
+    if (blocked) {
+      return res.status(403).json({ success: false, ...blocked });
     }
 
     return res.json({

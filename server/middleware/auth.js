@@ -4,6 +4,18 @@ const { getSuperAdminUser, isSuperAdminId } = require('../services/superAdmin');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 
+/** Message + code for a user whose status is not `active`; null when they may proceed. */
+const blockedReason = (user) => {
+  if (!user || !user.status || user.status === 'active') return null;
+  const banned = user.status === 'banned';
+  return {
+    code: banned ? 'ACCOUNT_BANNED' : 'ACCOUNT_SUSPENDED',
+    message: banned
+      ? 'This account has been banned.'
+      : 'This account has been suspended. Please contact support.',
+  };
+};
+
 /**
  * Verifies the bearer token and loads the user row onto req.user.
  *
@@ -37,6 +49,10 @@ const authenticate = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
+    const blocked = blockedReason(user);
+    if (blocked) {
+      return res.status(403).json({ success: false, ...blocked });
+    }
     req.user = { ...user, _id: user.id };
     return next();
   } catch (err) {
@@ -45,4 +61,15 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate, JWT_SECRET };
+/**
+ * Gate a route to specific roles. Must run after `authenticate`.
+ * The env-configured super admin carries role 'admin', so it passes too.
+ */
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'Forbidden: insufficient permissions' });
+  }
+  return next();
+};
+
+module.exports = { authenticate, requireRole, blockedReason, JWT_SECRET };

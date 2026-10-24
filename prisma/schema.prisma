@@ -26,6 +26,12 @@ enum Role {
   admin
 }
 
+enum UserStatus {
+  active
+  suspended
+  banned
+}
+
 enum Language {
   EN
   SI
@@ -124,6 +130,11 @@ model User {
   role         Role     @default(farmer)
   language     Language @default(EN)
   avatar       String?
+
+  // Moderation state. Anything other than `active` blocks login and API access.
+  status          UserStatus @default(active)
+  statusReason    String?    @map("status_reason")
+  statusUpdatedAt DateTime?  @map("status_updated_at")
 
   // Flattened from the Firestore `profile` sub-document. The API still returns
   // these nested under `profile` — see server/services/serializers.js.
@@ -469,7 +480,7 @@ model Course {
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
-  createdBy  User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy  User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
   videos     CourseVideo[]
   materials  CourseMaterial[]
   enrolments CourseEnrolment[]
@@ -479,12 +490,12 @@ model Course {
 }
 
 model CourseVideo {
-  id       String  @id @default(cuid())
-  courseId String  @map("course_id")
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
   title    String
   url      String
   duration Int?
-  position Int     @default(0)
+  position Int    @default(0)
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
