@@ -20,6 +20,7 @@ import CreatePostDialog from './components/CreatePostDialog';
 import PostMenu from './components/PostMenu';
 import FeedTabs from './components/FeedTabs';
 import StoriesBar from './components/StoriesBar';
+import FarmerProfileModal from './components/FarmerProfileModal';
 
 const SocialFeed = () => {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ const SocialFeed = () => {
   const [commentText, setCommentText] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const [profileModalUser, setProfileModalUser] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -268,6 +270,7 @@ const SocialFeed = () => {
                 commentText={commentText[post._id] || ''}
                 onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
                 onAddComment={() => handleAddComment(post._id)}
+                onViewProfile={(author) => setProfileModalUser(author)}
               />
             ))
           )}
@@ -278,6 +281,14 @@ const SocialFeed = () => {
           <TrendingSidebar />
         </Grid>
       </Grid>
+
+      {/* Farmer Profile Preview Modal */}
+      <FarmerProfileModal
+        open={Boolean(profileModalUser)}
+        onClose={() => setProfileModalUser(null)}
+        user={profileModalUser}
+        currentUserId={user?._id}
+      />
 
       {/* Create Post Dialog */}
       <CreatePostDialog
