@@ -280,6 +280,7 @@ const FinTechDashboard = () => {
             </Box>
 
             <TableContainer>
+              <Box sx={{ overflowX: 'auto' }}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -312,6 +313,7 @@ const FinTechDashboard = () => {
                   ))}
                 </TableBody>
               </Table>
+              </Box>
             </TableContainer>
 
             {loans.length === 0 && !loading && (

@@ -53,7 +53,7 @@ const NotificationBell = () => {
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ sx: { width: 340, maxHeight: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}
+        PaperProps={{ sx: { width: { xs: 'calc(100vw - 24px)', sm: 340 }, maxWidth: 360, maxHeight: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
           <Typography variant="subtitle1" fontWeight="bold" flex={1}>Notifications</Typography>

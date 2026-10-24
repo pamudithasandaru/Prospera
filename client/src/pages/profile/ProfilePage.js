@@ -383,6 +383,9 @@ const ProfilePage = () => {
           <Tabs
             value={tab}
             onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{ mt: 1, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 } }}
           >
             <Tab icon={<Article sx={{ fontSize: 18 }} />} iconPosition="start" label="Posts" />
