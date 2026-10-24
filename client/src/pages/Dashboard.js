@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import {
   Container,
   Grid,
@@ -25,6 +27,18 @@ import { neuColors, neuRaised, neuInset } from '../neumorphic';
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState({ acresFarming: 0, activeCrops: 0, coursesCompleted: 0, postsCount: 0 });
+  const [recent, setRecent] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([api.get('/auth/stats'), api.get('/notifications?limit=5')]).then(([s, n]) => {
+      if (cancelled) return;
+      if (s.status === 'fulfilled' && s.value.data?.data) setStats(s.value.data.data);
+      if (n.status === 'fulfilled' && Array.isArray(n.value.data?.data)) setRecent(n.value.data.data);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const quickActions = [
     { title: 'Farm Management', icon: <Terrain />, path: '/farm', color: neuColors.primary, role: 'farmer' },
@@ -102,7 +116,7 @@ const Dashboard = () => {
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.success }}>
-                      {user?.farmDetails?.farmSize || 0}
+                      {stats.acresFarming}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Acres Farming
@@ -117,7 +131,7 @@ const Dashboard = () => {
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.primary }}>
-                      {user?.farmDetails?.mainCrops?.length || 0}
+                      {stats.activeCrops}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Active Crops
@@ -134,7 +148,7 @@ const Dashboard = () => {
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Box>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.warning }}>
-                  {user?.stats?.coursesCompleted || 0}
+                  {stats.coursesCompleted}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Courses Completed
@@ -149,7 +163,7 @@ const Dashboard = () => {
             <Box display="flex" alignItems="center" justifyContent="space-between">
               <Box>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.secondary }}>
-                  {user?.stats?.postsCount || 0}
+                  {stats.postsCount}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Community Posts
@@ -167,12 +181,28 @@ const Dashboard = () => {
           Recent Activity
         </Typography>
         <Paper sx={{ p: 3, borderRadius: 3 }}>
-          <Box display="flex" alignItems="center" gap={2}>
-            <Notifications color="action" />
-            <Typography variant="body1" color="text.secondary">
-              No recent notifications. Start exploring the platform!
-            </Typography>
-          </Box>
+          {recent.length === 0 ? (
+            <Box display="flex" alignItems="center" gap={2}>
+              <Notifications color="action" />
+              <Typography variant="body1" color="text.secondary">
+                No recent notifications. Start exploring the platform!
+              </Typography>
+            </Box>
+          ) : (
+            <Box display="flex" flexDirection="column" gap={1.5}>
+              {recent.map((n) => (
+                <Box key={n._id} display="flex" alignItems="center" gap={2}>
+                  <Notifications color={n.read ? 'action' : 'primary'} />
+                  <Typography variant="body1" sx={{ flexGrow: 1 }}>
+                    {n.message}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Paper>
       </Box>
     </Container>
