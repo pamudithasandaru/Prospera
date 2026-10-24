@@ -18,7 +18,8 @@ exports.predictPlantDisease = async (req, res) => {
     const response = await axios.post(`${mlUrl}/api/predict`, form, {
       headers: form.getHeaders(),
       maxBodyLength: Infinity,
-      timeout: 30000,
+      // Free-tier ML hosts sleep; allow time for a cold start plus model load.
+      timeout: 90000,
     });
 
     return res.status(200).json({ success: true, data: response.data });
