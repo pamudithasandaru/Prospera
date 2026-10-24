@@ -25,7 +25,8 @@ router.get('/current', async (req, res) => {
     const data = await getWeather(loc);
     return res.json({ success: true, data: { ...data, locations: names } });
   } catch (err) {
-    console.error(`Weather fetch failed for ${loc.name}:`, err.message);
+    const why = err.response ? `HTTP ${err.response.status}` : err.code || err.message;
+    console.error(`Weather fetch failed for ${loc.name}: ${why}`);
     return res.status(503).json({ success: false, message: 'Weather data is temporarily unavailable. Please try again shortly.' });
   }
 });
