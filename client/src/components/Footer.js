@@ -1,4 +1,5 @@
 import React from 'react';
+import { BRAND_NAME, BRAND_TAGLINE, LOGO_HORIZONTAL } from '../brand';
 import {
   Box,
   Container,
@@ -12,7 +13,6 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { neuColors, neuRaised, neuInset, neuCircle } from '../neumorphic';
 import {
-  Agriculture,
   Facebook,
   Twitter,
   LinkedIn,
@@ -105,31 +105,8 @@ const Footer = () => {
       <Container maxWidth="xl" sx={{ pt: 7, pb: 4 }}>
         <Grid container spacing={5}>
           <Grid item xs={12} md={4} lg={3.5}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-              <Box
-                sx={{
-                  ...neuCircle(44, 'sm'),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Agriculture sx={{ color: neuColors.primary, fontSize: 24 }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 800, lineHeight: 1, color: neuColors.primary, letterSpacing: '-0.3px' }}
-                >
-                  Prospera
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: 'text.secondary', letterSpacing: '0.05em', fontSize: '0.65rem' }}
-                >
-                  AgriTech Platform
-                </Typography>
-              </Box>
+            <Box sx={{ mb: 2.5 }}>
+              <Box component="img" src={LOGO_HORIZONTAL} alt={BRAND_NAME} sx={{ height: 64, width: 'auto', display: 'block' }} />
             </Box>
 
             <Typography
@@ -263,7 +240,7 @@ const Footer = () => {
             variant="caption"
             sx={{ color: 'text.secondary', fontSize: '0.75rem', textAlign: { xs: 'center', sm: 'left' } }}
           >
-            © {currentYear} Prospera AgriTech Platform. All rights reserved.
+            © {currentYear} {BRAND_NAME} {BRAND_TAGLINE}. All rights reserved.
           </Typography>
 
           <Stack

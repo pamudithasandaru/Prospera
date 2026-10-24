@@ -14,9 +14,9 @@ import {
   InputAdornment,
   IconButton,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Agriculture } from '@mui/icons-material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { neuColors, neuCircle } from '../neumorphic';
+import { BRAND_NAME, LOGO_SQUARE } from '../brand';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -82,11 +82,9 @@ const Register = () => {
       >
         <Paper elevation={0} sx={{ p: 4, width: '100%' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Box sx={{ ...neuCircle(80, 'md'), display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-              <Agriculture sx={{ fontSize: 44, color: neuColors.primary }} />
-            </Box>
-            <Typography component="h1" variant="h4" fontWeight="bold">
-              Join Prospera
+            <Box component="img" src={LOGO_SQUARE} alt={BRAND_NAME} sx={{ width: 170, height: 'auto', mb: 1.5, borderRadius: '24px' }} />
+            <Typography component="h1" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              Join {BRAND_NAME}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Create your account to get started
