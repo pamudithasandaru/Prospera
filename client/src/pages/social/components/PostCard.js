@@ -329,6 +329,7 @@ const PostCard = ({
         commentText={commentText}
         onCommentChange={onCommentChange}
         onAddComment={onAddComment}
+        onViewProfile={onViewProfile}
       />
     </Paper>
   );

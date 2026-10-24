@@ -167,15 +167,18 @@ const SocialFeed = () => {
     }, 5000); // sync to DB after 5 s of no further clicks
   };
 
-  const handleAddComment = async (postId) => {
-    if (!commentText[postId]?.trim()) return;
+  const handleAddComment = async (postId, customText) => {
+    const textToSubmit = customText || commentText[postId];
+    if (!textToSubmit?.trim()) return;
 
     try {
       await api.post(`/social/post/${postId}/comment`, {
-        text: commentText[postId],
+        text: textToSubmit.trim(),
       });
       
-      setCommentText({ ...commentText, [postId]: '' });
+      if (!customText) {
+        setCommentText({ ...commentText, [postId]: '' });
+      }
       fetchPosts(); // Refresh to get new comments
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -422,7 +425,7 @@ const SocialFeed = () => {
                 onToggleComments={() => toggleComments(post._id)}
                 commentText={commentText[post._id] || ''}
                 onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
-                onAddComment={() => handleAddComment(post._id)}
+                onAddComment={(customText) => handleAddComment(post._id, customText)}
                 onViewProfile={(author) => setProfileModalUser(author)}
                 onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
                 isSaved={savedPostIds.includes(post._id)}
