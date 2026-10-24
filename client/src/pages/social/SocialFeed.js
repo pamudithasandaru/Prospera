@@ -407,18 +407,19 @@ const SocialFeed = () => {
 
           {/* Posts Feed */}
           {loading ? (
-            <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
+            <Paper elevation={0} sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
               <Typography color="text.secondary">Loading posts...</Typography>
             </Paper>
           ) : visiblePosts.length === 0 ? (
             <Paper 
               elevation={0} 
               sx={{ 
-                p: 6, 
+                p: { xs: 3, sm: 5 }, 
                 textAlign: 'center',
+                borderRadius: 3.5,
               }}
             >
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Typography variant="h6" fontWeight="bold" color="text.primary" gutterBottom>
                 {tab === 1 
                   ? 'No posts from your network yet'
                   : tab === 3
@@ -426,22 +427,105 @@ const SocialFeed = () => {
                   : tab === 4
                   ? 'No success stories shared yet'
                   : tab === 5
-                  ? 'No saved posts'
+                  ? 'No saved bookmarks yet'
                   : selectedTag
                   ? `No posts tagged #${selectedTag}`
-                  : 'No posts yet'}
+                  : 'Welcome to Prospera Community!'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460, mx: 'auto', mb: 3 }}>
                 {tab === 1 
-                  ? 'Connect with more farmers to see their updates here!'
+                  ? 'Connect with fellow farmers to see their updates and farming tips in this tab.'
                   : tab === 3
-                  ? 'Got a farming challenge or question? Ask the community!'
+                  ? 'Got a farming challenge, pest problem, or fertilizer question? Tap a prompt below to ask!'
                   : tab === 4
-                  ? 'Share your harvest milestone or farming achievement!'
+                  ? 'Share your harvest milestone, awards, or agricultural achievements!'
                   : tab === 5
-                  ? 'Bookmark posts you want to refer back to later!'
-                  : 'Be the first to share something!'}
+                  ? 'Tap the bookmark icon on any post in the feed to save it for quick reference here.'
+                  : 'Start a conversation with thousands of farmers and agricultural specialists across the country:'}
               </Typography>
+
+              {/* Starter Prompt Templates */}
+              <Box mb={3} textAlign="left">
+                <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: 'block', mb: 1.5, textAlign: 'center' }}>
+                  💡 OR PICK A COMMUNITY TEMPLATE TO START:
+                </Typography>
+                <Grid container spacing={1.5}>
+                  {[
+                    {
+                      icon: '🌾',
+                      title: 'Harvest Milestone',
+                      desc: 'Share your crop yields or seasonal harvest update',
+                      type: 'success-story',
+                      category: 'crop-management',
+                      text: 'Excited to share our harvest results this season! 🌾 Our yield increased thanks to proper soil preparation and timely irrigation.',
+                      tags: ['harvest', 'organic', 'cropyield'],
+                    },
+                    {
+                      icon: '🐛',
+                      title: 'Ask for Agri Advice',
+                      desc: 'Get pest, soil, or fertilizer suggestions from experts',
+                      type: 'question',
+                      category: 'crop-management',
+                      text: 'Looking for advice on my crops: noticing unusual leaf curling/spots. Has anyone experienced this and what organic solution worked best? 🐛',
+                      tags: ['pestcontrol', 'crops', 'farmingtips'],
+                    },
+                    {
+                      icon: '🌦️',
+                      title: 'Weather & Irrigation',
+                      desc: 'Share rain preparation or irrigation channels news',
+                      type: 'post',
+                      category: 'weather',
+                      text: 'Weather forecast update for our district: preparing irrigation channels ahead of expected rains! 🌧️ Stay prepared fellow farmers.',
+                      tags: ['weather', 'irrigation', 'watermanagement'],
+                    },
+                    {
+                      icon: '💡',
+                      title: 'Farming Innovation',
+                      desc: 'Discuss new equipment, drone spraying, or techniques',
+                      type: 'post',
+                      category: 'technology',
+                      text: 'Testing out new organic soil amendments this month. Here are the key improvements observed in crop vitality: 💡',
+                      tags: ['agritech', 'smartfarming', 'innovation'],
+                    },
+                  ].map((prompt) => (
+                    <Grid item xs={12} sm={6} key={prompt.title}>
+                      <Box
+                        onClick={() => {
+                          setPostType(prompt.type);
+                          setPostCategory(prompt.category);
+                          setNewPost(prompt.text);
+                          setPostTags(prompt.tags);
+                          setPostDialogOpen(true);
+                        }}
+                        sx={{
+                          p: 2,
+                          borderRadius: 2.5,
+                          border: '1px solid rgba(27, 94, 32, 0.2)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            backgroundColor: 'rgba(27, 94, 32, 0.08)',
+                            transform: 'translateY(-2px)',
+                            borderColor: 'primary.main',
+                          },
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                          <span style={{ fontSize: '1.25rem' }}>{prompt.icon}</span>
+                          <Typography variant="subtitle2" fontWeight="bold">
+                            {prompt.title}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {prompt.desc}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+
               <Button 
                 variant="contained" 
                 onClick={() => {
@@ -450,9 +534,9 @@ const SocialFeed = () => {
                   else setPostType('post');
                   setPostDialogOpen(true);
                 }}
-                sx={{ mt: 2 }}
+                sx={{ px: 4, py: 1, borderRadius: 50, fontWeight: 700 }}
               >
-                {tab === 3 ? 'Ask Question' : tab === 4 ? 'Share Success' : 'Create Post'}
+                {tab === 3 ? 'Ask Question' : tab === 4 ? 'Share Success Story' : 'Create Custom Post'}
               </Button>
             </Paper>
           ) : (
