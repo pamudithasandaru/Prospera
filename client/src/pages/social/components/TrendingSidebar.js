@@ -47,7 +47,7 @@ const renderSection = (loading, emptyMsg, content) => {
   return content;
 };
 
-const TrendingSidebar = () => {
+const TrendingSidebar = ({ onSelectTag, onViewProfile }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [joinedGroups, setJoinedGroups] = useState({});
@@ -248,11 +248,16 @@ const TrendingSidebar = () => {
       {trendingTopics.map((item) => (
         <Box
           key={item.tag}
+          onClick={() => onSelectTag && onSelectTag(item.tag)}
           sx={{
             cursor: 'pointer',
-            p: 1,
-            borderRadius: 1.5,
+            p: 1.2,
+            borderRadius: 2,
             ...neuInteractive('xs'),
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateX(4px)',
+            },
           }}
         >
           <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
@@ -297,83 +302,6 @@ const TrendingSidebar = () => {
     </Box>
   );
 
-  const farmersContent = farmers.length > 0 && (
-    <Box display="flex" flexDirection="column" gap={2} mt={1}>
-      {farmers.map((farmer, index) => {
-        const status = connectionStatus[farmer._id] || 'none';
-        const isLoading = connectingId === farmer._id;
-        const mutualCount = farmer.mutualCount || 0;
-        return (
-        <Box key={farmer._id}>
-          <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-            <Avatar
-              src={resolveAvatar(farmer)}
-              sx={{ width: 42, height: 42 }}
-            >
-              {farmer.name?.charAt(0)}
-            </Avatar>
-            <Box flex={1} minWidth={0}>
-              <Typography variant="subtitle2" fontWeight="600" noWrap>
-                {farmer.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                {farmer.role?.charAt(0).toUpperCase()}{farmer.role?.slice(1)}
-              </Typography>
-              {/* Mutual connections badge */}
-              {mutualCount > 0 ? (
-                <Tooltip title={`You share ${mutualCount} connection${mutualCount !== 1 ? 's' : ''}`} placement="top">
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'primary.main',
-                      fontWeight: 600,
-                      fontSize: '0.68rem',
-                      cursor: 'default',
-                    }}
-                  >
-                    👥 {mutualCount} mutual connection{mutualCount !== 1 ? 's' : ''}
-                  </Typography>
-                </Tooltip>
-              ) : (
-                farmer.profile?.location?.district && (
-                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.68rem' }}>
-                    📍 {farmer.profile.location.district}
-                  </Typography>
-                )
-              )}
-            </Box>
-          </Box>
-          <Box display="flex" gap={1}>
-            <Button
-              fullWidth
-              size="small"
-              variant={getConnectVariant(status)}
-              color={getConnectColor(status)}
-              startIcon={status === 'none' || status === 'received' ? <PersonAdd /> : null}
-              onClick={() => {
-                if (status === 'received') handleAccept(farmer._id);
-                else if (status === 'none') handleConnect(farmer._id);
-              }}
-              disabled={isLoading || status === 'connected' || status === 'sent'}
-              sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600, fontSize: '0.75rem' }}
-            >
-              {getConnectLabel(status, isLoading)}
-            </Button>
-            <IconButton
-              size="small"
-              sx={{ ...neuRaised('xs') }}
-              onClick={() => navigate(`/messages?user=${farmer._id}`)}
-            >
-              <Message sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-          {index < farmers.length - 1 && <Divider sx={{ mt: 2 }} />}
-        </Box>
-        );
-      })}
-    </Box>
-  );
-
   return (
     <>
       {/* Connection Requests Notification Panel */}
@@ -394,12 +322,22 @@ const TrendingSidebar = () => {
           <Box display="flex" flexDirection="column" gap={1.5}>
             {notifications.map((notif) => (
               <Box key={notif._id}>
-                <Box display="flex" alignItems="center" gap={1.5} mb={0.75}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  gap={1.5}
+                  mb={0.75}
+                  onClick={() => onViewProfile && onViewProfile({ _id: notif.senderId, name: notif.senderName, profilePicture: notif.senderAvatar })}
+                  sx={{
+                    cursor: onViewProfile ? 'pointer' : 'default',
+                    '&:hover .sender-name': { color: 'primary.main', textDecoration: 'underline' },
+                  }}
+                >
                   <Avatar src={notif.senderAvatar} sx={{ width: 36, height: 36 }}>
                     {notif.senderName?.charAt(0)}
                   </Avatar>
                   <Box flex={1}>
-                    <Typography variant="caption" fontWeight="600" display="block">
+                    <Typography variant="caption" fontWeight="600" display="block" className="sender-name">
                       {notif.senderName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
@@ -532,7 +470,17 @@ const TrendingSidebar = () => {
                 const mutualCount = farmer.mutualCount || 0;
                 return (
                   <Box key={farmer._id}>
-                    <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                    <Box 
+                      display="flex" 
+                      alignItems="center" 
+                      gap={1.5} 
+                      mb={1}
+                      onClick={() => onViewProfile && onViewProfile(farmer)}
+                      sx={{
+                        cursor: onViewProfile ? 'pointer' : 'default',
+                        '&:hover .farmer-name': { color: 'primary.main', textDecoration: 'underline' },
+                      }}
+                    >
                       <Avatar
                         src={resolveAvatar(farmer) || undefined}
                         imgProps={{
@@ -543,7 +491,7 @@ const TrendingSidebar = () => {
                         {farmer.name?.charAt(0)}
                       </Avatar>
                       <Box flex={1} minWidth={0}>
-                        <Typography variant="subtitle2" fontWeight="600" noWrap>
+                        <Typography variant="subtitle2" fontWeight="600" noWrap className="farmer-name">
                           {farmer.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" display="block">
