@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   Box, Container, Paper, Typography, Avatar, Button, IconButton, Tab, Tabs,
   Grid, Divider, TextField, Chip, CircularProgress,
@@ -116,7 +116,6 @@ const GroupCard = ({ group }) => (
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const getTabFromSearch = (search) => {
     const p = new URLSearchParams(search).get('tab');

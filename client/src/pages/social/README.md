@@ -1,136 +1,93 @@
-# Social Feed Components
+# Prospera Social Media Platform
 
-This directory contains modular, reusable components for the professional farmer social networking platform.
+A modern, high-engagement, neumorphic social networking ecosystem tailored for farmers, agriculturalists, and agribusiness professionals.
 
-## Component Structure
+---
+
+## 🌾 Architecture & Components
 
 ```
 social/
-├── SocialFeed.js              # Main container component
+├── SocialFeed.js                  # Main feed container, search, state orchestration & routing
+├── README.md                      # Comprehensive social documentation & feature guide
 └── components/
-    ├── index.js               # Component exports
-    ├── ProfileSidebar.js      # Left sidebar - User profile & quick links
-    ├── CreatePostCard.js      # Post creation trigger card
-    ├── PostCard.js            # Individual post display
-    ├── CommentSection.js      # Post comments section
-    ├── TrendingSidebar.js     # Right sidebar - Trending & networking
-    ├── CreatePostDialog.js    # Full post creation modal
-    ├── PostMenu.js            # Post actions menu
-    └── FeedTabs.js            # Feed filtering tabs
+    ├── index.js                   # Unified component exports
+    ├── ProfileSidebar.js          # Left sidebar: user stats, network shortcuts & profile routing
+    ├── CreatePostCard.js          # Main feed post trigger with media shortcuts (Photo, Video, Article)
+    ├── CreatePostDialog.js        # Full modal post creation with hashtags, emojis & article mode
+    ├── CreateStoryDialog.js       # Agricultural story creator with media selection
+    ├── StoriesBar.js              # Stories carousel with gradient rings & pulse animations
+    ├── StoryViewer.js             # Fullscreen story viewer with hold-to-pause indicator
+    ├── FeedTabs.js                # Feed stream filter tabs with badge counters & category icons
+    ├── PostCard.js                # Rich post cards with multi-reactions, tags, share & bookmark
+    ├── CommentSection.js          # Comments with inline replies & @author tagging
+    ├── TrendingSidebar.js         # Right sidebar: clickable trending topics & farmer recommendations
+    ├── FarmerProfileModal.js      # Quick modal profile preview with connect & message actions
+    └── PostMenu.js                # Post contextual menu (Save, Copy Link, Report, Delete)
 ```
 
-## Components Overview
+---
 
-### ProfileSidebar
-**Location:** Left sidebar  
-**Purpose:** Displays user profile with:
-- Cover image and avatar
-- Verification badge
-- Profile stats (viewers, impressions)
-- Quick navigation links (Network, Groups, Knowledge Hub, Expert Sessions)
-- Recent connections
+## 🚀 Key Features & UX Upgrades
 
-### CreatePostCard
-**Location:** Main feed (top)  
-**Purpose:** Quick post creation trigger with:
-- Text input placeholder
-- Media type shortcuts (Photo, Video, Article)
-- Opens full creation dialog
+### 1. Unified Navigation & Route Corrections
+- **Sidebar Profile Routing**: Cover photos and profile avatars navigate to `/profile` with user state intact.
+- **Deep-Linked Profile Tabs**: "My Network" routes to `/profile?tab=connections`, "My Groups" routes to `/profile?tab=groups`.
+- **Knowledge & Expert Hub**: "Expert Sessions" links directly to `/farm/expert`.
+- **Author & Suggested Farmer Previews**: Clicking on any farmer's avatar or name opens the quick **FarmerProfileModal** without leaving the current feed position.
 
-### PostCard  
-**Location:** Main feed  
-**Purpose:** Displays individual posts with:
-- Author information and verification
-- Post content (text, images, categories)
-- Tags and hashtags
-- Interaction buttons (Like, Comment, Share, Bookmark)
-- Expandable comment section
-- Post menu (Save, Copy, Report)
+### 2. Quick Farmer Profile Modal (`FarmerProfileModal.js`)
+- Instant preview modal displaying farmer location, farm size, primary crops, experience level, and bio.
+- Quick action buttons: **Connect**, **Message**, and **View Full Profile** (`/profile`).
 
-### CommentSection
-**Location:** Inside PostCard  
-**Purpose:** Handles post comments:
-- Add new comment
-- Display existing comments
-- Like and reply to comments
-- Comment timestamp
+### 3. Interactive Post Cards (`PostCard.js`)
+- **Multi-Reactions**: Farmers can react with **Like (👍)**, **Insightful (💡)**, or **Celebrate (🎉)** with an interactive reaction picker and dynamic reaction breakdown.
+- **Clickable Hashtags**: Post hashtags (e.g. `#paddy`, `#fertilizer`, `#harvest`) trigger immediate feed filtering on click.
+- **Bookmarks & Saved Posts**: Dedicated bookmark toggle with `localStorage` persistence and counter badge in FeedTabs.
+- **Web Share API**: Native device sharing with automatic fallback to clipboard URL copying and user toast notifications.
+- **Article Reading View**: Expandable/collapsible view for long-form agronomy guides and farming articles.
 
-### TrendingSidebar
-**Location:** Right sidebar  
-**Purpose:** Displays:
-- Trending topics with post counts
-- Suggested farming groups
-- Connect with farmers suggestions
-- Quick Connect and Message actions
+### 4. Feed Stream Filtering & Quick Search (`SocialFeed.js`)
+- **6 Feed Streams**:
+  - `For You`: Personalized community recommendations
+  - `Following`: Updates strictly from connected farmers
+  - `Trending`: Highly engaged discussions sorted by likes & comments
+  - `Q&A`: Farming challenges, questions, and pest queries
+  - `Stories`: Harvest milestones and success stories
+  - `Saved`: Bookmarked posts for offline reference
+- **Quick Search Bar**: Neumorphic search input filtering posts by keyword, crop, topic, or farmer name.
+- **Active Filter Banner**: Displays active hashtag and search query chips with individual removals and "Clear All".
+- **Starter Empty-State Templates**: When a feed stream or filter is empty, farmers are presented with ready-to-use post prompt templates (*Harvest Milestone*, *Agri Advice*, *Equipment Tips*, *Market Update*).
 
-### CreatePostDialog
-**Location:** Modal overlay  
-**Purpose:** Full post creation experience:
-- Post type selection (General, Question, Success Story, Alert)
-- Category selection (Crop Management, Livestock, Technology, etc.)
-- Privacy settings (Public, Connections, Private)
-- Rich text editor
-- Media upload (Images, Videos, Attachments, Emojis)
-- Character count and preview
+### 5. Media & Post Creation (`CreatePostCard.js` & `CreatePostDialog.js`)
+- Direct shortcut buttons for **Photo**, **Video**, and **Article**.
+- One-click agricultural hashtags suggestions bar (`#organic`, `#pestcontrol`, `#harvest`, `#irrigation`).
+- Quick-insert agricultural emoji bar (🌾, 🚜, 🐛, 🌱, ☀️, 💧, 🌽, 🍎).
+- Full article title input with preview support.
 
-### PostMenu
-**Location:** Dropdown from post actions  
-**Purpose:** Additional post actions:
-- Save post
-- Copy link
-- Report post
+### 6. Interactive Inline Comments (`CommentSection.js`)
+- Nested reply thread support with inline reply inputs.
+- Automatic `@Author` tagging when hitting reply on any comment.
+- Comment heart/like toggling with live counter.
 
-### FeedTabs
-**Location:** Main feed (below create post)  
-**Purpose:** Filter posts by:
-- For You (personalized)
-- Following (connections only)
-- Trending (popular posts)
+### 7. Stories Bar & Viewer (`StoriesBar.js` & `StoryViewer.js`)
+- Gradient ring borders with subtle pulse animations for unviewed stories.
+- Fullscreen story viewer featuring progress bars, author info, and a **Paused** badge overlay when holding mouse/touch.
 
-## Design Principles
+---
 
-1. **Modular**: Each component is self-contained and reusable
-2. **Props-driven**: Components receive data and callbacks via props
-3. **Consistent styling**: Uses Material-UI theme with agricultural green palette
-4. **Professional layout**: LinkedIn-inspired design for farmers
-5. **Responsive**: Adapts to mobile, tablet, and desktop screens
+## 🎨 Design System & Theming
 
-## Usage Example
+All social components adhere strictly to Prospera's signature design system:
+- **Neumorphic Base**: `#e3e8f0` background with soft dual drop shadows (`neuRaised`, `neuInset`).
+- **Brand Green**: `#1B5E20` primary green with `#4CAF50` accents.
+- **Typography**: Inter / Outfit modern sans-serif scale.
+- **Micro-interactions**: Smooth button scale transitions, reaction hover float effects, and chip animations.
 
-```javascript
-import React from 'react';
-import { ProfileSidebar, PostCard, TrendingSidebar } from './components';
+---
 
-// Use individual components
-<ProfileSidebar user={user} />
-<PostCard post={post} onLike={handleLike} />
-<TrendingSidebar />
-```
+## 🛠️ Verification & Build Status
 
-## State Management
-
-Main state is managed in `SocialFeed.js`:
-- `posts`: Array of post objects
-- `loading`: Loading state for API calls
-- `tab`: Current feed tab (0: For You, 1: Following, 2: Trending)
-- `postDialogOpen`: Dialog visibility
-- `expandedComments`: Track which posts have comments expanded
-- `commentText`: Text for comments being composed
-
-## API Integration
-
-Components interact with backend through:
-- `GET /api/social/posts` - Fetch posts
-- `POST /api/social/post` - Create new post
-- `POST /api/social/post/:id/like` - Like/unlike post
-- `POST /api/social/post/:id/comment` - Add comment
-
-## Future Enhancements
-
-- Real-time updates with WebSocket
-- Image upload with preview
-- Video upload and playback
-- Message feature implementation
-- Group management
-- Notification system
-- Advanced search and filters
+- **Build Tooling**: React Scripts / Webpack production pipeline.
+- **Status**: Compiles cleanly with standard production optimizations (`npm --prefix client run build`).
+- **Dependencies**: React 18, Material-UI v5 (`@mui/material`, `@mui/icons-material`), React Router v6.
