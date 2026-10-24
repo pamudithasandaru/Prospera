@@ -35,6 +35,7 @@ const PostCard = ({
   commentText,
   onCommentChange,
   onAddComment,
+  onViewProfile,
 }) => {
   // Resolve post author — supports both post.user and post.author shapes
   const postUser = resolvePostUser(post);
@@ -54,13 +55,30 @@ const PostCard = ({
       <Box display="flex" gap={1.5} mb={2}>
         <Avatar 
           src={postUser.resolvedAvatar}
-          sx={{ width: 48, height: 48 }}
+          onClick={() => onViewProfile && onViewProfile(postUser)}
+          sx={{ 
+            width: 48, 
+            height: 48,
+            cursor: onViewProfile ? 'pointer' : 'default',
+            transition: 'transform 0.2s ease',
+            '&:hover': onViewProfile ? { transform: 'scale(1.06)' } : {},
+          }}
         >
           {postUser.name?.charAt(0)}
         </Avatar>
         <Box flexGrow={1}>
-          <Box display="flex" alignItems="center" gap={0.5}>
-            <Typography variant="subtitle1" fontWeight="bold">
+          <Box 
+            display="flex" 
+            alignItems="center" 
+            gap={0.5}
+            onClick={() => onViewProfile && onViewProfile(postUser)}
+            sx={{
+              cursor: onViewProfile ? 'pointer' : 'default',
+              width: 'fit-content',
+              '&:hover .author-name': { color: 'primary.main', textDecoration: 'underline' },
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold" className="author-name" sx={{ transition: 'color 0.2s' }}>
               {postUser.name || 'Unknown User'}
             </Typography>
             {postUser.profile?.verificationBadge && (
