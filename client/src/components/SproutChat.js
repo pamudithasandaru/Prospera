@@ -7,6 +7,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ReactMarkdown from 'react-markdown';
 import { neuColors, raised, inset } from '../neumorphic';
 import { streamSproutChat } from '../services/sproutApi';
+import { BRAND_NAME } from '../brand';
 
 const SUGGESTIONS = [
   'What courses do you offer on irrigation?',
@@ -101,7 +102,7 @@ export default function SproutChat() {
                   Hello, I'm Sprout!
                 </Typography>
                 <Typography variant="body2" sx={{ color: neuColors.textMuted, mb: 2 }}>
-                  Ask about farming, courses, products, schemes and Prospera services.
+                  Ask about farming, courses, products, schemes and {BRAND_NAME} services.
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   {SUGGESTIONS.map((s) => (

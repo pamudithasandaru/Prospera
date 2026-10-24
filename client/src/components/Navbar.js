@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { BRAND_NAME, LOGO_HORIZONTAL } from '../brand';
 import {
   AppBar,
   Box,
@@ -116,14 +117,7 @@ const Navbar = () => {
       onKeyDown={toggleDrawer(false)}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1 }}>
-        <Box
-          component="img"
-          src="/logo.png"
-          alt="Prospera Logo"
-          sx={{ height: 42 }}
-        />
-        <Typography variant="subtitle1" fontWeight={700}>
-        </Typography>
+        <Box component="img" src={LOGO_HORIZONTAL} alt={BRAND_NAME} sx={{ height: 40, width: 'auto' }} />
       </Box>
       {/* Social quick-links — always visible to all logged-in users */}
       <List dense sx={{ mt: 0.5 }}>
@@ -199,7 +193,7 @@ const Navbar = () => {
             {/* Mobile Menu Icon */}
                   {isMobile && (
                     <IconButton
-                    size="large"
+                    size="medium"
                     onClick={toggleDrawer(true)}
                     color="inherit"
                     
@@ -212,15 +206,10 @@ const Navbar = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexGrow: isMobile ? 1 : 0 }}>
                     <Box
                       component="img"
-                      src="/logo.png"
-                      alt="Prospera Logo"
-                      sx={{ height: { xs: 38, sm: 44 } }}
+                      src={LOGO_HORIZONTAL}
+                      alt={BRAND_NAME}
+                      sx={{ height: { xs: 32, sm: 46 }, width: 'auto', display: 'block' }}
                     />
-                    {!isMobile && (
-                      <Typography variant="subtitle1" fontWeight={700}>
-                        
-                      </Typography>
-                    )}
                   </Box>
 
                   
@@ -251,7 +240,7 @@ const Navbar = () => {
                         )}
 
                         {/* Action Icons */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: { xs: 0.5, sm: 1 } }}>
                           <Tooltip title="Search">
                             <IconButton color="inherit" onClick={() => navigate('/search')} size="small">
                               <SearchIcon />
