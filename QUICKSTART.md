@@ -103,6 +103,35 @@ own empty lists.
 
 The super admin signs in with `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` from `.env`.
 
+### Admin panel
+
+Signing in as the super admin (or any user with the `admin` role) shows an **Admin Panel**
+link in the navbar (`/admin`). Tabs:
+
+- **Overview** — platform counts, users by role, pending loans / scheme applications, restricted users, recent signups and posts.
+- **Users** — search and filter by role or status; change roles; **suspend**, **ban** or **reactivate** (with an optional reason); delete.
+- **Posts** — search and remove posts.
+- **Courses** — add, edit, delete.
+- **Market** — wholesale listings: mark sellers verified, delete.
+- **Products** — marketplace catalogue: add, edit (price, stock…), delete.
+- **Schemes** — government schemes: add, edit, delete; plus an **Applications** view to approve or reject.
+- **Tickets** — filter and change status (open, pending, resolved, closed).
+- **Loans** — filter and change status (pending, approved, active, rejected, closed).
+
+All of it is served by `/api/admin/*`, which requires the `admin` role on the server, not just in the UI.
+
+Rules worth knowing:
+
+- Nobody can register as an admin — promote people from the Users tab.
+- Suspended and banned users can't log in, existing sessions stop working on their next request,
+  and they can't open a realtime connection. Reactivating restores access immediately.
+- Admins must be demoted before they can be suspended or banned. The super admin can't be edited or
+  deleted, and admins can't change or delete their own account.
+
+Suspend/ban uses a `status` column on `users` (migration `20261024180000_user_status`).
+Run `npm run db:deploy` (or `npm run db:migrate` locally) after pulling this change; the Render build
+command already runs `prisma migrate deploy`.
+
 ## 5. Run the App
 
 ```powershell
