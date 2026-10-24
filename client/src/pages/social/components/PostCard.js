@@ -14,6 +14,7 @@ import {
   ThumbUpOutlined,
   Share,
   MoreVert,
+  Bookmark,
   BookmarkBorder,
   ChatBubbleOutline,
   Verified,
@@ -37,6 +38,8 @@ const PostCard = ({
   onAddComment,
   onViewProfile,
   onTagClick,
+  isSaved,
+  onToggleSave,
 }) => {
   // Resolve post author — supports both post.user and post.author shapes
   const postUser = resolvePostUser(post);
@@ -223,11 +226,15 @@ const PostCard = ({
         </Button>
         <IconButton 
           size="small"
+          onClick={onToggleSave}
+          title={isSaved ? 'Remove from Saved' : 'Save Post'}
           sx={{
-            color: 'text.secondary',
+            color: isSaved ? 'primary.main' : 'text.secondary',
+            transition: 'all 0.2s ease',
+            '&:hover': { transform: 'scale(1.15)', color: 'primary.main' },
           }}
         >
-          <BookmarkBorder />
+          {isSaved ? <Bookmark /> : <BookmarkBorder />}
         </IconButton>
       </Box>
 
