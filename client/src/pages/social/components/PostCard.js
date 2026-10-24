@@ -44,6 +44,9 @@ const PostCard = ({
   onToggleSave,
 }) => {
   const [expandedArticle, setExpandedArticle] = useState(false);
+  const [selectedReaction, setSelectedReaction] = useState('like');
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+
   // Resolve post author — supports both post.user and post.author shapes
   const postUser = resolvePostUser(post);
   const content = typeof post.content === 'string' ? post.content : post.content?.text || '';
@@ -68,7 +71,22 @@ const PostCard = ({
   const readMinutes = Math.max(1, Math.round(wordCount / 180));
   const isLong = bodyContent.length > 360;
   const displayedContent = isLong && !expandedArticle ? `${bodyContent.slice(0, 360)}...` : bodyContent;
-  
+
+  const reactions = [
+    { key: 'like', emoji: '👍', label: 'Like', color: 'primary.main' },
+    { key: 'love', emoji: '❤️', label: 'Love', color: '#D32F2F' },
+    { key: 'celebrate', emoji: '🎉', label: 'Celebrate', color: '#E65100' },
+    { key: 'insightful', emoji: '💡', label: 'Helpful', color: '#F57F17' },
+  ];
+
+  const handleSelectReaction = (key) => {
+    setSelectedReaction(key);
+    setShowReactionPicker(false);
+    if (!isLiked) {
+      onLike();
+    }
+  };
+
   return (
     <Paper 
       elevation={0} 
@@ -255,9 +273,17 @@ const PostCard = ({
 
       {/* Post Stats */}
       <Box display="flex" justifyContent="space-between" alignItems="center" py={1}>
-        <Typography variant="caption" color="text.secondary">
-          {post.likes?.length || 0} {post.likes?.length === 1 ? 'like' : 'likes'}
-        </Typography>
+        <Box display="flex" alignItems="center" gap={0.5}>
+          {(post.likes?.length || 0) > 0 && (
+            <Box display="flex" alignItems="center" sx={{ cursor: 'default' }}>
+              <span style={{ fontSize: 13, marginRight: 2 }}>👍</span>
+              {(post.likes?.length || 0) > 1 && <span style={{ fontSize: 13, marginRight: 2 }}>❤️</span>}
+            </Box>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            {post.likes?.length || 0} {post.likes?.length === 1 ? 'reaction' : 'reactions'}
+          </Typography>
+        </Box>
         <Typography variant="caption" color="text.secondary">
           {post.comments?.length || 0} comments • {post.shares || 0} shares
         </Typography>
@@ -267,20 +293,81 @@ const PostCard = ({
 
       {/* Post Actions */}
       <Box display="flex" gap={1}>
-        <Button
-          fullWidth
-          size="medium"
-          startIcon={isLiked ? <ThumbUp /> : <ThumbUpOutlined />}
-          onClick={onLike}
-          sx={{
-            color: isLiked ? 'primary.main' : 'text.secondary',
-            ...(isLiked && { boxShadow: inset('sm') }),
-            textTransform: 'none',
-            fontWeight: 600,
-          }}
+        <Box
+          sx={{ position: 'relative', flex: 1 }}
+          onMouseEnter={() => setShowReactionPicker(true)}
+          onMouseLeave={() => setShowReactionPicker(false)}
         >
-          Like
-        </Button>
+          {showReactionPicker && (
+            <Paper
+              elevation={0}
+              sx={{
+                position: 'absolute',
+                bottom: '100%',
+                left: 0,
+                mb: 1,
+                p: 0.6,
+                display: 'flex',
+                gap: 0.8,
+                borderRadius: 50,
+                ...neuRaised('sm'),
+                zIndex: 10,
+              }}
+            >
+              {reactions.map((r) => (
+                <Box
+                  key={r.key}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectReaction(r.key);
+                  }}
+                  sx={{
+                    fontSize: '1.25rem',
+                    cursor: 'pointer',
+                    p: 0.4,
+                    borderRadius: '50%',
+                    transition: 'transform 0.15s ease',
+                    '&:hover': { transform: 'scale(1.35)' },
+                  }}
+                  title={r.label}
+                >
+                  {r.emoji}
+                </Box>
+              ))}
+            </Paper>
+          )}
+
+          <Button
+            fullWidth
+            size="medium"
+            startIcon={
+              isLiked ? (
+                selectedReaction === 'love' ? (
+                  <span style={{ fontSize: 16 }}>❤️</span>
+                ) : selectedReaction === 'celebrate' ? (
+                  <span style={{ fontSize: 16 }}>🎉</span>
+                ) : selectedReaction === 'insightful' ? (
+                  <span style={{ fontSize: 16 }}>💡</span>
+                ) : (
+                  <ThumbUp />
+                )
+              ) : (
+                <ThumbUpOutlined />
+              )
+            }
+            onClick={onLike}
+            sx={{
+              color: isLiked ? 'primary.main' : 'text.secondary',
+              ...(isLiked && { boxShadow: inset('sm') }),
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {isLiked
+              ? reactions.find((r) => r.key === selectedReaction)?.label || 'Liked'
+              : 'Like'}
+          </Button>
+        </Box>
         <Button
           fullWidth
           size="medium"
