@@ -10,8 +10,8 @@ const VALID_CROP_STATUS = ['planned', 'growing', 'harvested', 'failed'];
 /** Everything serializeFarm needs. */
 const FARM_INCLUDE = { owner: true, crops: true, expenses: true, revenues: true };
 
-/** Experts and consultants both get the read-only expert view. */
-const isExpert = (user) => user.role === 'expert' || user.role === 'consultant';
+/** Experts, consultants and admins get the read-only all-farmers view. */
+const isExpert = (user) => ['expert', 'consultant', 'admin'].includes(user.role);
 
 // ── Helper: derived financial / land metrics for a serialized farm ──────────
 const computeInsights = (farm) => {

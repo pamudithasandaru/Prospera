@@ -217,7 +217,7 @@ const CoursePage = () => {
   }
 
   const currentNotes = notes.filter((n) => n.videoIndex === currentVideoIndex);
-  const isOwner = user?.role === 'expert' && user?._id && course.createdBy === user._id;
+  const isOwner = user?.role === 'admin' || (user?.role === 'expert' && user?._id && course.createdBy === user._id);
 
   // Expert CRUD handlers
   const handleEditCourse = () => setFormOpen(true);

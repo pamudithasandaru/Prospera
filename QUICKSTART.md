@@ -122,6 +122,7 @@ All of it is served by `/api/admin/*`, which requires the `admin` role on the se
 
 Rules worth knowing:
 
+- Admins can open **every page** of the app. The navbar's **More** menu holds the pages that don't fit in the top bar, and the Learning Hub lets admins add and manage any course. `/farm` sends admins to the all-farmers view, since they have no farms of their own.
 - Nobody can register as an admin — promote people from the Users tab.
 - Suspended and banned users can't log in, existing sessions stop working on their next request,
   and they can't open a realtime connection. Reactivating restores access immediately.

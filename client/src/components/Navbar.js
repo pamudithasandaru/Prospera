@@ -35,6 +35,7 @@ import {
   Support,
   AccountBalanceWallet,
   AdminPanelSettings,
+  ExpandMore,
   Logout,
   Person,
   Search as SearchIcon,
@@ -82,6 +83,7 @@ const Navbar = () => {
 
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [moreAnchor, setMoreAnchor] = useState(null);
 
   const handleOpenUserMenu = (event) => {
     setAnchorElUser(event.currentTarget);
@@ -107,9 +109,13 @@ const Navbar = () => {
   const currentUser = user || defaultUser;
 
   // Filter menu items based on user role
+  // Admins see every page; everyone else only the pages their role allows.
   const filteredMenuItems = menuItems.filter(
-    (item) => !item.roles || item.roles.includes(currentUser?.role)
+    (item) => currentUser?.role === 'admin' || !item.roles || item.roles.includes(currentUser?.role)
   );
+  const MAX_TOP_LINKS = 6;
+  const topLinks = filteredMenuItems.slice(0, MAX_TOP_LINKS);
+  const overflowLinks = filteredMenuItems.slice(MAX_TOP_LINKS);
 
   const drawerContent = (
     <Box
@@ -217,7 +223,7 @@ const Navbar = () => {
                   
                         {!isMobile && (
                           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 3, justifyContent: 'center' }}>
-                          {filteredMenuItems.slice(0, 6).map((item) => (
+                          {topLinks.map((item) => (
                             <Button
                             key={item.path}
                             onClick={() => navigate(item.path)}
@@ -238,6 +244,39 @@ const Navbar = () => {
                             {item.title}
                             </Button>
                           ))}
+                          {overflowLinks.length > 0 && (
+                            <>
+                              <Button
+                                onClick={(e) => setMoreAnchor(e.currentTarget)}
+                                endIcon={<ExpandMore />}
+                                sx={{
+                                  my: 1,
+                                  color: overflowLinks.some((i) => i.path === location.pathname) ? 'primary.main' : 'text.primary',
+                                  display: 'flex',
+                                  textTransform: 'none',
+                                  borderRadius: '12px',
+                                  px: 2,
+                                  boxShadow: 'none',
+                                  backgroundColor: 'transparent',
+                                  '&:hover': neuRaised('xs'),
+                                }}
+                              >
+                                More
+                              </Button>
+                              <Menu anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)}>
+                                {overflowLinks.map((item) => (
+                                  <MenuItem
+                                    key={item.path}
+                                    selected={location.pathname === item.path}
+                                    onClick={() => { navigate(item.path); setMoreAnchor(null); }}
+                                  >
+                                    <ListItemIcon>{item.icon}</ListItemIcon>
+                                    <Typography>{item.title}</Typography>
+                                  </MenuItem>
+                                ))}
+                              </Menu>
+                            </>
+                          )}
                           </Box>
                         )}
 
