@@ -41,6 +41,8 @@ const SocialFeed = () => {
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [profileModalUser, setProfileModalUser] = useState(null);
   const [connectionIds, setConnectionIds] = useState([]);
+  const [postTags, setPostTags] = useState([]);
+  const [articleTitle, setArticleTitle] = useState('');
   const [savedPostIds, setSavedPostIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('prospera_saved_posts') || '[]');
@@ -85,13 +87,15 @@ const SocialFeed = () => {
   }, [fetchPosts]);
 
   const handleCreatePost = async () => {
-    if (!newPost.trim()) return;
+    if (!newPost.trim() && !selectedImage) return;
 
     try {
+      const fullText = articleTitle ? `# ${articleTitle}\n\n${newPost}` : newPost;
       const postData = {
-        content: { text: newPost },
+        content: { text: fullText },
         type: postType,
         category: postCategory,
+        tags: postTags,
       };
 
       if (selectedImage) {
@@ -104,11 +108,15 @@ const SocialFeed = () => {
       // Reset form
       setNewPost('');
       setSelectedImage(null);
+      setPostTags([]);
+      setArticleTitle('');
       setPostDialogOpen(false);
       setPostType('post');
       setPostCategory('general');
+      setSnackbar({ open: true, message: 'Post published successfully!', severity: 'success' });
     } catch (error) {
       console.error('Error creating post:', error);
+      setSnackbar({ open: true, message: 'Failed to publish post', severity: 'error' });
     }
   };
 
@@ -456,6 +464,10 @@ const SocialFeed = () => {
         setNewPost={setNewPost}
         selectedImage={selectedImage}
         setSelectedImage={setSelectedImage}
+        postTags={postTags}
+        setPostTags={setPostTags}
+        articleTitle={articleTitle}
+        setArticleTitle={setArticleTitle}
         onCreatePost={handleCreatePost}
       />
 
