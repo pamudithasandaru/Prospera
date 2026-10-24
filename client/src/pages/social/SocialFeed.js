@@ -199,6 +199,24 @@ const SocialFeed = () => {
     ));
   };
 
+  const handleToggleSave = (postId) => {
+    setSavedPostIds((prev) => {
+      const isSaved = prev.includes(postId);
+      const next = isSaved ? prev.filter((id) => id !== postId) : [...prev, postId];
+      try {
+        localStorage.setItem('prospera_saved_posts', JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to update saved posts:', err);
+      }
+      setSnackbar({
+        open: true,
+        message: isSaved ? 'Post removed from your bookmarks' : 'Post saved to your bookmarks!',
+        severity: isSaved ? 'info' : 'success',
+      });
+      return next;
+    });
+  };
+
   const handlePostMenu = (event, postId) => {
     setAnchorEl(event.currentTarget);
     setSelectedPostId(postId);
@@ -399,6 +417,8 @@ const SocialFeed = () => {
                 onAddComment={() => handleAddComment(post._id)}
                 onViewProfile={(author) => setProfileModalUser(author)}
                 onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
+                isSaved={savedPostIds.includes(post._id)}
+                onToggleSave={() => handleToggleSave(post._id)}
               />
             ))
           )}
