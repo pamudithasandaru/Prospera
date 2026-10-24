@@ -20,6 +20,7 @@ import {
   Skeleton,
   InputAdornment,
   Button,
+  useMediaQuery,
 } from '@mui/material';
 import { Search, TrendingUp, Person, Article } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -29,6 +30,7 @@ import { resolveAvatar } from '../../utils/avatarUtils';
 import { neuInteractive } from '../../neumorphic';
 
 const SearchPage = () => {
+  const isNarrow = useMediaQuery('(max-width:600px)');
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [tab, setTab] = useState(0);
@@ -102,7 +104,13 @@ const SearchPage = () => {
 
       {/* Tabs */}
       <Paper elevation={0} sx={{ overflow: 'hidden' }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant={isNarrow ? 'scrollable' : 'fullWidth'}
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
           <Tab label="All" icon={<Search sx={{ fontSize: 16 }} />} iconPosition="start" />
           <Tab label={`People (${results.users.length})`} icon={<Person sx={{ fontSize: 16 }} />} iconPosition="start" />
           <Tab label={`Posts (${results.posts.length})`} icon={<Article sx={{ fontSize: 16 }} />} iconPosition="start" />

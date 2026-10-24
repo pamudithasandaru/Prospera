@@ -92,7 +92,15 @@ const theme = createTheme({
     },
     MuiDialog: {
       defaultProps: { TransitionComponent: Grow, transitionDuration: { enter: 380, exit: 220 } },
-      styleOverrides: { paper: { ...surface, boxShadow: raised('xl'), borderRadius: 28 } },
+      styleOverrides: {
+        paper: {
+          ...surface,
+          boxShadow: raised('xl'),
+          borderRadius: 28,
+          // Keep dialogs inside the viewport on phones.
+          '@media (max-width:600px)': { margin: 12, width: 'calc(100% - 24px)', maxWidth: 'calc(100% - 24px)', maxHeight: 'calc(100% - 24px)' },
+        },
+      },
     },
     MuiDrawer: {
       styleOverrides: { paper: { ...surface, boxShadow: raised('lg'), border: 'none' } },

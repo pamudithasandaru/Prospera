@@ -237,9 +237,48 @@ export default function Hero3D({ height = 450 }) {
                 @media screen and (max-width:678px){
                     .thumbnail{
                         justify-content: start;
+                        height: 120px;
+                        padding: 0 16px;
+                        bottom: 14px;
+                        gap: 8px;
+                    }
+                    .thumbnail .item{
+                        width: 84px;
+                        height: 108px;
+                    }
+                    .thumbnail .item .content{
+                        font-size: 10px;
+                        inset: auto 6px 6px;
+                    }
+                    .slider .list .item .content{
+                        left: 6%;
+                        top: 10%;
+                        max-width: 88%;
+                    }
+                    .slider .list .item .content p:nth-child(1){
+                        letter-spacing: 4px;
+                        font-size: 12px;
                     }
                     .slider .list .item .content h2{
-                        font-size: 60px;
+                        font-size: 38px;
+                    }
+                    .slider .list .item .content p:nth-child(3){
+                        font-size: 14px;
+                        line-height: 1.5;
+                        display: -webkit-box;
+                        -webkit-line-clamp: 5;
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                    }
+                    .arrows{
+                        top: auto;
+                        bottom: 150px;
+                        right: 16px;
+                    }
+                    .arrows button{
+                        width: 36px;
+                        height: 36px;
+                        font-size: large;
                     }
                 }
             `}</style>

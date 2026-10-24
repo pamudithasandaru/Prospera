@@ -187,6 +187,7 @@ const SupportCenter = () => {
         </Box>
 
         <TableContainer>
+          <Box sx={{ overflowX: 'auto' }}>
           <Table>
             <TableHead>
               <TableRow>
@@ -224,6 +225,7 @@ const SupportCenter = () => {
               ))}
             </TableBody>
           </Table>
+          </Box>
         </TableContainer>
 
         {tickets.length === 0 && !loading && (

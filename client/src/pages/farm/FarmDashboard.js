@@ -177,9 +177,9 @@ const FarmDashboard = () => {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">Farm Management</Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5} mb={1}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>Farm Management</Typography>
           <Typography variant="body2" color="text.secondary">
             Manage your farms, crops, finances and view insights
           </Typography>
@@ -249,6 +249,7 @@ const FarmDashboard = () => {
                   </Button>
                 </Box>
                 {selectedFarm.currentCrops?.length > 0 ? (
+                  <Box sx={{ overflowX: 'auto' }}>
                   <Table>
                     <TableHead>
                       <TableRow>
@@ -288,6 +289,7 @@ const FarmDashboard = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </Box>
                 ) : (
                   <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                     No crops added yet. Click "Add Crop" to get started.
@@ -330,6 +332,7 @@ const FarmDashboard = () => {
               <Grid item xs={12} md={6}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight="bold" mb={2}>Recent Expenses</Typography>
+                  <Box sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -348,6 +351,7 @@ const FarmDashboard = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </Box>
                 </Paper>
               </Grid>
             )}
@@ -357,6 +361,7 @@ const FarmDashboard = () => {
               <Grid item xs={12} md={6}>
                 <Paper sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight="bold" mb={2}>Revenue Records</Typography>
+                  <Box sx={{ overflowX: 'auto' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -375,6 +380,7 @@ const FarmDashboard = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </Box>
                 </Paper>
               </Grid>
             )}
