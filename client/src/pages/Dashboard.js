@@ -19,6 +19,7 @@ import {
   School,
   TrendingUp,
   Notifications,
+  AdminPanelSettings,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Hero3D from '../components/Hero3D';
@@ -47,9 +48,13 @@ const Dashboard = () => {
     { title: 'Learning Hub', icon: <School />, path: '/learning', color: neuColors.warning, role: ['farmer', 'buyer', 'expert'] },
   ];
 
-  const filteredActions = quickActions.filter(
-    (action) => !action.role || (Array.isArray(action.role) ? action.role.includes(user?.role) : action.role === user?.role)
-  );
+  const isAdmin = user?.role === 'admin';
+  const filteredActions = [
+    ...(isAdmin ? [{ title: 'Admin Panel', icon: <AdminPanelSettings />, path: '/admin', color: neuColors.primary }] : []),
+    ...quickActions.filter(
+      (action) => isAdmin || !action.role || (Array.isArray(action.role) ? action.role.includes(user?.role) : action.role === user?.role)
+    ),
+  ];
 
   return (
     <>
@@ -65,7 +70,7 @@ const Dashboard = () => {
           </Typography>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {filteredActions.map((action) => (
-              <Grid item xs={12} sm={6} md={3} key={action.title}>
+              <Grid item xs={12} sm={6} md={isAdmin ? 2.4 : 3} key={action.title}>
             <Card
               sx={{
                 height: '100%',

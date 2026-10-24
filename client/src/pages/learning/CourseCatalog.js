@@ -320,7 +320,8 @@ function CourseCard({ course, onViewCourse, isOwner, onEdit, onDelete }) {
 const CourseCatalog = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isExpert = user?.role === 'expert';
+  const isAdmin = user?.role === 'admin';
+  const isExpert = user?.role === 'expert' || isAdmin; // admins can author and manage every course
 
   // State
   const [courses, setCourses] = useState([]);
@@ -728,7 +729,7 @@ const CourseCatalog = () => {
                 <CourseCard
                   course={course}
                   onViewCourse={handleViewCourse}
-                  isOwner={isExpert && user?._id && course.createdBy === user._id}
+                  isOwner={isAdmin || (isExpert && user?._id && course.createdBy === user._id)}
                   onEdit={handleEditCourse}
                   onDelete={handleDeleteClick}
                 />

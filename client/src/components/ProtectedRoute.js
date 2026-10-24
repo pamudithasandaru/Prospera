@@ -24,8 +24,8 @@ const ProtectedRoute = ({ children, roles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check role permissions if roles are specified
-  if (roles && !roles.includes(user.role)) {
+  // Admins can open every page; other roles are limited to the roles a route lists.
+  if (roles && user.role !== 'admin' && !roles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

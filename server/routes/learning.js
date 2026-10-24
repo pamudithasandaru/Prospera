@@ -13,7 +13,7 @@ const COURSE_INCLUDE = {
 };
 
 /** Course authoring stays restricted to the `expert` role, as before. */
-const canAuthor = (user) => user.role === 'expert';
+const canAuthor = (user) => user.role === 'expert' || user.role === 'admin';
 
 /** Maps the client's {title,url,...} arrays onto ordered child rows. */
 const toVideoRows = (videos) =>
@@ -134,7 +134,7 @@ router.put('/courses/:id', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
     // Seeded courses have no creator and stay editable by any expert.
-    if (existing.createdById && existing.createdById !== req.user.id) {
+    if (existing.createdById && existing.createdById !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'You can only edit courses you created' });
     }
 
@@ -207,7 +207,7 @@ router.delete('/courses/:id', authenticate, async (req, res) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
-    if (existing.createdById && existing.createdById !== req.user.id) {
+    if (existing.createdById && existing.createdById !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'You can only delete courses you created' });
     }
 

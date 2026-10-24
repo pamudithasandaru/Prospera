@@ -5,7 +5,7 @@ import { CssBaseline, Box } from '@mui/material';
 import theme from './theme';
 import { neuColors } from './neumorphic';
 import ScrollReveal from './motion/ScrollReveal';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 
 // Components
@@ -63,6 +63,12 @@ import MessagesPage from './pages/messages/MessagesPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import SearchPage from './pages/search/SearchPage';
 
+// Admins have no farms of their own: send them to the all-farmers view instead of an empty "register a farm" page.
+const FarmEntry = () => {
+  const { user } = useAuth();
+  return user?.role === 'admin' ? <Navigate to="/farm/expert" replace /> : <FarmDashboard />;
+};
+
 function AppContent() {
   const location = useLocation();
   const hideNavbar = ['/login', '/register'].includes(location.pathname);
@@ -111,7 +117,7 @@ function AppContent() {
             path="/farm"
             element={
               <ProtectedRoute roles={['farmer']}>
-                <FarmDashboard />
+                <FarmEntry />
               </ProtectedRoute>
             }
           />
