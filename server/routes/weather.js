@@ -1,13 +1,33 @@
 const express = require('express');
-const { weatherData } = require('../data/weather');
+const { locations, findLocation, DEFAULT_LOCATION } = require('../data/lkLocations');
+const { getWeather } = require('../services/weatherService');
 
 const router = express.Router();
 
-// ── GET /api/weather/current ────────────────────────────────────────────────
-// Static demo forecast — see server/data/weather.js.
-router.get('/current', (req, res) => {
-  const location = req.query.location || 'Colombo';
-  return res.json({ success: true, data: { location, ...weatherData } });
+const names = locations.map((l) => l.name);
+
+// ── GET /api/weather/locations ──────────────────────────────────────────────
+router.get('/locations', (req, res) => {
+  res.json({ success: true, data: names, default: DEFAULT_LOCATION });
+});
+
+// ── GET /api/weather/current?district=Kandy ─────────────────────────────────
+// Live data from Open-Meteo (cached 15 min). `location` is accepted as an alias.
+// Only known district names are accepted — no arbitrary coordinates.
+router.get('/current', async (req, res) => {
+  const requested = req.query.district || req.query.location || DEFAULT_LOCATION;
+  const loc = findLocation(requested);
+  if (!loc) {
+    return res.status(400).json({ success: false, message: `Unknown district "${String(requested).slice(0, 40)}"`, locations: names });
+  }
+
+  try {
+    const data = await getWeather(loc);
+    return res.json({ success: true, data: { ...data, locations: names } });
+  } catch (err) {
+    console.error(`Weather fetch failed for ${loc.name}:`, err.message);
+    return res.status(503).json({ success: false, message: 'Weather data is temporarily unavailable. Please try again shortly.' });
+  }
 });
 
 module.exports = router;
