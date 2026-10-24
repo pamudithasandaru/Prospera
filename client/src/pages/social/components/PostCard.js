@@ -89,11 +89,13 @@ const PostCard = ({
 
   return (
     <Paper 
+      id={`post-${post._id}`}
       elevation={0} 
       sx={{ 
         p: 3, 
         mb: 2,
         ...neuRaised('md'),
+        transition: 'outline 0.3s ease',
       }}
     >
       {/* Post Header */}
