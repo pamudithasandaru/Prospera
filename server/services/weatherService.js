@@ -138,8 +138,26 @@ const buildInsights = (current, forecast) => {
 };
 
 // ── Open-Meteo call ─────────────────────────────────────────────────────────
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** One retry after a short pause: shared hosting IPs occasionally get a transient failure or a 429. */
+const getWithRetry = async (config, attempts = 2) => {
+  let lastErr;
+  for (let i = 1; i <= attempts; i += 1) {
+    try {
+      return await axios.get(OPEN_METEO_URL, config);
+    } catch (err) {
+      lastErr = err;
+      const why = err.response ? `HTTP ${err.response.status}` : err.code || err.message;
+      console.warn(`Open-Meteo attempt ${i}/${attempts} failed (${why})`);
+      if (i < attempts) await sleep(700);
+    }
+  }
+  throw lastErr;
+};
+
 const fetchFromProvider = async (loc) => {
-  const { data } = await axios.get(OPEN_METEO_URL, {
+  const { data } = await getWithRetry({
     timeout: REQUEST_TIMEOUT_MS,
     params: {
       latitude: loc.lat,
