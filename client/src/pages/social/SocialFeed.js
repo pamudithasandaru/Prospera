@@ -192,22 +192,66 @@ const SocialFeed = () => {
     });
   };
 
+  useEffect(() => {
+    const postParam = new URLSearchParams(window.location.search).get('post');
+    if (postParam && !loading && posts.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`post-${postParam}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.outline = '2px solid #1B5E20';
+          setTimeout(() => {
+            el.style.outline = 'none';
+          }, 3500);
+        }
+      }, 450);
+    }
+  }, [loading, posts]);
+
   const handleSharePost = async (postId) => {
     const url = `${window.location.origin}/social?post=${postId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const el = document.createElement('textarea');
-      el.value = url;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy'); // eslint-disable-line
-      el.remove();
+    let shared = false;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Prospera Agricultural Community',
+          text: 'Check out this agricultural update on Prospera:',
+          url,
+        });
+        shared = true;
+      } catch (err) {
+        // User cancelled share
+      }
     }
+
+    if (!shared) {
+      try {
+        await navigator.clipboard.writeText(url);
+        setSnackbar({
+          open: true,
+          message: 'Post link copied to clipboard! Share it with fellow farmers.',
+          severity: 'success',
+        });
+      } catch {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy'); // eslint-disable-line
+        el.remove();
+        setSnackbar({
+          open: true,
+          message: 'Post link copied to clipboard!',
+          severity: 'success',
+        });
+      }
+    }
+
     // Increment share count locally
-    setPosts(posts.map(p =>
-      p._id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p
-    ));
+    setPosts((prev) =>
+      prev.map((p) => (p._id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p))
+    );
   };
 
   const handleToggleSave = (postId) => {
