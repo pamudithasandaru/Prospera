@@ -9,7 +9,11 @@ import {
   Alert,
   Box,
   Chip,
+  TextField,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import { Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -54,6 +58,7 @@ const SocialFeed = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tag') ? params.get('tag').replace(/^#/, '') : null;
   });
+  const [searchQuery, setSearchQuery] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -328,15 +333,35 @@ const SocialFeed = () => {
   }, [posts, tab, connectionIds, user?._id, savedPostIds]);
 
   const visiblePosts = useMemo(() => {
-    if (!selectedTag) return tabPosts;
-    const norm = selectedTag.toLowerCase().replace(/^#/, '');
-    return tabPosts.filter((post) => {
-      const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
-      const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
-      const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
-      return inTags || inCat || text.toLowerCase().includes(norm);
-    });
-  }, [tabPosts, selectedTag]);
+    let result = tabPosts;
+    if (selectedTag) {
+      const norm = selectedTag.toLowerCase().replace(/^#/, '');
+      result = result.filter((post) => {
+        const inTags = (post.tags || []).some((t) => t.toLowerCase().replace(/^#/, '') === norm);
+        const inCat = post.category && post.category.toLowerCase().replace('-', ' ') === norm.replace('-', ' ');
+        const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
+        return inTags || inCat || text.toLowerCase().includes(norm);
+      });
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((post) => {
+        const text = typeof post.content === 'string' ? post.content : (post.content?.text || '');
+        const authorName = post.author?.name || post.user?.name || '';
+        const title = post.title || post.articleTitle || '';
+        const inTags = (post.tags || []).some((t) => t.toLowerCase().includes(q));
+        const inCat = post.category && post.category.toLowerCase().includes(q);
+        return (
+          text.toLowerCase().includes(q) ||
+          authorName.toLowerCase().includes(q) ||
+          title.toLowerCase().includes(q) ||
+          inTags ||
+          inCat
+        );
+      });
+    }
+    return result;
+  }, [tabPosts, selectedTag, searchQuery]);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -361,6 +386,38 @@ const SocialFeed = () => {
             setPostType={setPostType}
           />
 
+          {/* Quick Search Bar */}
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search posts by keyword, crop, topic, or farmer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchQuery('')} edge="end">
+                      <ClearIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+                sx: {
+                  borderRadius: 3,
+                  backgroundColor: '#ffffff',
+                  boxShadow: 'inset 2px 2px 5px rgba(163,177,198,0.3), inset -2px -2px 5px rgba(255,255,255,0.7)',
+                  '& fieldset': { border: 'none' },
+                  fontSize: '0.88rem',
+                },
+              }}
+            />
+          </Box>
+
           {/* Feed Tabs */}
           <FeedTabs 
             value={tab} 
@@ -368,8 +425,8 @@ const SocialFeed = () => {
             savedCount={savedPostIds.length}
           />
 
-          {/* Active Tag Filter Banner */}
-          {selectedTag && (
+          {/* Active Tag & Search Filter Banner */}
+          {(selectedTag || searchQuery) && (
             <Paper
               elevation={0}
               sx={{
@@ -381,15 +438,30 @@ const SocialFeed = () => {
                 backgroundColor: 'rgba(27, 94, 32, 0.08)',
                 border: '1px solid rgba(27, 94, 32, 0.25)',
                 borderRadius: 2.5,
+                flexWrap: 'wrap',
+                gap: 1,
               }}
             >
-              <Box display="flex" alignItems="center" gap={1}>
-                <Chip
-                  label={`#${selectedTag}`}
-                  color="primary"
-                  size="small"
-                  sx={{ fontWeight: 'bold' }}
-                />
+              <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                {selectedTag && (
+                  <Chip
+                    label={`#${selectedTag}`}
+                    color="primary"
+                    size="small"
+                    onDelete={() => setSelectedTag(null)}
+                    sx={{ fontWeight: 'bold' }}
+                  />
+                )}
+                {searchQuery && (
+                  <Chip
+                    label={`Search: "${searchQuery}"`}
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    onDelete={() => setSearchQuery('')}
+                    sx={{ fontWeight: 'bold' }}
+                  />
+                )}
                 <Typography variant="body2" color="text.secondary">
                   Showing {visiblePosts.length} post{visiblePosts.length !== 1 ? 's' : ''}
                 </Typography>
@@ -397,10 +469,13 @@ const SocialFeed = () => {
               <Button
                 size="small"
                 color="inherit"
-                onClick={() => setSelectedTag(null)}
+                onClick={() => {
+                  setSelectedTag(null);
+                  setSearchQuery('');
+                }}
                 sx={{ textTransform: 'none', fontSize: '0.8rem', fontWeight: 600 }}
               >
-                Clear Filter ✕
+                Clear Filters ✕
               </Button>
             </Paper>
           )}
@@ -428,11 +503,13 @@ const SocialFeed = () => {
                   ? 'No success stories shared yet'
                   : tab === 5
                   ? 'No saved bookmarks yet'
+                  : searchQuery
+                  ? `No posts matching "${searchQuery}"`
                   : selectedTag
                   ? `No posts tagged #${selectedTag}`
                   : 'Welcome to Prospera Community!'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460, mx: 'auto', mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460, mx: 'auto', mb: searchQuery ? 1.5 : 3 }}>
                 {tab === 1 
                   ? 'Connect with fellow farmers to see their updates and farming tips in this tab.'
                   : tab === 3
@@ -441,8 +518,22 @@ const SocialFeed = () => {
                   ? 'Share your harvest milestone, awards, or agricultural achievements!'
                   : tab === 5
                   ? 'Tap the bookmark icon on any post in the feed to save it for quick reference here.'
+                  : searchQuery
+                  ? 'Try searching with different terms or clear the search to view all community posts.'
                   : 'Start a conversation with thousands of farmers and agricultural specialists across the country:'}
               </Typography>
+
+              {searchQuery && (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={() => setSearchQuery('')}
+                  sx={{ textTransform: 'none', mb: 3, borderRadius: 2 }}
+                >
+                  Clear Search Filter
+                </Button>
+              )}
 
               {/* Starter Prompt Templates */}
               <Box mb={3} textAlign="left">
