@@ -213,7 +213,10 @@ const SocialFeed = () => {
       <Grid container spacing={3}>
         {/* Left Sidebar - Professional Profile */}
         <Grid item xs={12} md={3}>
-          <ProfileSidebar user={user} />
+          <ProfileSidebar 
+            user={user} 
+            onViewProfile={(author) => setProfileModalUser(author)} 
+          />
         </Grid>
 
         {/* Main Feed */}
