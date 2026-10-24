@@ -165,6 +165,33 @@ router.put('/password', authenticate, async (req, res) => {
   }
 });
 
+// ── GET /api/auth/stats ──────────────────────────────────────────────────────
+// Dashboard counters, computed from the user's own rows.
+router.get('/stats', authenticate, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const [landAgg, activeCrops, coursesCompleted, postsCount] = await Promise.all([
+      prisma.farm.aggregate({ where: { ownerId: userId }, _sum: { landSize: true } }),
+      prisma.farmCrop.count({ where: { farm: { ownerId: userId }, status: 'growing' } }),
+      prisma.courseEnrolment.count({ where: { userId, progress: { gte: 100 } } }),
+      prisma.socialPost.count({ where: { authorId: userId } }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        acresFarming: Number(landAgg._sum.landSize ?? 0),
+        activeCrops,
+        coursesCompleted,
+        postsCount,
+      },
+    });
+  } catch (err) {
+    console.error('Dashboard stats error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
+
 // ── GET /api/auth/user/:id ───────────────────────────────────────────────────
 router.get('/user/:id', async (req, res) => {
   try {
