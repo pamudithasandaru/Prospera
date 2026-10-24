@@ -36,6 +36,7 @@ const PostCard = ({
   onCommentChange,
   onAddComment,
   onViewProfile,
+  onTagClick,
 }) => {
   // Resolve post author — supports both post.user and post.author shapes
   const postUser = resolvePostUser(post);
@@ -96,7 +97,16 @@ const PostCard = ({
             <Chip 
               label={post.category.replace('-', ' ')} 
               size="small" 
-              sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
+              onClick={() => onTagClick && onTagClick(post.category)}
+              sx={{ 
+                mt: 0.5, 
+                height: 22, 
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                cursor: onTagClick ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                '&:hover': onTagClick ? { backgroundColor: 'primary.main', color: '#fff' } : {},
+              }}
             />
           )}
         </Box>
@@ -139,12 +149,18 @@ const PostCard = ({
           {post.tags.map((tag, index) => (
             <Chip 
               key={`tag-${post._id}-${index}`}
-              label={`#${tag}`} 
+              label={`#${tag.replace(/^#/, '')}`} 
               size="small" 
               variant="outlined"
+              color="primary"
+              onClick={() => onTagClick && onTagClick(tag.replace(/^#/, ''))}
               sx={{ 
-                borderRadius: 1,
-                cursor: 'pointer',
+                borderRadius: 2,
+                cursor: onTagClick ? 'pointer' : 'default',
+                fontWeight: 500,
+                fontSize: '0.75rem',
+                transition: 'all 0.2s ease',
+                '&:hover': onTagClick ? { backgroundColor: 'primary.main', color: '#fff' } : {},
               }}
             />
           ))}
