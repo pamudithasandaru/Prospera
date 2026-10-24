@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Paper,
   Typography,
@@ -18,6 +18,8 @@ import {
   BookmarkBorder,
   ChatBubbleOutline,
   Verified,
+  MenuBook,
+  HelpOutline,
 } from '@mui/icons-material';
 import CommentSection from './CommentSection';
 import { resolvePostUser } from '../../../utils/avatarUtils';
@@ -41,10 +43,31 @@ const PostCard = ({
   isSaved,
   onToggleSave,
 }) => {
+  const [expandedArticle, setExpandedArticle] = useState(false);
   // Resolve post author — supports both post.user and post.author shapes
   const postUser = resolvePostUser(post);
   const content = typeof post.content === 'string' ? post.content : post.content?.text || '';
   const images = post.content?.images || post.images || [];
+
+  const isArticle = post.type === 'article' || content.startsWith('# ');
+  let articleHeadline = null;
+  let bodyContent = content;
+
+  if (content.startsWith('# ')) {
+    const firstNewline = content.indexOf('\n');
+    if (firstNewline !== -1) {
+      articleHeadline = content.slice(2, firstNewline).trim();
+      bodyContent = content.slice(firstNewline + 1).trim();
+    } else {
+      articleHeadline = content.slice(2).trim();
+      bodyContent = '';
+    }
+  }
+
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  const readMinutes = Math.max(1, Math.round(wordCount / 180));
+  const isLong = bodyContent.length > 360;
+  const displayedContent = isLong && !expandedArticle ? `${bodyContent.slice(0, 360)}...` : bodyContent;
   
   return (
     <Paper 
@@ -96,27 +119,76 @@ const PostCard = ({
               year: 'numeric'
             })}
           </Typography>
-          {post.category && post.category !== 'general' && (
-            <Chip 
-              label={post.category.replace('-', ' ')} 
-              size="small" 
-              onClick={() => onTagClick && onTagClick(post.category)}
-              sx={{ 
-                mt: 0.5, 
-                height: 22, 
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                cursor: onTagClick ? 'pointer' : 'default',
-                transition: 'all 0.2s ease',
-                '&:hover': onTagClick ? { backgroundColor: 'primary.main', color: '#fff' } : {},
-              }}
-            />
-          )}
+          <Box display="flex" gap={0.8} alignItems="center" mt={0.5} flexWrap="wrap">
+            {post.category && post.category !== 'general' && (
+              <Chip 
+                label={post.category.replace('-', ' ')} 
+                size="small" 
+                onClick={() => onTagClick && onTagClick(post.category)}
+                sx={{ 
+                  height: 22, 
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: onTagClick ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                  '&:hover': onTagClick ? { backgroundColor: 'primary.main', color: '#fff' } : {},
+                }}
+              />
+            )}
+            {post.type === 'question' && (
+              <Chip
+                icon={<HelpOutline sx={{ fontSize: 13 }} />}
+                label="Question"
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(142, 36, 170, 0.12)',
+                  color: '#8E24AA',
+                  fontWeight: 700,
+                  height: 22,
+                  fontSize: '0.7rem',
+                }}
+              />
+            )}
+            {post.type === 'success-story' && (
+              <Chip
+                label="🌾 Success Story"
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(46, 125, 50, 0.12)',
+                  color: '#2E7D32',
+                  fontWeight: 700,
+                  height: 22,
+                  fontSize: '0.7rem',
+                }}
+              />
+            )}
+            {isArticle && (
+              <Chip
+                icon={<MenuBook sx={{ fontSize: 13 }} />}
+                label={`${readMinutes} min read`}
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(251, 140, 0, 0.12)',
+                  color: '#FB8C00',
+                  fontWeight: 700,
+                  height: 22,
+                  fontSize: '0.7rem',
+                }}
+              />
+            )}
+          </Box>
         </Box>
         <IconButton size="small" onClick={onPostMenu}>
           <MoreVert />
         </IconButton>
       </Box>
+
+      {/* Post Article Title if present */}
+      {articleHeadline && (
+        <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: 'text.primary', lineHeight: 1.3 }}>
+          {articleHeadline}
+        </Typography>
+      )}
 
       {/* Post Content */}
       <Typography 
@@ -124,11 +196,22 @@ const PostCard = ({
         paragraph 
         sx={{ 
           whiteSpace: 'pre-wrap',
-          lineHeight: 1.6,
+          lineHeight: 1.65,
         }}
       >
-        {content}
+        {displayedContent}
       </Typography>
+
+      {isLong && (
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setExpandedArticle((prev) => !prev)}
+          sx={{ textTransform: 'none', fontWeight: 600, mt: -1.5, mb: 1.5, p: 0, color: 'primary.main' }}
+        >
+          {expandedArticle ? 'Show Less ▴' : 'Read Full Post ▾'}
+        </Button>
+      )}
 
       {/* Post Images */}
       {images.length > 0 && (
