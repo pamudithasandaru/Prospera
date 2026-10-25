@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box, Container, Paper, Typography, Avatar, Button, IconButton, Tab, Tabs,
   Grid, Divider, TextField, Chip, CircularProgress,
@@ -114,7 +115,22 @@ const GroupCard = ({ group }) => (
 ───────────────────────────────────────────── */
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
-  const [tab, setTab] = useState(0);
+  const location = useLocation();
+
+  const getTabFromSearch = (search) => {
+    const p = new URLSearchParams(search).get('tab');
+    if (p === 'connections' || p === 'network') return 1;
+    if (p === 'groups') return 2;
+    if (p === 'settings') return 3;
+    return 0;
+  };
+
+  const [tab, setTab] = useState(() => getTabFromSearch(location.search));
+
+  useEffect(() => {
+    setTab(getTabFromSearch(location.search));
+  }, [location.search]);
+
   const [posts, setPosts] = useState([]);
   const [connections, setConnections] = useState([]);
   const [groups, setGroups] = useState([]);

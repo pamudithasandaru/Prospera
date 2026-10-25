@@ -7,3 +7,4 @@ export { default as TrendingSidebar } from './TrendingSidebar';
 export { default as CreatePostDialog } from './CreatePostDialog';
 export { default as PostMenu } from './PostMenu';
 export { default as FeedTabs } from './FeedTabs';
+export { default as FarmerProfileModal } from './FarmerProfileModal';

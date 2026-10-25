@@ -10,7 +10,6 @@ import {
   Avatar,
   Typography,
   IconButton,
-  LinearProgress,
   alpha,
 } from '@mui/material';
 import {
@@ -153,6 +152,26 @@ const StoryViewer = ({ open, onClose, storyGroups, initialGroupIndex, currentUse
         onTouchStart={handlePause}
         onTouchEnd={handleResume}
       >
+        {/* Paused indicator */}
+        {paused && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 65,
+              right: 16,
+              bgcolor: 'rgba(0,0,0,0.6)',
+              px: 1.2,
+              py: 0.4,
+              borderRadius: 2,
+              zIndex: 10,
+            }}
+          >
+            <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
+              Paused
+            </Typography>
+          </Box>
+        )}
+
         {/* Story Media */}
         {currentStory.mediaType === 'image' && (
           <Box
