@@ -19,6 +19,19 @@ import StoryViewer from './StoryViewer';
 import CreateStoryDialog from './CreateStoryDialog';
 import { resolveAvatar } from '../../../utils/avatarUtils';
 import { neuRaised, raised, neuColors } from '../../../neumorphic';
+import { MOCK_FARMERS } from '../mockData';
+
+const MOCK_STORY_GROUPS = MOCK_FARMERS.map((f, i) => ({
+  author: f,
+  stories: [{
+    _id: `story_${f._id}`,
+    content: { text: ['Just finished planting this season\'s paddy crop! 🌾', 'Cinnamon harvest is on! Amazing aroma this year ☕', 'Field inspection done — crops looking healthy! 🌱', 'New IoT sensors installed across the farm 📱', 'Tea flush season is here! First pick tomorrow ✨'][i] },
+    type: 'text',
+    createdAt: new Date(Date.now() - i * 3600000 * 2),
+    expiresAt: new Date(Date.now() + 86400000),
+  }],
+  viewed: i > 2,
+}));
 
 const STORY_RING = {
   unviewed: 'linear-gradient(135deg, #4CAF50, #1B5E20)',
@@ -38,10 +51,11 @@ const StoriesBar = () => {
   const fetchStories = async () => {
     try {
       const res = await api.get('/stories');
-      setStoryGroups(res.data.data || []);
+      const fetched = res.data.data || [];
+      setStoryGroups(fetched.length > 0 ? fetched : MOCK_STORY_GROUPS);
     } catch (err) {
-      console.error('Stories fetch error:', err);
-      setStoryGroups([]);
+      console.warn('Stories API unavailable, using mock:', err.message);
+      setStoryGroups(MOCK_STORY_GROUPS);
     } finally {
       setLoading(false);
     }

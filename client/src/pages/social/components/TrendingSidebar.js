@@ -28,6 +28,7 @@ import {
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { neuRaised, neuInteractive } from '../../../neumorphic';
+import { MOCK_FARMERS, MOCK_GROUPS, MOCK_TRENDING_TOPICS } from '../mockData';
 
 const SkeletonRows = ({ count, height }) =>
   Array.from({ length: count }).map((_, i) => (
@@ -122,18 +123,19 @@ const TrendingSidebar = ({ onSelectTag, onViewProfile }) => {
 
   useEffect(() => {
     api.get('/social/groups')
-      .then((res) => setGroups(res.data.data || []))
-      .catch(() => setGroups([]))
+      .then((res) => setGroups(res.data.data?.length > 0 ? res.data.data : MOCK_GROUPS))
+      .catch(() => setGroups(MOCK_GROUPS))
       .finally(() => setLoadingGroups(false));
 
     // ── People You May Know — mutual-connections algorithm ──────────────────
-    // Call the /suggestions endpoint which scores & sorts users by shared
-    // connections, excludes already-connected and pending-request users,
-    // and returns the top 10.
     api.get('/social/suggestions')
       .then(async (res) => {
         const fetchedUsers = res.data.data || [];
-        // Fetch connection status for each suggested user
+        if (fetchedUsers.length === 0) {
+          setFarmers(MOCK_FARMERS);
+          setLoadingFarmers(false);
+          return;
+        }
         const statuses = {};
         await Promise.allSettled(
           fetchedUsers.map(async (f) => {
@@ -146,15 +148,19 @@ const TrendingSidebar = ({ onSelectTag, onViewProfile }) => {
           })
         );
         setConnectionStatus(statuses);
-        // Filter out already-connected (double-safety)
         setFarmers(fetchedUsers.filter((f) => statuses[f._id] !== 'connected'));
       })
-      .catch(() => setFarmers([]))
+      .catch(() => setFarmers(MOCK_FARMERS))
       .finally(() => setLoadingFarmers(false));
 
     api.get('/social/posts')
       .then((res) => {
         const posts = res.data.data || [];
+        if (posts.length === 0) {
+          setTrendingTopics(MOCK_TRENDING_TOPICS);
+          setLoadingTopics(false);
+          return;
+        }
         const counts = {};
         const addCount = (key) => { counts[key] = (counts[key] || 0) + 1; };
         posts.forEach((p) => {
@@ -163,14 +169,14 @@ const TrendingSidebar = ({ onSelectTag, onViewProfile }) => {
         });
         const sorted = Object.entries(counts)
           .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
+          .slice(0, 6)
           .map(([tag, count]) => ({
             tag: tag.startsWith('#') ? tag : '#' + tag.replaceAll('-', ''),
             posts: count === 1 ? '1 post' : count + ' posts',
           }));
-        setTrendingTopics(sorted);
+        setTrendingTopics(sorted.length > 0 ? sorted : MOCK_TRENDING_TOPICS);
       })
-      .catch(() => setTrendingTopics([]))
+      .catch(() => setTrendingTopics(MOCK_TRENDING_TOPICS))
       .finally(() => setLoadingTopics(false));
 
     fetchNotifications();
