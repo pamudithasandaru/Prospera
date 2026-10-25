@@ -11,6 +11,8 @@
  */
 
 /** Prisma returns Decimal instances; JSON.stringify would emit them as objects. */
+const { youtubeId } = require('./courseHelpers');
+
 const num = (v) => (v === null || v === undefined ? v : Number(v));
 
 const iso = (d) => (d instanceof Date ? d : d ? new Date(d) : null);
@@ -263,10 +265,10 @@ function serializeCourse(c) {
     instructor: { name: c.instructorName },
     enrolledStudents: c.enrolledStudents,
     videos: (c.videos || []).map((v) => ({
-      _id: v.id, title: v.title, url: v.url, duration: v.duration,
+      _id: v.id, title: v.title, url: v.url, videoId: youtubeId(v.url), duration: v.duration,
     })),
     materials: (c.materials || []).map((m) => ({
-      _id: m.id, title: m.title, url: m.url, type: m.type,
+      _id: m.id, title: m.title, url: m.url, type: m.type, format: m.type || '',
     })),
     createdBy: c.createdById,
     createdByName: c.createdBy?.name || c.instructorName,

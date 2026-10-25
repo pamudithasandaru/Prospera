@@ -506,12 +506,8 @@ const CoursePage = () => {
                               size="small"
                               variant="outlined"
                               startIcon={<FileDownload />}
-                              onClick={() =>
-                                window.open(
-                                  'https://example.com/download',
-                                  '_blank'
-                                )
-                              }
+                              disabled={!material.url}
+                              onClick={() => window.open(material.url, '_blank', 'noopener,noreferrer')}
                             >
                               Download
                             </Button>
@@ -525,7 +521,7 @@ const CoursePage = () => {
                           </ListItemIcon>
                           <ListItemText
                             primary={material.title}
-                            secondary={`${material.format} • ${material.size}`}
+                            secondary={material.format || 'File'}
                             primaryTypographyProps={{
                               fontWeight: 600,
                               variant: 'subtitle2',

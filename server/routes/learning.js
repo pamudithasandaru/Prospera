@@ -2,6 +2,7 @@ const express = require('express');
 const { prisma } = require('../services/prisma');
 const { authenticate } = require('../middleware/auth');
 const { serializeCourse } = require('../services/serializers');
+const { normalizeVideos, normalizeMaterials } = require('../services/courseHelpers');
 
 const router = express.Router();
 
@@ -15,22 +16,6 @@ const COURSE_INCLUDE = {
 /** Course authoring stays restricted to the `expert` role, as before. */
 const canAuthor = (user) => user.role === 'expert' || user.role === 'admin';
 
-/** Maps the client's {title,url,...} arrays onto ordered child rows. */
-const toVideoRows = (videos) =>
-  videos.map((v, i) => ({
-    title: v.title || `Video ${i + 1}`,
-    url: v.url || '',
-    duration: v.duration != null ? Number(v.duration) : null,
-    position: i,
-  }));
-
-const toMaterialRows = (materials) =>
-  materials.map((m, i) => ({
-    title: m.title || `Material ${i + 1}`,
-    url: m.url || '',
-    type: m.type || null,
-    position: i,
-  }));
 
 // ── GET /api/learning/courses ───────────────────────────────────────────────
 router.get('/courses', async (req, res) => {
@@ -85,6 +70,11 @@ router.post('/courses', authenticate, async (req, res) => {
     return res.status(400).json({ success: false, message: 'Duration must be a positive number' });
   }
 
+  const vids = normalizeVideos(videos);
+  if (vids.error) return res.status(400).json({ success: false, message: vids.error });
+  const mats = normalizeMaterials(materials);
+  if (mats.error) return res.status(400).json({ success: false, message: mats.error });
+
   try {
     const course = await prisma.course.create({
       data: {
@@ -96,12 +86,8 @@ router.post('/courses', authenticate, async (req, res) => {
         thumbnail: thumbnail || null,
         instructorName: req.user.name,
         createdById: req.user.id,
-        ...(Array.isArray(videos) && videos.length
-          ? { videos: { create: toVideoRows(videos) } }
-          : {}),
-        ...(Array.isArray(materials) && materials.length
-          ? { materials: { create: toMaterialRows(materials) } }
-          : {}),
+        ...(vids.rows.length ? { videos: { create: vids.rows } } : {}),
+        ...(mats.rows.length ? { materials: { create: mats.rows } } : {}),
       },
       include: COURSE_INCLUDE,
     });
@@ -159,24 +145,34 @@ router.put('/courses/:id', authenticate, async (req, res) => {
     }
     if (thumbnail !== undefined) data.thumbnail = thumbnail;
 
+    // Validate children up front; when an array is sent it replaces the existing rows.
+    let videoRows = null;
+    let materialRows = null;
+    if (Array.isArray(videos)) {
+      const r = normalizeVideos(videos);
+      if (r.error) return res.status(400).json({ success: false, message: r.error });
+      videoRows = r.rows;
+    }
+    if (Array.isArray(materials)) {
+      const r = normalizeMaterials(materials);
+      if (r.error) return res.status(400).json({ success: false, message: r.error });
+      materialRows = r.rows;
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       if (Object.keys(data).length) {
         await tx.course.update({ where: { id: courseId }, data });
       }
-      if (Array.isArray(videos)) {
+      if (videoRows) {
         await tx.courseVideo.deleteMany({ where: { courseId } });
-        if (videos.length) {
-          await tx.courseVideo.createMany({
-            data: toVideoRows(videos).map((v) => ({ ...v, courseId })),
-          });
+        if (videoRows.length) {
+          await tx.courseVideo.createMany({ data: videoRows.map((v) => ({ ...v, courseId })) });
         }
       }
-      if (Array.isArray(materials)) {
+      if (materialRows) {
         await tx.courseMaterial.deleteMany({ where: { courseId } });
-        if (materials.length) {
-          await tx.courseMaterial.createMany({
-            data: toMaterialRows(materials).map((m) => ({ ...m, courseId })),
-          });
+        if (materialRows.length) {
+          await tx.courseMaterial.createMany({ data: materialRows.map((m) => ({ ...m, courseId })) });
         }
       }
       return tx.course.findUnique({ where: { id: courseId }, include: COURSE_INCLUDE });
