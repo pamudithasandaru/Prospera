@@ -19,11 +19,13 @@ import {
   Message,
 } from '@mui/icons-material';
 import api from '../../../services/api';
-import { neuInset, neuRaised } from '../../../neumorphic';
+import { neuRaised } from '../../../neumorphic';
 
-const ProfileSidebar = ({ user }) => {
+const ProfileSidebar = ({ user, onViewProfile }) => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
+  const [impressions] = useState(() => Math.floor(Math.random() * 300) + 200);
+  const [profileViews] = useState(() => Math.floor(Math.random() * 80) + 40);
 
   useEffect(() => {
     api.get('/social/connections')
@@ -31,8 +33,7 @@ const ProfileSidebar = ({ user }) => {
       .catch(() => setConnections([]));
   }, []);
 
-  // Build a display list of recent connected users (need their names, but connections only store IDs)
-  const connectionCount = connections.length;
+  const connectionCount = user?.connectionCount ?? connections.length;
 
   return (
     <>
@@ -46,10 +47,19 @@ const ProfileSidebar = ({ user }) => {
       >
         {/* Cover Image */}
         <Box
+          onClick={() => navigate('/profile')}
           sx={{
-            height: 80,
-            ...neuInset('md'),
-            borderRadius: 0,
+            height: 90,
+            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 40%, #388E3C 70%, #4CAF50 100%)',
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.06\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'4\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat',
+            },
           }}
         />
         
@@ -57,18 +67,33 @@ const ProfileSidebar = ({ user }) => {
         <Box sx={{ px: 2, pb: 2, mt: -5 }}>
           <Avatar
             src={resolveAvatar(user)}
+            onClick={() => navigate('/profile')}
             sx={{ 
               width: 80, 
               height: 80, 
               ...neuRaised('sm'),
               mb: 1,
+              cursor: 'pointer',
+              transition: 'transform 0.2s ease',
+              '&:hover': { transform: 'scale(1.05)' },
             }}
           >
             {user?.name?.charAt(0)}
           </Avatar>
           
-          <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-            <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.1rem' }}>
+          <Box 
+            display="flex" 
+            alignItems="center" 
+            gap={0.5} 
+            mb={0.5}
+            onClick={() => navigate('/profile')}
+            sx={{
+              cursor: 'pointer',
+              width: 'fit-content',
+              '&:hover .profile-name': { color: 'primary.main', textDecoration: 'underline' },
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" className="profile-name" sx={{ fontSize: '1.1rem', transition: 'color 0.2s' }}>
               {user?.name}
             </Typography>
             {user?.profile?.verificationBadge && (
@@ -77,26 +102,38 @@ const ProfileSidebar = ({ user }) => {
           </Box>
           
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {user?.role === 'farmer' ? 'Farmer' : user?.role}
+            {user?.role === 'farmer' ? '🌾 Farmer' : user?.role === 'expert' ? '👨‍🔬 Agricultural Expert' : user?.role || '🌱 Community Member'}
             {user?.profile?.location?.district && ` • ${user.profile.location.district}`}
           </Typography>
           
-          {user?.profile?.bio && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-              {user.profile.bio}
-            </Typography>
-          )}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, lineHeight: 1.5 }}>
+            {user?.profile?.bio || 'Farming enthusiast and Prospera community member. Update your profile to share your farming story! ✏️'}
+          </Typography>
           
           <Divider sx={{ my: 1.5 }} />
           
           {/* Profile Stats */}
           <Box sx={{ py: 1 }}>
-            <Box display="flex" justifyContent="space-between" mb={1}>
+            <Box 
+              display="flex" 
+              justifyContent="space-between" 
+              mb={1}
+              onClick={() => navigate('/profile?tab=connections')}
+              sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+            >
               <Typography variant="caption" color="text.secondary">
                 Connections
               </Typography>
               <Typography variant="caption" fontWeight="bold" color="primary">
-                {user?.connectionCount ?? connectionCount}
+                {connectionCount || '0'}
+              </Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography variant="caption" color="text.secondary">
+                Profile Views (week)
+              </Typography>
+              <Typography variant="caption" fontWeight="bold" color="primary">
+                {profileViews}
               </Typography>
             </Box>
             <Box display="flex" justifyContent="space-between">
@@ -104,7 +141,7 @@ const ProfileSidebar = ({ user }) => {
                 Post Impressions
               </Typography>
               <Typography variant="caption" fontWeight="bold" color="primary">
-                {Math.floor(Math.random() * 500) + 100}
+                {impressions}
               </Typography>
             </Box>
           </Box>
@@ -123,7 +160,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<People />} 
-          onClick={() => navigate('/social')}
+          onClick={() => navigate('/profile?tab=connections')}
           sx={{ 
             justifyContent: 'flex-start', 
             mb: 1,
@@ -136,7 +173,7 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<Groups />} 
-          onClick={() => navigate('/social')}
+          onClick={() => navigate('/profile?tab=groups')}
           sx={{ 
             justifyContent: 'flex-start', 
             mb: 1,
@@ -175,13 +212,13 @@ const ProfileSidebar = ({ user }) => {
           fullWidth 
           variant="text" 
           startIcon={<Event />} 
-          onClick={() => navigate('/learning')}
+          onClick={() => navigate('/farm/expert')}
           sx={{ 
             justifyContent: 'flex-start',
             color: 'text.primary',
           }}
         >
-          Expert Sessions
+          Expert Consultations
         </Button>
       </Paper>
 
@@ -192,7 +229,14 @@ const ProfileSidebar = ({ user }) => {
           p: 2,
         }}
       >
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+        <Box 
+          display="flex" 
+          alignItems="center" 
+          justifyContent="space-between" 
+          mb={1}
+          onClick={() => navigate('/profile?tab=connections')}
+          sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+        >
           <Typography variant="subtitle2" fontWeight="bold">
             My Connections
           </Typography>
@@ -206,18 +250,23 @@ const ProfileSidebar = ({ user }) => {
           </Typography>
         ) : (
           <Box display="flex" flexDirection="column" gap={1.5} mt={1.5}>
-            {connections.slice(0, 3).map((conn) => {
+            {connections.slice(0, 4).map((conn) => {
               const other = conn.otherUser || {};
               return (
                 <Box key={conn._id} display="flex" alignItems="center" gap={1.5}>
                   <Avatar 
                     src={resolveAvatar(other)}
-                    sx={{ width: 32, height: 32 }}
+                    onClick={() => onViewProfile ? onViewProfile(other) : navigate(`/profile?userId=${other._id}`)}
+                    sx={{ width: 34, height: 34, cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.1)' } }}
                   >
                     {other.name?.charAt(0)?.toUpperCase()}
                   </Avatar>
-                  <Box flex={1}>
-                    <Typography variant="caption" fontWeight="600" display="block">
+                  <Box 
+                    flex={1}
+                    onClick={() => onViewProfile ? onViewProfile(other) : navigate(`/profile?userId=${other._id}`)}
+                    sx={{ cursor: 'pointer', '&:hover .conn-name': { color: 'primary.main', textDecoration: 'underline' } }}
+                  >
+                    <Typography variant="caption" fontWeight="600" display="block" className="conn-name">
                       {other.name || 'Farmer'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
