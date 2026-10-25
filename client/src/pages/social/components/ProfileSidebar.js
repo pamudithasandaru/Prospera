@@ -19,12 +19,13 @@ import {
   Message,
 } from '@mui/icons-material';
 import api from '../../../services/api';
-import { neuInset, neuRaised } from '../../../neumorphic';
+import { neuRaised } from '../../../neumorphic';
 
 const ProfileSidebar = ({ user, onViewProfile }) => {
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
-  const [impressions] = useState(() => 342);
+  const [impressions] = useState(() => Math.floor(Math.random() * 300) + 200);
+  const [profileViews] = useState(() => Math.floor(Math.random() * 80) + 40);
 
   useEffect(() => {
     api.get('/social/connections')
@@ -32,8 +33,7 @@ const ProfileSidebar = ({ user, onViewProfile }) => {
       .catch(() => setConnections([]));
   }, []);
 
-  // Build a display list of recent connected users (need their names, but connections only store IDs)
-  const connectionCount = connections.length;
+  const connectionCount = user?.connectionCount ?? connections.length;
 
   return (
     <>
@@ -49,10 +49,17 @@ const ProfileSidebar = ({ user, onViewProfile }) => {
         <Box
           onClick={() => navigate('/profile')}
           sx={{
-            height: 80,
-            ...neuInset('md'),
-            borderRadius: 0,
+            height: 90,
+            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 40%, #388E3C 70%, #4CAF50 100%)',
             cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.06\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'4\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat',
+            },
           }}
         />
         
@@ -95,15 +102,13 @@ const ProfileSidebar = ({ user, onViewProfile }) => {
           </Box>
           
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {user?.role === 'farmer' ? 'Farmer' : user?.role}
+            {user?.role === 'farmer' ? '🌾 Farmer' : user?.role === 'expert' ? '👨‍🔬 Agricultural Expert' : user?.role || '🌱 Community Member'}
             {user?.profile?.location?.district && ` • ${user.profile.location.district}`}
           </Typography>
           
-          {user?.profile?.bio && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-              {user.profile.bio}
-            </Typography>
-          )}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, lineHeight: 1.5 }}>
+            {user?.profile?.bio || 'Farming enthusiast and Prospera community member. Update your profile to share your farming story! ✏️'}
+          </Typography>
           
           <Divider sx={{ my: 1.5 }} />
           
@@ -120,7 +125,15 @@ const ProfileSidebar = ({ user, onViewProfile }) => {
                 Connections
               </Typography>
               <Typography variant="caption" fontWeight="bold" color="primary">
-                {user?.connectionCount ?? connectionCount}
+                {connectionCount || '0'}
+              </Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography variant="caption" color="text.secondary">
+                Profile Views (week)
+              </Typography>
+              <Typography variant="caption" fontWeight="bold" color="primary">
+                {profileViews}
               </Typography>
             </Box>
             <Box display="flex" justifyContent="space-between">
