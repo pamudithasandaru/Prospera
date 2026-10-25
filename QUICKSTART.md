@@ -111,7 +111,8 @@ link in the navbar (`/admin`). Tabs:
 - **Overview** — platform counts, users by role, pending loans / scheme applications, restricted users, recent signups and posts.
 - **Users** — search and filter by role or status; change roles; **suspend**, **ban** or **reactivate** (with an optional reason); delete.
 - **Posts** — search and remove posts.
-- **Courses** — add, edit, delete.
+- **Courses** — add, edit, delete, including each course's **videos** (YouTube link or video ID) and **materials**
+  (title, format and a download link). Duration is in hours. Experts manage the same fields from the Learning Hub.
 - **Market** — wholesale listings: mark sellers verified, delete.
 - **Products** — marketplace catalogue: add, edit (price, stock…), delete.
 - **Schemes** — government schemes: add, edit, delete; plus an **Applications** view to approve or reject.

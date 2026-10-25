@@ -46,11 +46,13 @@ const emptyForm = {
   level: 'beginner',
   duration: '',
   thumbnail: '',
+  instructorName: '',
   videos: [],
   materials: [],
 };
 
-export default function CourseFormDialog({ open, onClose, onSave, course, saving }) {
+// showInstructor: lets an admin set the instructor's name (experts always publish under their own name).
+export default function CourseFormDialog({ open, onClose, onSave, course, saving, showInstructor = false }) {
   const isEdit = Boolean(course);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
@@ -65,8 +67,9 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
         level: course.level || 'beginner',
         duration: course.duration || '',
         thumbnail: course.thumbnail || course.image || '',
-        videos: course.videos || [],
-        materials: course.materials || [],
+        instructorName: course.instructorName || (typeof course.instructor === 'string' ? course.instructor : '') || '',
+        videos: (course.videos || []).map((v) => ({ title: v.title || '', videoId: v.videoId || v.url || '' })),
+        materials: (course.materials || []).map((m) => ({ title: m.title || '', format: m.format || m.type || 'PDF', url: m.url || '' })),
       });
     } else {
       setForm(emptyForm);
@@ -105,7 +108,7 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
   const addMaterial = () => {
     setForm((prev) => ({
       ...prev,
-      materials: [...prev.materials, { title: '', format: 'PDF', size: '' }],
+      materials: [...prev.materials, { title: '', format: 'PDF', url: '' }],
     }));
   };
 
@@ -125,19 +128,42 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
   };
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.title.trim()) return setError('Title is required');
     if (!form.description.trim()) return setError('Description is required');
+    if (showInstructor && !form.instructorName.trim()) return setError('Instructor name is required');
     if (!form.duration || Number(form.duration) <= 0) return setError('Duration must be a positive number');
+    for (const v of form.videos) {
+      if ((v.title || v.videoId) && !(v.title?.trim() && v.videoId?.trim())) {
+        return setError('Each video needs both a title and a YouTube link or video ID');
+      }
+    }
+    for (const m of form.materials) {
+      if ((m.title || m.url) && !(m.title?.trim() && m.url?.trim())) {
+        return setError('Each material needs both a title and a download link');
+      }
+    }
     setError('');
-    onSave({
-      ...form,
-      duration: Number(form.duration),
-      // Filter out empty video/material entries
-      videos: form.videos.filter((v) => v.videoId && v.title),
-      materials: form.materials.filter((m) => m.title),
-    });
+    try {
+      await onSave({
+        ...form,
+        duration: Number(form.duration),
+        // Blank rows are dropped; the server validates the links.
+        videos: form.videos.filter((v) => v.videoId && v.title).map((v) => ({ title: v.title.trim(), videoId: v.videoId.trim() })),
+        materials: form.materials
+          .filter((m) => m.title && m.url)
+          .map((m) => ({ title: m.title.trim(), format: m.format || 'PDF', url: m.url.trim() })),
+      });
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to save course');
+    }
   };
+
+  // Keep an existing category selectable even if it isn't one of the standard options.
+  const categoryOptions =
+    !form.category || CATEGORIES.some((c) => c.value === form.category)
+      ? CATEGORIES
+      : [...CATEGORIES, { value: form.category, label: form.category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }];
 
   return (
     <Dialog
@@ -178,6 +204,19 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
             />
           </Grid>
 
+          {showInstructor && (
+            <Grid item xs={12}>
+              <TextField
+                label="Instructor Name"
+                fullWidth
+                required
+                value={form.instructorName}
+                onChange={handleChange('instructorName')}
+                placeholder="Who teaches this course?"
+              />
+            </Grid>
+          )}
+
           {/* Description */}
           <Grid item xs={12}>
             <TextField
@@ -201,7 +240,7 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
               value={form.category}
               onChange={handleChange('category')}
             >
-              {CATEGORIES.map((c) => (
+              {categoryOptions.map((c) => (
                 <MenuItem key={c.value} value={c.value}>
                   {c.label}
                 </MenuItem>
@@ -294,12 +333,12 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
                     sx={{ flex: 2 }}
                   />
                   <TextField
-                    label="YouTube Video ID"
+                    label="YouTube link or video ID"
                     size="small"
                     value={video.videoId}
                     onChange={(e) => updateVideo(idx, 'videoId', e.target.value)}
-                    placeholder="e.g. dQw4w9WgXcQ"
-                    sx={{ flex: 1 }}
+                    placeholder="https://youtu.be/dQw4w9WgXcQ"
+                    sx={{ flex: 1.4 }}
                   />
                   <IconButton size="small" color="error" onClick={() => removeVideo(idx)}>
                     <Delete fontSize="small" />
@@ -363,12 +402,12 @@ export default function CourseFormDialog({ open, onClose, onSave, course, saving
                     ))}
                   </TextField>
                   <TextField
-                    label="Size"
+                    label="Download link"
                     size="small"
-                    value={mat.size || ''}
-                    onChange={(e) => updateMaterial(idx, 'size', e.target.value)}
-                    placeholder="e.g. 2.4 MB"
-                    sx={{ flex: 0.8 }}
+                    value={mat.url || ''}
+                    onChange={(e) => updateMaterial(idx, 'url', e.target.value)}
+                    placeholder="https://…/guide.pdf"
+                    sx={{ flex: 1.4 }}
                   />
                   <IconButton size="small" color="error" onClick={() => removeMaterial(idx)}>
                     <Delete fontSize="small" />

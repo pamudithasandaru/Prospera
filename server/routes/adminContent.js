@@ -8,6 +8,7 @@
 const express = require('express');
 const { prisma } = require('../services/prisma');
 const { pageParams, paginationOf, str, num, dec, isPrismaCode, searchOr } = require('../services/adminHelpers');
+const { normalizeVideos, normalizeMaterials, youtubeId } = require('../services/courseHelpers');
 
 const router = express.Router();
 
@@ -35,7 +36,15 @@ const guard = (tag, what, message, fn) => async (req, res) => {
   }
 };
 
-// ═══ Courses ═════════════════════════════════════════════════════════════════
+// ═══ Courses (with videos + materials) ═══════════════════════════════════════
+// `duration` is in HOURS, matching the Learning Hub.
+
+const COURSE_COUNTS = { _count: { select: { enrolments: true, videos: true, materials: true } } };
+const COURSE_FULL = {
+  ...COURSE_COUNTS,
+  videos: { orderBy: { position: 'asc' } },
+  materials: { orderBy: { position: 'asc' } },
+};
 
 const serializeCourse = (c) => ({
   _id: c.id,
@@ -47,7 +56,19 @@ const serializeCourse = (c) => ({
   thumbnail: c.thumbnail || '',
   instructorName: c.instructorName,
   enrolledStudents: c._count?.enrolments ?? c.enrolledStudents,
+  videosCount: c._count?.videos ?? (c.videos || []).length,
+  materialsCount: c._count?.materials ?? (c.materials || []).length,
   createdAt: c.createdAt,
+});
+
+const serializeCourseFull = (c) => ({
+  ...serializeCourse(c),
+  videos: (c.videos || []).map((v) => ({
+    _id: v.id, title: v.title, url: v.url, videoId: youtubeId(v.url), duration: v.duration,
+  })),
+  materials: (c.materials || []).map((m) => ({
+    _id: m.id, title: m.title, url: m.url, type: m.type, format: m.type || '',
+  })),
 });
 
 /** Validates the editable course fields; returns { data } or { error }. */
@@ -57,7 +78,7 @@ const courseFields = (b, { partial }) => {
   for (const k of required) {
     if (b[k] !== undefined || !partial) {
       const v = str(b[k], k === 'description' ? 4000 : 200);
-      if (!v) return { error: `${k} is required` };
+      if (!v) return { error: `${k === 'instructorName' ? 'Instructor name' : k} is required` };
       data[k] = v;
     }
   }
@@ -67,11 +88,27 @@ const courseFields = (b, { partial }) => {
   }
   if (b.duration !== undefined || !partial) {
     const d = num(b.duration);
-    if (!Number.isInteger(d) || d < 1) return { error: 'Duration must be a whole number of at least 1' };
+    if (!Number.isInteger(d) || d < 1) return { error: 'Duration must be a whole number of hours, at least 1' };
     data.duration = d;
   }
   if (b.thumbnail !== undefined) data.thumbnail = str(b.thumbnail, 1000) || null;
   return { data };
+};
+
+/** Validated child rows from the request; `null` for an array that wasn't sent (leave unchanged). */
+const courseChildren = (b) => {
+  const out = { videoRows: null, materialRows: null };
+  if (Array.isArray(b.videos)) {
+    const r = normalizeVideos(b.videos);
+    if (r.error) return { error: r.error };
+    out.videoRows = r.rows;
+  }
+  if (Array.isArray(b.materials)) {
+    const r = normalizeMaterials(b.materials);
+    if (r.error) return { error: r.error };
+    out.materialRows = r.rows;
+  }
+  return out;
 };
 
 router.get('/courses', async (req, res) => {
@@ -80,10 +117,7 @@ router.get('/courses', async (req, res) => {
   try {
     const [total, rows] = await Promise.all([
       prisma.course.count({ where }),
-      prisma.course.findMany({
-        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
-        include: { _count: { select: { enrolments: true } } },
-      }),
+      prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: COURSE_COUNTS }),
     ]);
     return res.json({ success: true, data: rows.map(serializeCourse), pagination: paginationOf(page, limit, total) });
   } catch (err) {
@@ -91,12 +125,33 @@ router.get('/courses', async (req, res) => {
   }
 });
 
+router.get('/courses/:id', async (req, res) => {
+  try {
+    const c = await prisma.course.findUnique({ where: { id: req.params.id }, include: COURSE_FULL });
+    if (!c) return notFound(res, 'Course');
+    return res.json({ success: true, data: serializeCourseFull(c) });
+  } catch (err) {
+    return fail(res, 'get course', err, 'Failed to load course');
+  }
+});
+
 router.post('/courses', async (req, res) => {
   const { data, error } = courseFields(req.body, { partial: false });
   if (error) return bad(res, error);
+  const kids = courseChildren(req.body);
+  if (kids.error) return bad(res, kids.error);
+
   try {
-    const c = await prisma.course.create({ data: { ...data, createdById: req.user.id === 'superadmin' ? null : req.user.id } });
-    return res.status(201).json({ success: true, data: serializeCourse(c) });
+    const c = await prisma.course.create({
+      data: {
+        ...data,
+        createdById: req.user.id === 'superadmin' ? null : req.user.id,
+        ...(kids.videoRows?.length ? { videos: { create: kids.videoRows } } : {}),
+        ...(kids.materialRows?.length ? { materials: { create: kids.materialRows } } : {}),
+      },
+      include: COURSE_FULL,
+    });
+    return res.status(201).json({ success: true, data: serializeCourseFull(c) });
   } catch (err) {
     return fail(res, 'create course', err, 'Failed to create course');
   }
@@ -105,8 +160,24 @@ router.post('/courses', async (req, res) => {
 router.patch('/courses/:id', guard('update course', 'Course', 'Failed to update course', async (req, res) => {
   const { data, error } = courseFields(req.body, { partial: true });
   if (error) return bad(res, error);
-  const c = await prisma.course.update({ where: { id: req.params.id }, data });
-  return res.json({ success: true, data: serializeCourse(c) });
+  const kids = courseChildren(req.body);
+  if (kids.error) return bad(res, kids.error);
+  const courseId = req.params.id;
+
+  const c = await prisma.$transaction(async (tx) => {
+    // update() throws P2025 for an unknown course, even when only children are changing
+    await tx.course.update({ where: { id: courseId }, data });
+    if (kids.videoRows) {
+      await tx.courseVideo.deleteMany({ where: { courseId } });
+      if (kids.videoRows.length) await tx.courseVideo.createMany({ data: kids.videoRows.map((v) => ({ ...v, courseId })) });
+    }
+    if (kids.materialRows) {
+      await tx.courseMaterial.deleteMany({ where: { courseId } });
+      if (kids.materialRows.length) await tx.courseMaterial.createMany({ data: kids.materialRows.map((m) => ({ ...m, courseId })) });
+    }
+    return tx.course.findUnique({ where: { id: courseId }, include: COURSE_FULL });
+  });
+  return res.json({ success: true, data: serializeCourseFull(c) });
 }));
 
 router.delete('/courses/:id', guard('delete course', 'Course', 'Failed to delete course', async (req, res) => {
