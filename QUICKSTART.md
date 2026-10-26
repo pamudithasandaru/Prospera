@@ -118,6 +118,7 @@ link in the navbar (`/admin`). Tabs:
 - **Schemes** — government schemes: add, edit, delete; plus an **Applications** view to approve or reject.
 - **Tickets** — filter and change status (open, pending, resolved, closed).
 - **Loans** — filter and change status (pending, approved, active, rejected, closed).
+- **Chatbot** — see what the Sprout chatbot knows and **sync** products, wholesale listings, courses, schemes and the how-to guides into it (see section 7).
 
 All of it is served by `/api/admin/*`, which requires the `admin` role on the server, not just in the UI.
 
@@ -165,8 +166,9 @@ Add it to `.env` if you run the service elsewhere.
 
 ## 7. Optional: Sprout Chatbot
 
-Sprout answers questions from the documents in `sprout/knowledge/`. See
-`sprout/README.md` for the full guide; the short version:
+Sprout answers questions from three sources: how-to guides and farming documents in `sprout/knowledge/`,
+and public catalogue data (products, wholesale listings, courses, government schemes) synced from the database.
+See `sprout/README.md` for the full guide; the short version:
 
 ```powershell
 cd sprout
@@ -187,6 +189,25 @@ you want `"qdrant": true` and `"openai_key_set": true`.
 Using a cloud Qdrant cluster instead of Docker? Set `QDRANT_URL`
 (`https://<cluster>.cloud.qdrant.io:6333`) and `QDRANT_API_KEY` in
 `sprout/backend/.env` before running the ingest.
+
+### Teaching Sprout from the database
+
+1. On the **platform API** set (in `.env` locally, or Render's Environment tab):
+   ```ini
+   SPROUT_URL=http://localhost:8001        # on Render: https://<your-sprout-service>.onrender.com
+   SPROUT_ADMIN_KEY=<same value as ADMIN_API_KEY on Sprout>
+   CHATBOT_SYNC_INTERVAL_HOURS=6           # 0 = no scheduled full re-sync
+   ```
+   Use a strong `ADMIN_API_KEY` on Sprout (not `change-me`).
+2. Check Sprout's `/api/health` shows `"qdrant": true` and `"openai_key_set": true`.
+3. Sign in as an admin, open **Admin Panel > Chatbot** and click **Sync everything now**. The first sync after a quiet
+   period can take a minute while a free-tier Sprout wakes up. The table compares "In the database" with
+   "Known to the chatbot".
+4. After that, changes to products, listings, courses and schemes reach the chatbot a few seconds after they are saved.
+
+Only public catalogue fields are synced (never users, contact details, messages, loans, tickets, farm finances, carts or
+applications). The how-to guides in `sprout/knowledge/guides/` are re-read by the same button, so editing a guide and
+pushing it is enough; no upload is needed. Keep the guides in step with the website when features change.
 
 ### Weather
 
