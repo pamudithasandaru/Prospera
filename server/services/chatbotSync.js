@@ -75,7 +75,7 @@ const BUILDERS = {
         l.district ? `District: ${clean(l.district, 60)}.` : '',
         `Seller: ${l.sellerVerified ? 'verified by the platform' : 'not yet verified'}.`,
         l.productDescription ? `Description: ${clean(l.productDescription)}` : '',
-        'Where to find it: the Wholesale Market page (menu: Wholesale Market).',
+        'Where to find it: the Wholesale Market page (menu: Wholesale Market). Sign in and click "Inquire" on the listing to message the seller.',
         `Information as of ${today()}.`,
       ].filter(Boolean).join('\n'),
     }));
