@@ -39,7 +39,7 @@ const CommentSection = ({
     const authorName = comment.user?.name || 'Farmer';
     const fullComment = `@${authorName} ${text}`;
     if (onAddComment) {
-      onAddComment(fullComment);
+      onAddComment(fullComment, comment._id);
     }
     setReplyInputs((prev) => ({ ...prev, [idx]: '' }));
     setReplyingTo(null);
@@ -214,6 +214,19 @@ const CommentSection = ({
                         >
                           <Send fontSize="small" />
                         </IconButton>
+                      </Box>
+                    )}
+
+                    {comment.replies?.length > 0 && (
+                      <Box ml={2} mt={1} display="flex" flexDirection="column" gap={1}>
+                        {comment.replies.map((reply) => (
+                          <Box key={reply._id} sx={{ ...neuInset('xs'), borderRadius: 2, p: 1 }}>
+                            <Typography variant="caption" fontWeight="bold">
+                              {reply.user?.name || 'Member'}
+                            </Typography>
+                            <Typography variant="body2">{reply.text}</Typography>
+                          </Box>
+                        ))}
                       </Box>
                     )}
                   </Box>

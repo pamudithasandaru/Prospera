@@ -134,6 +134,7 @@ app.use(helmet());
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 app.use(compression());
 app.use(morgan('dev'));
 app.use(guestLimiter);

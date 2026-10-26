@@ -14,6 +14,7 @@ const {
 const router = express.Router();
 
 const VALID_POST_TYPES = ['post', 'question', 'alert', 'article'];
+const VALID_REACTIONS = ['like', 'love', 'celebrate', 'insightful'];
 const VALID_VISIBILITY = ['public', 'connections', 'private'];
 const VALID_ROLES = ['farmer', 'buyer', 'consultant', 'expert', 'admin'];
 
@@ -27,7 +28,13 @@ const orderPair = (a, b) => (a < b ? [a, b] : [b, a]);
 const POST_INCLUDE = {
   author: true,
   likes: true,
-  comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
+  reactions: true,
+  comments: {
+    where: { parentId: null },
+    include: { author: true, replies: { include: { author: true }, orderBy: { createdAt: 'asc' } } },
+    orderBy: { createdAt: 'asc' },
+  },
+  _count: { select: { shares: true, comments: true } },
 };
 
 /** Ids of everyone the given user is connected to, in either direction. */
@@ -64,7 +71,7 @@ const visibilityFilter = async (viewerId) => {
 // Open to guests; `optionalAuth` tells us whether to widen the feed past the
 // public posts.
 router.get('/posts', optionalAuth, async (req, res) => {
-  const { userId } = req.query;
+  const { userId, sortBy } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
 
   try {
@@ -73,8 +80,15 @@ router.get('/posts', optionalAuth, async (req, res) => {
       where: { AND: [visible, ...(userId ? [{ authorId: userId }] : [])] },
       include: POST_INCLUDE,
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: sortBy === 'trending' ? 100 : limit,
     });
+    if (sortBy === 'trending') {
+      posts.sort((a, b) => {
+        const score = (p) => (p.reactions?.length || p.likes?.length || 0) + (p._count?.comments || 0) * 2 + (p._count?.shares || 0) * 3;
+        return score(b) - score(a) || b.createdAt - a.createdAt;
+      });
+      posts.splice(limit);
+    }
     return res.json({ success: true, data: posts.map(serializePost) });
   } catch (err) {
     console.error('Fetch posts error:', err.message);
@@ -116,14 +130,22 @@ router.post('/post/:id/like', authenticate, async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const existing = await prisma.postLike.findUnique({
+    const reactionType = VALID_REACTIONS.includes(req.body.type) ? req.body.type : 'like';
+    const existing = await prisma.postReaction.findUnique({
       where: { postId_userId: { postId, userId } },
     });
 
     if (existing) {
-      await prisma.postLike.delete({ where: { postId_userId: { postId, userId } } });
+      if (existing.type === reactionType) {
+        await prisma.postReaction.delete({ where: { postId_userId: { postId, userId } } });
+      } else {
+        await prisma.postReaction.update({
+          where: { postId_userId: { postId, userId } },
+          data: { type: reactionType },
+        });
+      }
     } else {
-      await prisma.postLike.create({ data: { postId, userId } });
+      await prisma.postReaction.create({ data: { postId, userId, type: reactionType } });
     }
 
     const post = await prisma.socialPost.findUnique({ where: { id: postId }, include: POST_INCLUDE });
@@ -149,8 +171,36 @@ router.post('/post/:id/comment', authenticate, async (req, res) => {
 
   try {
     const comment = await prisma.comment.create({
-      data: { postId: req.params.id, authorId: req.user.id, text },
-      include: { author: true },
+      data: {
+        postId: req.params.id,
+        authorId: req.user.id,
+        text,
+        parentId: req.body.parentId || null,
+      },
+      include: { author: true, replies: { include: { author: true } } },
+    });
+
+    // ── POST /api/social/post/:id/share — records one share per user ────────────
+    router.post('/post/:id/share', authenticate, async (req, res) => {
+      try {
+        await prisma.postShare.upsert({
+          where: { postId_userId: { postId: req.params.id, userId: req.user.id } },
+          update: {},
+          create: { postId: req.params.id, userId: req.user.id },
+        });
+        const post = await prisma.socialPost.findUnique({
+          where: { id: req.params.id },
+          include: POST_INCLUDE,
+        });
+        if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+        return res.json({ success: true, data: serializePost(post) });
+      } catch (err) {
+        if (err.code === 'P2003' || err.code === 'P2025') {
+          return res.status(404).json({ success: false, message: 'Post not found' });
+        }
+        console.error('Share error:', err.message);
+        return res.status(500).json({ success: false, message: 'Failed to record share' });
+      }
     });
     return res.status(201).json({ success: true, data: serializeComment(comment) });
   } catch (err) {
@@ -191,6 +241,83 @@ router.get('/groups', async (req, res) => {
     const groups = await prisma.group.findMany({
       orderBy: { memberCount: 'desc' },
       take: 10,
+    });
+
+    // ── POST /api/social/groups — create a group and make the creator a member
+    router.post('/groups', authenticate, async (req, res) => {
+      const name = (req.body.name || '').trim();
+      const description = (req.body.description || '').trim();
+      const category = (req.body.category || 'general').trim();
+      if (!name || name.length > 120) {
+        return res.status(400).json({ success: false, message: 'A group name up to 120 characters is required' });
+      }
+
+      try {
+        const group = await prisma.$transaction(async (tx) => {
+          const created = await tx.group.create({
+            data: { name, description, category, memberCount: 1 },
+          });
+          await tx.groupMember.create({
+            data: { groupId: created.id, userId: req.user.id },
+          });
+          return created;
+        });
+        return res.status(201).json({ success: true, data: serializeGroup(group) });
+      } catch (err) {
+        console.error('Create group error:', err.message);
+        return res.status(500).json({ success: false, message: 'Failed to create group' });
+      }
+    });
+
+    // ── POST /api/social/groups/:id/join
+    router.post('/groups/:id/join', authenticate, async (req, res) => {
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.groupMember.create({ data: { groupId: req.params.id, userId: req.user.id } });
+          await tx.group.update({ where: { id: req.params.id }, data: { memberCount: { increment: 1 } } });
+        });
+        return res.json({ success: true });
+      } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ success: false, message: 'Already a member' });
+        if (err.code === 'P2025' || err.code === 'P2003') return res.status(404).json({ success: false, message: 'Group not found' });
+        console.error('Join group error:', err.message);
+        return res.status(500).json({ success: false, message: 'Failed to join group' });
+      }
+    });
+
+    // ── DELETE /api/social/groups/:id/leave
+    router.delete('/groups/:id/leave', authenticate, async (req, res) => {
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.groupMember.delete({
+            where: { groupId_userId: { groupId: req.params.id, userId: req.user.id } },
+          });
+          await tx.group.update({
+            where: { id: req.params.id },
+            data: { memberCount: { decrement: 1 } },
+          });
+        });
+        return res.json({ success: true });
+      } catch (err) {
+        if (err.code === 'P2025') return res.status(404).json({ success: false, message: 'Membership or group not found' });
+        console.error('Leave group error:', err.message);
+        return res.status(500).json({ success: false, message: 'Failed to leave group' });
+      }
+    });
+
+    // ── GET /api/social/groups/:id/members
+    router.get('/groups/:id/members', authenticate, async (req, res) => {
+      try {
+        const members = await prisma.groupMember.findMany({
+          where: { groupId: req.params.id },
+          include: { user: true },
+          orderBy: { joinedAt: 'asc' },
+        });
+        return res.json({ success: true, data: members.map((m) => serializeUser(m.user)) });
+      } catch (err) {
+        console.error('Fetch group members error:', err.message);
+        return res.status(500).json({ success: false, message: 'Failed to fetch group members' });
+      }
     });
     return res.json({ success: true, data: groups.map(serializeGroup) });
   } catch (err) {
