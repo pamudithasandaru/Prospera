@@ -1,12 +1,20 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import authService from '../services/authService';
+import { GUEST_ROLE } from '../config/access';
 
 const AuthContext = createContext(null);
 
-const defaultUser = {
-  name: 'Guest User',
-  email: 'guest@prospera.lk',
-  role: 'farmer',
+/**
+ * Stand-in identity for signed-out visitors.
+ *
+ * It used to carry `role: 'farmer'`, which meant the Navbar rendered the full
+ * farmer menu to anyone who happened to be logged out. GUEST_ROLE is not a
+ * real account role, so it matches only routes marked PUBLIC.
+ */
+const guestUser = {
+  name: 'Guest',
+  email: '',
+  role: GUEST_ROLE,
   language: 'EN',
 };
 
@@ -23,8 +31,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load stored user on mount
-    const currentUser = authService.getCurrentUser();
+    // A stored user is only trustworthy alongside a stored token: clearing the
+    // token (logout, 401 eviction) must not leave a ghost session behind.
+    const currentUser = authService.isAuthenticated() ? authService.getCurrentUser() : null;
     setUser(currentUser);
     setLoading(false);
   }, []);
@@ -61,16 +70,26 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    updateUser,
-    defaultUser,
-    isAuthenticated: authService.isAuthenticated() && user !== null,
-  };
+  const isAuthenticated = authService.isAuthenticated() && user !== null;
+
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      updateUser,
+      guestUser,
+      isAuthenticated,
+      // The identity to render and to gate on — never null, so callers do not
+      // need a logged-out branch of their own.
+      currentUser: isAuthenticated ? user : guestUser,
+      role: isAuthenticated ? user.role : GUEST_ROLE,
+      isGuest: !isAuthenticated,
+    }),
+    [user, loading, isAuthenticated]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

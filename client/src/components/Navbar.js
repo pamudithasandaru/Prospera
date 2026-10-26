@@ -46,26 +46,35 @@ import { neuColors, neuRaised, neuInset, neuCircle } from '../neumorphic';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import { resolveAvatar } from '../utils/avatarUtils';
+import { navItemsFor } from '../config/access';
 
-const ALL_ROLES = ['farmer', 'buyer', 'expert', 'consultant', 'admin', 'government'];
+/**
+ * The link list itself now lives in config/access.js, shared with the router,
+ * so the nav can no longer offer a page the router will refuse. All this map
+ * adds is the icon for each entry.
+ */
+const ICONS = {
+  dashboard:   <Dashboard />,
+  admin:       <AdminPanelSettings />,
+  farm:        <Terrain />,
+  market:      <ShoppingCart />,
+  social:      <People />,
+  learning:    <School />,
+  ai:          <Psychology />,
+  marketplace: <Store />,
+  government:  <AccountBalance />,
+  weather:     <Cloud />,
+  support:     <Support />,
+  fintech:     <AccountBalanceWallet />,
+};
 
-const menuItems = [
-  { title: 'Dashboard',        path: '/dashboard', icon: <Dashboard />,           roles: ALL_ROLES },
-  { title: 'Admin Panel',      path: '/admin',     icon: <AdminPanelSettings />,  roles: ['admin'] },
-  { title: 'Farm Management',  path: '/farm',      icon: <Terrain />,             roles: ['farmer'] },
-  { title: 'Wholesale Market', path: '/market',    icon: <ShoppingCart />,        roles: ['farmer', 'buyer'] },
-  // Social is open to all authenticated users
-  { title: 'AgriLink Social',  path: '/social',    icon: <People />,              roles: ALL_ROLES },
-  { title: 'Learning Hub',     path: '/learning',  icon: <School />,              roles: ALL_ROLES },
-  { title: 'AI Tools Lab',     path: '/ai-tools',  icon: <Psychology />,          roles: ['farmer', 'expert', 'consultant'] },
-  { title: 'Marketplace',      path: '/marketplace',icon: <Store />,             roles: ['farmer', 'buyer'] },
-  { title: 'Government Portal',path: '/government',icon: <AccountBalance />,      roles: ['farmer', 'government', 'admin'] },
-  { title: 'Weather',          path: '/weather',   icon: <Cloud />,               roles: ['farmer'] },
-  { title: 'Support',          path: '/support',   icon: <Support />,             roles: ALL_ROLES },
-  { title: 'AgriFinTech',      path: '/fintech',   icon: <AccountBalanceWallet />,roles: ['farmer'] },
+/** Signed-in-only quick links for the mobile drawer. */
+const SOCIAL_LINKS = [
+  { path: '/social',        title: 'Social Feed',   icon: <People /> },
+  { path: '/messages',      title: 'Messages',      icon: <MessageIcon /> },
+  { path: '/notifications', title: 'Notifications', icon: <NotificationsIcon /> },
+  { path: '/search',        title: 'Search',        icon: <SearchIcon /> },
 ];
-
-// Social quick-links shown in the mobile drawer for all roles — defined inline in drawer JSX
 
 
 const listItemSx = (active) => ({
@@ -80,7 +89,7 @@ const Navbar = () => {
   const isMobile = useMediaQuery('(max-width:1099.95px)');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, defaultUser } = useAuth();
+  const { currentUser, role, isGuest, logout } = useAuth();
 
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -97,7 +106,7 @@ const Navbar = () => {
   const handleLogout = () => {
     handleCloseUserMenu();
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const toggleDrawer = (open) => (event) => {
@@ -107,13 +116,12 @@ const Navbar = () => {
     setDrawerOpen(open);
   };
 
-  const currentUser = user || defaultUser;
+  // Guests get the PUBLIC entries only; admins get everything. The rule lives
+  // in config/access.js — see navItemsFor.
+  const filteredMenuItems = navItemsFor(role).map((item) => ({ ...item, icon: ICONS[item.icon] }));
 
-  // Filter menu items based on user role
-  // Admins see every page; everyone else only the pages their role allows.
-  const filteredMenuItems = menuItems.filter(
-    (item) => currentUser?.role === 'admin' || !item.roles || item.roles.includes(currentUser?.role)
-  );
+  /** Where the logo goes: guests have no dashboard to return to. */
+  const homePath = isGuest ? '/' : '/dashboard';
   // How many links fit in the bar depends on width; the rest go into "More".
   const isWide = useMediaQuery('(min-width:1500px)');
   const isMedium = useMediaQuery('(min-width:1200px)');
@@ -131,41 +139,28 @@ const Navbar = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1 }}>
         <Box component="img" src={LOGO_HORIZONTAL} alt={BRAND_NAME} sx={{ height: 40, width: 'auto' }} />
       </Box>
-      {/* Social quick-links — always visible to all logged-in users */}
-      <List dense sx={{ mt: 0.5 }}>
-        <ListItemButton
-          onClick={() => navigate('/social')}
-          selected={location.pathname === '/social'}
-          sx={{ ...listItemSx(location.pathname === '/social'), '& .MuiListItemIcon-root': { color: location.pathname === '/social' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
-        >
-          <ListItemIcon><People /></ListItemIcon>
-          <ListItemText primary="Social Feed" primaryTypographyProps={{ fontWeight: 600 }} />
-        </ListItemButton>
-        <ListItemButton
-          onClick={() => navigate('/messages')}
-          selected={location.pathname === '/messages'}
-          sx={{ ...listItemSx(location.pathname === '/messages'), '& .MuiListItemIcon-root': { color: location.pathname === '/messages' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
-        >
-          <ListItemIcon><MessageIcon /></ListItemIcon>
-          <ListItemText primary="Messages" />
-        </ListItemButton>
-        <ListItemButton
-          onClick={() => navigate('/notifications')}
-          selected={location.pathname === '/notifications'}
-          sx={{ ...listItemSx(location.pathname === '/notifications'), '& .MuiListItemIcon-root': { color: location.pathname === '/notifications' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
-        >
-          <ListItemIcon><NotificationsIcon /></ListItemIcon>
-          <ListItemText primary="Notifications" />
-        </ListItemButton>
-        <ListItemButton
-          onClick={() => navigate('/search')}
-          selected={location.pathname === '/search'}
-          sx={{ ...listItemSx(location.pathname === '/search'), '& .MuiListItemIcon-root': { color: location.pathname === '/search' ? 'primary.main' : 'text.secondary', minWidth: 40 } }}
-        >
-          <ListItemIcon><SearchIcon /></ListItemIcon>
-          <ListItemText primary="Search" />
-        </ListItemButton>
-      </List>
+      {/* Social quick-links — signed-in users only; each target is an AUTH route */}
+      {!isGuest && (
+        <List dense sx={{ mt: 0.5 }}>
+          {SOCIAL_LINKS.map((link) => (
+            <ListItemButton
+              key={link.path}
+              onClick={() => navigate(link.path)}
+              selected={location.pathname === link.path}
+              sx={{
+                ...listItemSx(location.pathname === link.path),
+                '& .MuiListItemIcon-root': {
+                  color: location.pathname === link.path ? 'primary.main' : 'text.secondary',
+                  minWidth: 40,
+                },
+              }}
+            >
+              <ListItemIcon>{link.icon}</ListItemIcon>
+              <ListItemText primary={link.title} primaryTypographyProps={{ fontWeight: 600 }} />
+            </ListItemButton>
+          ))}
+        </List>
+      )}
 
       {/* Role-based main navigation */}
       <List sx={{ mt: 1 }}>
@@ -187,6 +182,17 @@ const Navbar = () => {
           </ListItemButton>
         ))}
       </List>
+
+      {isGuest && (
+        <Box sx={{ px: 1.5, pb: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Button fullWidth onClick={() => navigate('/register')} sx={{ ...neuRaised('sm'), borderRadius: '12px', textTransform: 'none', fontWeight: 700, color: neuColors.primary }}>
+            Create account
+          </Button>
+          <Button fullWidth onClick={() => navigate('/login')} sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 600 }}>
+            Sign in
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 
@@ -215,7 +221,10 @@ const Navbar = () => {
                   )}
 
                   {/* Logo */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexGrow: isMobile ? 1 : 0 }}>
+                  <Box
+                    onClick={() => navigate(homePath)}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexGrow: isMobile ? 1 : 0, cursor: 'pointer' }}
+                  >
                     <Box
                       component="img"
                       src={LOGO_HORIZONTAL}
@@ -286,22 +295,40 @@ const Navbar = () => {
                           </Box>
                         )}
 
-                        {/* Action Icons */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: { xs: 0.5, sm: 1 } }}>
-                          <Tooltip title="Search">
-                            <IconButton color="inherit" onClick={() => navigate('/search')} size="small">
-                              <SearchIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Messages">
-                            <IconButton color="inherit" onClick={() => navigate('/messages')} size="small">
-                              <MessageIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <NotificationBell />
-                        </Box>
+                        {/* Action Icons — all three lead to AUTH-only pages */}
+                        {!isGuest && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: { xs: 0.5, sm: 1 } }}>
+                            <Tooltip title="Search">
+                              <IconButton color="inherit" onClick={() => navigate('/search')} size="small">
+                                <SearchIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Messages">
+                              <IconButton color="inherit" onClick={() => navigate('/messages')} size="small">
+                                <MessageIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <NotificationBell />
+                          </Box>
+                        )}
 
-                        {/* User Menu */}
+            {/* Guests get the way in; everyone else gets their account menu. */}
+            {isGuest ? (
+              <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  onClick={() => navigate('/login')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: 'text.primary', borderRadius: '12px', px: 2, boxShadow: 'none', '&:hover': neuRaised('xs') }}
+                >
+                  Sign in
+                </Button>
+                <Button
+                  onClick={() => navigate('/register')}
+                  sx={{ ...neuRaised('sm'), textTransform: 'none', fontWeight: 700, color: neuColors.primary, borderRadius: '12px', px: 2, whiteSpace: 'nowrap', '&:hover': neuInset('xs') }}
+                >
+                  Create account
+                </Button>
+              </Box>
+            ) : (
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
@@ -352,6 +379,7 @@ const Navbar = () => {
                 </MenuItem>
               </Menu>
             </Box>
+            )}
           </Toolbar>
         </Container>
       </AppBar>

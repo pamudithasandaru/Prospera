@@ -24,6 +24,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Hero3D from '../components/Hero3D';
 import { neuColors, neuRaised, neuInset } from '../neumorphic';
+import { accessFor, canAccess } from '../config/access';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -41,20 +42,19 @@ const Dashboard = () => {
     return () => { cancelled = true; };
   }, []);
 
+  // These tiles used to carry their own role lists, which drifted from the
+  // router's. Each one is now filtered by the same rule the router applies —
+  // see config/access.js.
   const quickActions = [
-    { title: 'Farm Management', icon: <Terrain />, path: '/farm', color: neuColors.primary, role: 'farmer' },
-    { title: 'Browse Market', icon: <ShoppingCart />, path: '/market', color: neuColors.secondary, role: ['farmer', 'buyer'] },
-    { title: 'Social Network', icon: <People />, path: '/social', color: neuColors.info, role: ['farmer', 'buyer', 'expert'] },
-    { title: 'Learning Hub', icon: <School />, path: '/learning', color: neuColors.warning, role: ['farmer', 'buyer', 'expert'] },
+    { title: 'Admin Panel', icon: <AdminPanelSettings />, path: '/admin', color: neuColors.primary },
+    { title: 'Farm Management', icon: <Terrain />, path: '/farm', color: neuColors.primary },
+    { title: 'Browse Market', icon: <ShoppingCart />, path: '/market', color: neuColors.secondary },
+    { title: 'Social Network', icon: <People />, path: '/social', color: neuColors.info },
+    { title: 'Learning Hub', icon: <School />, path: '/learning', color: neuColors.warning },
   ];
 
   const isAdmin = user?.role === 'admin';
-  const filteredActions = [
-    ...(isAdmin ? [{ title: 'Admin Panel', icon: <AdminPanelSettings />, path: '/admin', color: neuColors.primary }] : []),
-    ...quickActions.filter(
-      (action) => isAdmin || !action.role || (Array.isArray(action.role) ? action.role.includes(user?.role) : action.role === user?.role)
-    ),
-  ];
+  const filteredActions = quickActions.filter((action) => canAccess(accessFor(action.path), user?.role));
 
   return (
     <>

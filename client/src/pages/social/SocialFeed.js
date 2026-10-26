@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import useRequireAuth from '../../hooks/useRequireAuth';
 import api from '../../services/api';
 import { MOCK_POSTS } from './mockData';
 
@@ -28,9 +29,12 @@ import PostMenu from './components/PostMenu';
 import FeedTabs from './components/FeedTabs';
 import StoriesBar from './components/StoriesBar';
 import FarmerProfileModal from './components/FarmerProfileModal';
+import GuestPrompt from './components/GuestPrompt';
 
 const SocialFeed = () => {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  // The feed reads fine signed out; posting, liking and commenting do not.
+  const requireAuth = useRequireAuth();
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [tab, setTab] = useState(0);
@@ -63,6 +67,11 @@ const SocialFeed = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
+    // Guests have no connections to load, and the endpoint needs a token.
+    if (isGuest) {
+      setConnectionIds([]);
+      return;
+    }
     api.get('/social/connections')
       .then((res) => {
         const conns = res.data.data || [];
@@ -70,7 +79,7 @@ const SocialFeed = () => {
         setConnectionIds(ids);
       })
       .catch(() => setConnectionIds([]));
-  }, []);
+  }, [isGuest]);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -304,7 +313,8 @@ const SocialFeed = () => {
   };
 
   const isPostLiked = (post) => {
-    return post.likes?.some(like => like.user === user._id || like.user._id === user._id);
+    if (!user?._id) return false; // a guest has liked nothing
+    return post.likes?.some(like => like.user === user._id || like.user?._id === user._id);
   };
 
   const tabPosts = useMemo(() => {
@@ -371,23 +381,33 @@ const SocialFeed = () => {
       <Grid container spacing={3}>
         {/* Left Sidebar - Professional Profile */}
         <Grid item xs={12} md={3}>
-          <ProfileSidebar 
-            user={user} 
-            onViewProfile={(author) => setProfileModalUser(author)} 
-          />
+          {isGuest ? (
+            <GuestPrompt
+              title="Join the conversation"
+              body="Create a free account to post, comment and connect with growers across the island."
+            />
+          ) : (
+            <ProfileSidebar 
+              user={user} 
+              onViewProfile={(author) => setProfileModalUser(author)} 
+            />
+          )}
         </Grid>
 
         {/* Main Feed */}
         <Grid item xs={12} md={6}>
-          {/* Stories Bar */}
-          <StoriesBar />
-
-          {/* Create Post Card */}
-          <CreatePostCard 
-            user={user}
-            onOpenDialog={() => setPostDialogOpen(true)}
-            setPostType={setPostType}
-          />
+          {/* Stories and the compose box both need an account — the feed
+              below them does not, so only these two are swapped out. */}
+          {!isGuest && (
+            <>
+              <StoriesBar />
+              <CreatePostCard 
+                user={user}
+                onOpenDialog={() => setPostDialogOpen(true)}
+                setPostType={setPostType}
+              />
+            </>
+          )}
 
           {/* Quick Search Bar */}
           <Box sx={{ mb: 2 }}>
@@ -640,14 +660,14 @@ const SocialFeed = () => {
                 post={post}
                 user={user}
                 isLiked={isPostLiked(post)}
-                onLike={() => handleLikePost(post._id)}
+                onLike={requireAuth(() => handleLikePost(post._id))}
                 onShare={() => handleSharePost(post._id)}
                 onPostMenu={(e) => handlePostMenu(e, post._id)}
                 isCommentsExpanded={expandedComments[post._id]}
                 onToggleComments={() => toggleComments(post._id)}
                 commentText={commentText[post._id] || ''}
                 onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
-                onAddComment={(customText) => handleAddComment(post._id, customText)}
+                onAddComment={requireAuth((customText) => handleAddComment(post._id, customText))}
                 onViewProfile={(author) => setProfileModalUser(author)}
                 onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
                 isSaved={savedPostIds.includes(post._id)}
@@ -657,12 +677,20 @@ const SocialFeed = () => {
           )}
         </Grid>
 
-        {/* Right Sidebar */}
+        {/* Right Sidebar — suggestions, notifications and connection state
+            are all per-account, so a guest would only fire a row of 401s. */}
         <Grid item xs={12} md={3}>
-          <TrendingSidebar 
-            onSelectTag={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
-            onViewProfile={(author) => setProfileModalUser(author)}
-          />
+          {isGuest ? (
+            <GuestPrompt
+              title="See who to follow"
+              body="Sign in for suggested growers, trending topics in your district and your notifications."
+            />
+          ) : (
+            <TrendingSidebar 
+              onSelectTag={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
+              onViewProfile={(author) => setProfileModalUser(author)}
+            />
+          )}
         </Grid>
       </Grid>
 

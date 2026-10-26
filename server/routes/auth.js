@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Prisma } = require('@prisma/client');
 const { prisma } = require('../services/prisma');
-const { authenticate, blockedReason, JWT_SECRET } = require('../middleware/auth');
-const { serializeUser } = require('../services/serializers');
+const { authenticate, optionalAuth, blockedReason, JWT_SECRET } = require('../middleware/auth');
+const { serializeUser, serializePublicUser } = require('../services/serializers');
 const {
   getSuperAdminUser,
   isSuperAdminCredentials,
@@ -201,13 +201,17 @@ router.get('/stats', authenticate, async (req, res) => {
 });
 
 // ── GET /api/auth/user/:id ───────────────────────────────────────────────────
-router.get('/user/:id', async (req, res) => {
+// Reachable without a token so guests can open a profile from the feed, which
+// is why the response is scrubbed: only the account holder (and admins) see
+// the email address, everyone else gets the public profile.
+router.get('/user/:id', optionalAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    return res.json({ success: true, data: serializeUser(user) });
+    const privileged = req.user && (req.user.id === user.id || req.user.role === 'admin');
+    return res.json({ success: true, data: privileged ? serializeUser(user) : serializePublicUser(user) });
   } catch (err) {
     console.error('Get user error:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to fetch user' });
