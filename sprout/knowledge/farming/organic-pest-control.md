@@ -24,4 +24,4 @@ Walk the field at least twice a week. Check the underside of leaves, the growing
 
 Even natural sprays should be used carefully. Wear gloves and a mask, never spray in strong wind or at midday heat, and follow the label rates. Keep a safe gap between the last spray and harvest.
 
-Prospera's course "Organic Pest Management" covers these methods in more depth for vegetable growers.
+The Haritha Bhoomi course "Organic Pest Management" covers these methods in more depth for vegetable growers.
