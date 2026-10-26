@@ -342,6 +342,32 @@ function serializeProduct(p) {
   };
 }
 
+/**
+ * An order and the lines it was placed with.
+ *
+ * Line `name` and `unitPrice` come off the order row, not the product: the
+ * catalogue can change after checkout, the receipt cannot.
+ */
+function serializeOrder(o) {
+  if (!o) return null;
+  return {
+    _id: o.id,
+    status: o.status,
+    currency: o.currency,
+    total: num(o.total),
+    paidAt: o.paidAt,
+    createdAt: o.createdAt,
+    items: (o.items || []).map((i) => ({
+      _id: i.id,
+      productId: i.productId,
+      name: i.name,
+      unitPrice: num(i.unitPrice),
+      quantity: i.quantity,
+      image: i.product?.images?.[0] || null,
+    })),
+  };
+}
+
 // ─── Government ──────────────────────────────────────────────────────────────
 
 function serializeScheme(s) {
@@ -418,6 +444,7 @@ module.exports = {
   serializeCourse,
   serializeListing,
   serializeProduct,
+  serializeOrder,
   serializeScheme,
   serializeApplication,
   serializeLoan,

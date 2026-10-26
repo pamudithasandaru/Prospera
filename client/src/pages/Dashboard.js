@@ -22,6 +22,7 @@ import {
   AdminPanelSettings,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import Hero3D from '../components/Hero3D';
 import { neuColors, neuRaised, neuInset } from '../neumorphic';
 import { accessFor, canAccess } from '../config/access';
 
@@ -59,12 +60,15 @@ const Dashboard = () => {
 
   return (
     <>
+      {/* Hero slideshow — outside Container so it matches navbar width
+          exactly, the same treatment the landing page gives it, so a signed-in
+          member opens on the same view a guest does. Everything below it
+          starts off-screen by design; ScrollReveal brings it in on scroll. */}
+      <Box sx={{ width: '100%', height: '100vh' }}>
+        <Hero3D height="92vh" />
+      </Box>
+
     <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
-        {/* A full-height hero slideshow used to sit here, which pushed every
-            stat, action and notification below the fold — a signed-in farmer
-            opened their dashboard to a stock photo. The slideshow now greets
-            signed-out visitors on the landing page, where it belongs, and the
-            dashboard opens on the user's own data. */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.text }}>
             {greeting}, {user?.name?.split(' ')[0] || 'there'}
