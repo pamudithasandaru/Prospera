@@ -7,21 +7,24 @@ import { neuColors } from './neumorphic';
 import ScrollReveal from './motion/ScrollReveal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { accessFor } from './config/access';
 
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import SproutChat from './components/SproutChat';
-import ProtectedRoute from './components/ProtectedRoute';
+import RouteGuard from './components/RouteGuard';
 
 // Auth Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 
 // Pages
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/admin/AdminPanel';
 import Unauthorized from './pages/Unauthorized';
+import NotFound from './pages/NotFound';
 
 // Farm Management
 import FarmDashboard from './pages/farm/FarmDashboard';
@@ -69,168 +72,65 @@ const FarmEntry = () => {
   return user?.role === 'admin' ? <Navigate to="/farm/expert" replace /> : <FarmDashboard />;
 };
 
+/**
+ * Wires a route to its rule in config/access.js by path, so the guard can
+ * never drift from the table the Navbar reads.
+ */
+const Guarded = ({ path, element }) => (
+  <Route path={path} element={<RouteGuard access={accessFor(path)}>{element}</RouteGuard>} />
+);
+
 function AppContent() {
   const location = useLocation();
-  const hideNavbar = ['/login', '/register'].includes(location.pathname);
-  const hideFooter = ['/login', '/register'].includes(location.pathname);
+  const chromeless = ['/login', '/register'].includes(location.pathname);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: neuColors.base }}>
-      {!hideNavbar && <Navbar />}
+      {!chromeless && <Navbar />}
       <Box component="main" sx={{ flexGrow: 1, bgcolor: neuColors.base }}>
         <Box key={location.pathname} className="page-transition">
         <Routes>
-          {/* Public Routes */}
+          {/* Open to everyone */}
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* Guest-browsable modules — reading is open, every write still
+              checks for a session, both in the page and on the server. */}
+          {Guarded({ path: '/market', element: <MarketListings /> })}
+          {Guarded({ path: '/social', element: <SocialFeed /> })}
+          {Guarded({ path: '/learning', element: <CourseCatalog /> })}
+          {Guarded({ path: '/learning/course/:courseId', element: <CoursePage /> })}
+          {Guarded({ path: '/learning/courses/:id', element: <CourseCatalog /> })}
+          {Guarded({ path: '/marketplace', element: <EquipmentCatalog /> })}
+          {Guarded({ path: '/government', element: <GovernmentSchemes /> })}
+          {Guarded({ path: '/weather', element: <WeatherDashboard /> })}
 
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
+          {/* Any signed-in account */}
+          {Guarded({ path: '/dashboard', element: <Dashboard /> })}
+          {Guarded({ path: '/profile', element: <ProfilePage /> })}
+          {Guarded({ path: '/support', element: <SupportCenter /> })}
+          {Guarded({ path: '/messages', element: <MessagesPage /> })}
+          {Guarded({ path: '/notifications', element: <NotificationsPage /> })}
+          {Guarded({ path: '/search', element: <SearchPage /> })}
 
-          {/* Protected Module Routes */}
-          <Route
-            path="/farm/expert"
-            element={
-              <ProtectedRoute roles={['expert', 'consultant']}>
-                <ExpertFarmView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farm"
-            element={
-              <ProtectedRoute roles={['farmer']}>
-                <FarmEntry />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/market"
-            element={
-              <ProtectedRoute roles={['farmer', 'buyer']}>
-                <MarketListings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/social"
-            element={
-              <ProtectedRoute>
-                <SocialFeed />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learning"
-            element={
-              <ProtectedRoute>
-                <CourseCatalog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learning/course/:courseId"
-            element={
-              <ProtectedRoute>
-                <CoursePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learning/courses/:id"
-            element={
-              <ProtectedRoute>
-                <CourseCatalog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ai-tools"
-            element={
-              <ProtectedRoute roles={['farmer', 'expert']}>
-                <DiseaseDetection />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/marketplace"
-            element={
-              <ProtectedRoute roles={['farmer', 'buyer']}>
-                <EquipmentCatalog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/government"
-            element={
-              <ProtectedRoute roles={['farmer', 'government', 'admin']}>
-                <GovernmentSchemes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/weather"
-            element={
-              <ProtectedRoute roles={['farmer']}>
-                <WeatherDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/support"
-            element={
-              <ProtectedRoute>
-                <SupportCenter />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/fintech"
-            element={
-              <ProtectedRoute roles={['farmer']}>
-                <FinTechDashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* Role-restricted */}
+          {Guarded({ path: '/admin', element: <AdminPanel /> })}
+          {Guarded({ path: '/farm/expert', element: <ExpertFarmView /> })}
+          {Guarded({ path: '/farm', element: <FarmEntry /> })}
+          {Guarded({ path: '/ai-tools', element: <DiseaseDetection /> })}
+          {Guarded({ path: '/fintech', element: <FinTechDashboard /> })}
 
-          <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
-          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-          <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-
-          {/* Default Route */}
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          {/* Unknown paths used to redirect to /dashboard, which bounced
+              signed-out visitors to /login — a 404 is the honest answer. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </Box>
       </Box>
-      {!hideFooter && <Footer />}
+      {!chromeless && <Footer />}
       <ScrollReveal />
-      {!hideNavbar && <SproutChat />}
+      {!chromeless && <SproutChat />}
     </Box>
   );
 }

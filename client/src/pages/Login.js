@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -19,6 +19,18 @@ import { BRAND_NAME, LOGO_SQUARE } from '../brand';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /**
+   * Where to land after signing in. A guest who clicked into a protected page
+   * is carried there by RouteGuard's location state; a session that expired
+   * mid-request arrives with ?next= from the api.js interceptor. Failing both,
+   * the dashboard.
+   */
+  const redirectTo =
+    location.state?.from?.pathname ||
+    new URLSearchParams(location.search).get('next') ||
+    '/dashboard';
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -42,7 +54,7 @@ const Login = () => {
 
     try {
       await login(formData.email, formData.password);
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {

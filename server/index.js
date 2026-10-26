@@ -9,9 +9,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 
 const { prisma, connectDb, disconnectDb } = require('./services/prisma');
 const { ensureSuperAdminRow } = require('./services/superAdmin');
+const { JWT_SECRET } = require('./middleware/auth');
 
 // ── Rate Limiters ─────────────────────────────────────────────────────────────
 // Skip rate limiting entirely for localhost during development.
@@ -22,13 +24,58 @@ const skipLocalhost = (req) => {
   return isDev && (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1');
 };
 
+/**
+ * IPv6 clients get a whole /64 each, so limiting a bare address limits
+ * nothing — collapse to the prefix the way express-rate-limit's own helper
+ * does. IPv4 addresses pass through untouched.
+ */
+const clientKey = (req) => {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  if (!ip.includes(':')) return ip;
+  return ip.split(':').slice(0, 4).join(':') + '::/64';
+};
+
+/**
+ * Who this request is spending budget on behalf of.
+ *
+ * Now that the browse endpoints are open, anonymous traffic needs its own,
+ * tighter bucket — otherwise one scraper exhausts the shared per-IP window
+ * and takes every signed-in user behind the same NAT down with it. Signed-in
+ * callers are keyed by account id instead, which a forged token cannot reach:
+ * the signature is checked here, same as in the auth middleware.
+ */
+const rateLimitSubject = (req) => {
+  const header = req.headers.authorization;
+  if (header && header.startsWith('Bearer ')) {
+    try {
+      return `u:${jwt.verify(header.split(' ')[1], JWT_SECRET).id}`;
+    } catch {
+      // Falls through to the anonymous bucket — an invalid token buys nothing.
+    }
+  }
+  return `ip:${clientKey(req)}`;
+};
+
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 2000,                 // 2000 req/window — enough for normal usage + polling
   skip: skipLocalhost,       // no limit at all on localhost in dev
+  keyGenerator: rateLimitSubject,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
+});
+
+// Guests only ever browse, so their ceiling is far lower than a working
+// session's. Applied before generalLimiter; signed-in requests skip it.
+const guestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  skip: (req) => skipLocalhost(req) || rateLimitSubject(req).startsWith('u:'),
+  keyGenerator: clientKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please sign in or try again later.' },
 });
 
 const authLimiter = rateLimit({
@@ -89,6 +136,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 app.use(morgan('dev'));
+app.use(guestLimiter);
 app.use(generalLimiter);
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────────

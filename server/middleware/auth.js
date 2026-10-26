@@ -29,12 +29,50 @@ const authenticate = async (req, res, next) => {
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
+  return resolveUser(req, res, next, { required: true });
+};
 
-  const token = header.split(' ')[1];
+/**
+ * Loads req.user when a valid token is present, and lets the request through
+ * when it is not.
+ *
+ * This is what makes the public pages work. Routes such as GET /social/posts
+ * are open to signed-out visitors but still need to know *who* is asking —
+ * to decide which posts are visible, or whether the caller already liked one.
+ * Without this they would have to choose between 401-ing guests and treating
+ * every caller as anonymous.
+ *
+ * A blocked account is still rejected rather than quietly downgraded to a
+ * guest: the 403 is what tells the client to drop the dead session.
+ */
+const optionalAuth = async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    req.user = null;
+    return next();
+  }
+  return resolveUser(req, res, next, { required: false });
+};
+
+/**
+ * Shared body of authenticate/optionalAuth.
+ *
+ * `required` decides what a bad token means: a hard 401 for a protected
+ * route, or an anonymous request for a public one — a stale token in
+ * localStorage must not lock a visitor out of pages that need no account.
+ */
+const resolveUser = async (req, res, next, { required }) => {
+  const anonymous = () => {
+    req.user = null;
+    return next();
+  };
+
+  const token = req.headers.authorization.split(' ')[1];
   let decoded;
   try {
     decoded = jwt.verify(token, JWT_SECRET);
   } catch {
+    if (!required) return anonymous();
     return res.status(401).json({ success: false, message: 'Invalid token' });
   }
 
@@ -47,6 +85,7 @@ const authenticate = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user) {
+      if (!required) return anonymous();
       return res.status(401).json({ success: false, message: 'User not found' });
     }
     const blocked = blockedReason(user);
@@ -63,13 +102,21 @@ const authenticate = async (req, res, next) => {
 
 /**
  * Gate a route to specific roles. Must run after `authenticate`.
- * The env-configured super admin carries role 'admin', so it passes too.
+ *
+ * Admins pass every list. The client has always let admins open any page
+ * (see canAccess in client/src/config/access.js), while this check did not —
+ * so an admin could reach a screen whose API then refused them. The two now
+ * agree. The env-configured super admin carries role 'admin', so it passes
+ * for the same reason.
  */
 const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  if (req.user.role !== 'admin' && !roles.includes(req.user.role)) {
     return res.status(403).json({ success: false, message: 'Forbidden: insufficient permissions' });
   }
   return next();
 };
 
-module.exports = { authenticate, requireRole, blockedReason, JWT_SECRET };
+module.exports = { authenticate, optionalAuth, requireRole, blockedReason, JWT_SECRET };

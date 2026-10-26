@@ -1,6 +1,6 @@
 const express = require('express');
 const { prisma } = require('../services/prisma');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 const { SUPER_ADMIN_ID } = require('../services/superAdmin');
 const {
   serializePost,
@@ -30,14 +30,47 @@ const POST_INCLUDE = {
   comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
 };
 
+/** Ids of everyone the given user is connected to, in either direction. */
+const connectedIds = async (userId) => {
+  const conns = await prisma.connection.findMany({
+    where: { OR: [{ userAId: userId }, { userBId: userId }] },
+    select: { userAId: true, userBId: true },
+  });
+  return conns.map((c) => (c.userAId === userId ? c.userBId : c.userAId));
+};
+
+/**
+ * Which posts this caller is allowed to see.
+ *
+ * The feed is open to signed-out visitors, so this clause is what keeps the
+ * `visibility` column meaningful — it was previously ignored entirely, which
+ * served `connections`- and `private`-marked posts to anyone who asked.
+ *
+ *   guest  → public posts only
+ *   member → public posts, connections' posts, and all of their own
+ */
+const visibilityFilter = async (viewerId) => {
+  if (!viewerId) return { visibility: 'public' };
+  return {
+    OR: [
+      { visibility: 'public' },
+      { authorId: viewerId },
+      { visibility: 'connections', authorId: { in: await connectedIds(viewerId) } },
+    ],
+  };
+};
+
 // ── GET /api/social/posts ────────────────────────────────────────────────────
-router.get('/posts', async (req, res) => {
+// Open to guests; `optionalAuth` tells us whether to widen the feed past the
+// public posts.
+router.get('/posts', optionalAuth, async (req, res) => {
   const { userId } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
 
   try {
+    const visible = await visibilityFilter(req.user?.id);
     const posts = await prisma.socialPost.findMany({
-      where: userId ? { authorId: userId } : undefined,
+      where: { AND: [visible, ...(userId ? [{ authorId: userId }] : [])] },
       include: POST_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take: limit,
