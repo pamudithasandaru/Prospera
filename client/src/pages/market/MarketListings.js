@@ -29,6 +29,26 @@ import {
   ChatBubbleOutline,
 } from '@mui/icons-material';
 import api from '../../services/api';
+import { neuColors } from '../../neumorphic';
+
+/**
+ * Inline fallback for a listing with no usable photo.
+ *
+ * This used to point at via.placeholder.com, which no longer resolves — so a
+ * listing without an image rendered as a broken-image icon and raw alt text.
+ * A data URI cannot fail, and `onError` catches the other case: a product
+ * whose stored image URL is itself dead.
+ */
+const NO_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180">
+      <rect width="300" height="180" fill="#d8dee9"/>
+      <path d="M110 108l22-26 18 21 14-16 26 31z" fill="#a9b4c8"/>
+      <circle cx="118" cy="74" r="10" fill="#a9b4c8"/>
+      <text x="150" y="150" font-family="sans-serif" font-size="13" fill="#5b667a" text-anchor="middle">No image</text>
+    </svg>`
+  );
 
 const MarketListings = () => {
   const [listings, setListings] = useState([]);
@@ -147,8 +167,10 @@ const MarketListings = () => {
               <CardMedia
                 component="img"
                 height="180"
-                image={listing.product?.images?.[0] || 'https://via.placeholder.com/300x180?text=No+Image'}
+                image={listing.product?.images?.[0] || NO_IMAGE}
                 alt={listing.product?.name}
+                onError={(e) => { e.currentTarget.src = NO_IMAGE; }}
+                sx={{ objectFit: 'cover', bgcolor: neuColors.baseDeep }}
               />
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>

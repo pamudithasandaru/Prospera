@@ -379,8 +379,12 @@ const SocialFeed = () => {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
-        {/* Left Sidebar - Professional Profile */}
-        <Grid item xs={12} md={3}>
+        {/* Left Sidebar — Professional Profile.
+            order: on phones the grid stacks, and a sidebar above the feed
+            means the first screenful is the user's own profile card instead
+            of a single post. The feed is ordered first below md; the
+            sidebars return to their columns from md up. */}
+        <Grid item xs={12} md={3} sx={{ order: { xs: 2, md: 1 } }}>
           {isGuest ? (
             <GuestPrompt
               title="Join the conversation"
@@ -395,7 +399,7 @@ const SocialFeed = () => {
         </Grid>
 
         {/* Main Feed */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6} sx={{ order: { xs: 1, md: 2 } }}>
           {/* Stories and the compose box both need an account — the feed
               below them does not, so only these two are swapped out. */}
           {!isGuest && (
@@ -679,7 +683,7 @@ const SocialFeed = () => {
 
         {/* Right Sidebar — suggestions, notifications and connection state
             are all per-account, so a guest would only fire a row of 401s. */}
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={3} sx={{ order: { xs: 3, md: 3 } }}>
           {isGuest ? (
             <GuestPrompt
               title="See who to follow"
