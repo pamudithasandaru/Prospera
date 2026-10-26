@@ -74,6 +74,11 @@ function serializeUserStub(u) {
 
 function serializePost(p) {
   if (!p) return null;
+  const reactions = (p.reactions || []).map((r) => ({
+    user: r.userId,
+    type: r.type,
+    date: r.createdAt,
+  }));
   return {
     _id: p.id,
     user: serializeUserStub(p.author),
@@ -81,7 +86,14 @@ function serializePost(p) {
     type: p.type,
     category: p.category,
     visibility: p.visibility,
-    likes: (p.likes || []).map((l) => ({ user: l.userId, date: l.createdAt })),
+    likes: [
+      ...(p.likes || []).map((l) => ({ user: l.userId, date: l.createdAt })),
+      ...reactions
+        .filter((r) => !(p.likes || []).some((l) => l.userId === r.user))
+        .map((r) => ({ user: r.user, date: r.date })),
+    ],
+    reactions,
+    shares: p._count?.shares ?? (p.shares || []).length,
     comments: (p.comments || []).map(serializeComment),
     createdAt: p.createdAt,
   };
@@ -97,6 +109,8 @@ function serializeComment(c) {
       avatar: avatarOf(c.author),
     },
     text: c.text,
+    parentId: c.parentId || null,
+    replies: (c.replies || []).map(serializeComment),
     createdAt: c.createdAt,
   };
 }

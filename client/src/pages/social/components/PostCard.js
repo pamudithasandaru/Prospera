@@ -82,9 +82,7 @@ const PostCard = ({
   const handleSelectReaction = (key) => {
     setSelectedReaction(key);
     setShowReactionPicker(false);
-    if (!isLiked) {
-      onLike();
-    }
+    onLike(key);
   };
 
   return (

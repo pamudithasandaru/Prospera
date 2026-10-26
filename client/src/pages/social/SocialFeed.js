@@ -112,6 +112,7 @@ const SocialFeed = () => {
         content: { text: fullText },
         type: postType,
         category: postCategory,
+        visibility: postVisibility,
         tags: postTags,
       };
 
@@ -143,7 +144,8 @@ const SocialFeed = () => {
   const likeTimers = React.useRef({});     // postId → timer ID
   const likeSnapshot = React.useRef({});   // postId → likes array before optimistic update
 
-  const handleLikePost = (postId) => {
+  const handleLikePost = (postId, reactionType = 'like') => {
+    if (!user?._id) return;
     // 1. Update UI immediately (optimistic)
     setPosts((prev) => prev.map((post) => {
       if (post._id !== postId) return post;
@@ -154,11 +156,16 @@ const SocialFeed = () => {
       if (!likeTimers.current[postId]) {
         likeSnapshot.current[postId] = post.likes || [];
       }
+      const previousReactions = post.reactions || [];
+      const previousLikes = post.likes || [];
       return {
         ...post,
         likes: isLiked
-          ? post.likes.filter((l) => l.user !== user._id && l.user?._id !== user._id)
-          : [...(post.likes || []), { user: user._id, date: new Date() }],
+          ? previousLikes.filter((l) => l.user !== user._id && l.user?._id !== user._id)
+          : [...previousLikes, { user: user._id, date: new Date() }],
+        reactions: isLiked
+          ? previousReactions.filter((r) => r.user !== user._id)
+          : [...previousReactions, { user: user._id, type: reactionType, date: new Date() }],
       };
     }));
 
@@ -167,7 +174,7 @@ const SocialFeed = () => {
     likeTimers.current[postId] = setTimeout(async () => {
       delete likeTimers.current[postId];
       try {
-        await api.post(`/social/post/${postId}/like`);
+        await api.post(`/social/post/${postId}/like`, { type: reactionType });
         // Success — clear snapshot, server state now matches UI
         delete likeSnapshot.current[postId];
       } catch (error) {
@@ -184,13 +191,14 @@ const SocialFeed = () => {
     }, 5000); // sync to DB after 5 s of no further clicks
   };
 
-  const handleAddComment = async (postId, customText) => {
+  const handleAddComment = async (postId, customText, parentId) => {
     const textToSubmit = customText || commentText[postId];
     if (!textToSubmit?.trim()) return;
 
     try {
       await api.post(`/social/post/${postId}/comment`, {
         text: textToSubmit.trim(),
+        ...(parentId ? { parentId } : {}),
       });
       
       if (!customText) {
@@ -226,6 +234,7 @@ const SocialFeed = () => {
   }, [loading, posts]);
 
   const handleSharePost = async (postId) => {
+    if (!user?._id) return;
     const url = `${window.location.origin}/social?post=${postId}`;
     let shared = false;
 
@@ -266,9 +275,12 @@ const SocialFeed = () => {
     }
 
     // Increment share count locally
-    setPosts((prev) =>
-      prev.map((p) => (p._id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p))
-    );
+    try {
+      const response = await api.post(`/social/post/${postId}/share`);
+      setPosts((prev) => prev.map((p) => (p._id === postId ? response.data.data : p)));
+    } catch (error) {
+      console.error('Share sync failed:', error);
+    }
   };
 
   const handleToggleSave = (postId) => {
@@ -646,12 +658,12 @@ const SocialFeed = () => {
 
               <Button 
                 variant="contained" 
-                onClick={() => {
+                onClick={requireAuth(() => {
                   if (tab === 3) setPostType('question');
                   else if (tab === 4) setPostType('success-story');
                   else setPostType('post');
                   setPostDialogOpen(true);
-                }}
+                })}
                 sx={{ px: 4, py: 1, borderRadius: 50, fontWeight: 700 }}
               >
                 {tab === 3 ? 'Ask Question' : tab === 4 ? 'Share Success Story' : 'Create Custom Post'}
@@ -664,14 +676,14 @@ const SocialFeed = () => {
                 post={post}
                 user={user}
                 isLiked={isPostLiked(post)}
-                onLike={requireAuth(() => handleLikePost(post._id))}
-                onShare={() => handleSharePost(post._id)}
-                onPostMenu={(e) => handlePostMenu(e, post._id)}
+                onLike={requireAuth((reactionType) => handleLikePost(post._id, reactionType))}
+                onShare={requireAuth(() => handleSharePost(post._id))}
+                onPostMenu={requireAuth((e) => handlePostMenu(e, post._id))}
                 isCommentsExpanded={expandedComments[post._id]}
                 onToggleComments={() => toggleComments(post._id)}
                 commentText={commentText[post._id] || ''}
                 onCommentChange={(e) => setCommentText({ ...commentText, [post._id]: e.target.value })}
-                onAddComment={requireAuth((customText) => handleAddComment(post._id, customText))}
+                onAddComment={requireAuth((customText, parentId) => handleAddComment(post._id, customText, parentId))}
                 onViewProfile={(author) => setProfileModalUser(author)}
                 onTagClick={(tag) => setSelectedTag(tag.replace(/^#/, ''))}
                 isSaved={savedPostIds.includes(post._id)}

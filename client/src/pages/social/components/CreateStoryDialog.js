@@ -28,6 +28,7 @@ const BG_COLORS = [
 const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
   const [mediaType, setMediaType] = useState('image');
   const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
   const [text, setText] = useState('');
   const [bgColor, setBgColor] = useState(BG_COLORS[0]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
 
   const reset = () => {
     setMediaUrl('');
+    setMediaFile(null);
     setText('');
     setBgColor(BG_COLORS[0]);
     setError('');
@@ -58,13 +60,15 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
     setLoading(true);
     setError('');
     try {
-      const payload = {
-        mediaType,
-        mediaUrl: mediaType === 'text' ? `data:text/${text}` : mediaUrl.trim(),
-        text: text.trim(),
-        backgroundColor: bgColor,
-      };
-      const res = await api.post('/stories', payload);
+      const payload = new FormData();
+      payload.append('mediaType', mediaType);
+      payload.append('mediaUrl', mediaType === 'text' ? `data:text/${text}` : mediaUrl.trim());
+      payload.append('text', text.trim());
+      payload.append('backgroundColor', bgColor);
+      if (mediaFile) payload.append('file', mediaFile);
+      const res = await api.post('/stories', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       const newStory = res.data.data;
       const group = {
         author: { _id: user?._id, name: user?.name, avatar: user?.profile?.profilePicture || '' },
@@ -102,8 +106,26 @@ const CreateStoryDialog = ({ open, onClose, onCreated, user }) => {
           <ToggleButton value="text"><TextFields sx={{ mr: 0.5 }} />Text</ToggleButton>
         </ToggleButtonGroup>
 
-        {/* Media URL */}
         {mediaType !== 'text' && (
+          <Button component="label" variant="outlined" fullWidth sx={{ mb: 2 }}>
+            {mediaFile ? `Selected: ${mediaFile.name}` : 'Choose image or video file'}
+            <input
+              hidden
+              type="file"
+              accept={mediaType === 'image' ? 'image/jpeg,image/png,image/webp' : 'video/mp4,video/webm,video/quicktime'}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setMediaFile(file);
+                  setMediaUrl(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </Button>
+        )}
+
+        {/* Media URL */}
+        {mediaType !== 'text' && !mediaFile && (
           <TextField
             label={`${mediaType === 'image' ? 'Image' : 'Video'} URL`}
             fullWidth
