@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Container, Typography, Box, Tabs, Tab } from '@mui/material';
-import { Dashboard, People, Article, School, Storefront, ShoppingBag, AccountBalance, Support, Payments } from '@mui/icons-material';
+import { Dashboard, People, Article, School, Storefront, ShoppingBag, AccountBalance, Support, Payments, SmartToy } from '@mui/icons-material';
 import AdminOverview from './AdminOverview';
 import AdminUsers from './AdminUsers';
 import AdminPosts from './AdminPosts';
@@ -10,6 +10,7 @@ import AdminProducts from './AdminProducts';
 import AdminSchemes from './AdminSchemes';
 import AdminTickets from './AdminTickets';
 import AdminLoans from './AdminLoans';
+import AdminChatbot from './AdminChatbot';
 
 const AdminPanel = () => {
   const [tab, setTab] = useState(0);
@@ -42,6 +43,7 @@ const AdminPanel = () => {
         <Tab icon={<AccountBalance sx={{ fontSize: 18 }} />} iconPosition="start" label="Schemes" />
         <Tab icon={<Support sx={{ fontSize: 18 }} />} iconPosition="start" label="Tickets" />
         <Tab icon={<Payments sx={{ fontSize: 18 }} />} iconPosition="start" label="Loans" />
+        <Tab icon={<SmartToy sx={{ fontSize: 18 }} />} iconPosition="start" label="Chatbot" />
       </Tabs>
 
       {tab === 0 && <AdminOverview />}
@@ -53,6 +55,7 @@ const AdminPanel = () => {
       {tab === 6 && <AdminSchemes />}
       {tab === 7 && <AdminTickets />}
       {tab === 8 && <AdminLoans />}
+      {tab === 9 && <AdminChatbot />}
     </Container>
   );
 };
