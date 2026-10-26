@@ -7,6 +7,7 @@ const { body, validationResult } = require('express-validator');
 const { prisma } = require('../services/prisma');
 const { authenticate } = require('../middleware/auth');
 const { serializeStory } = require('../services/serializers');
+const { uploadStory } = require('../middleware/storyUpload');
 
 const router = express.Router();
 
@@ -55,9 +56,10 @@ router.get('/', authenticate, async (req, res) => {
 router.post(
   '/',
   authenticate,
+  uploadStory.single('file'),
   [
-    body('mediaUrl').notEmpty().withMessage('Media URL is required'),
-    body('mediaType').isIn(['image', 'video', 'text']).withMessage('Invalid media type'),
+    body('mediaUrl').optional().isString().isLength({ max: 2048 }).withMessage('Media URL is too long'),
+    body('mediaType').optional().isIn(['image', 'video', 'text']).withMessage('Invalid media type'),
     body('text').optional().isString().isLength({ max: 500 }),
     body('backgroundColor').optional().isString(),
   ],
@@ -68,13 +70,19 @@ router.post(
     }
 
     const { mediaUrl, mediaType, text, backgroundColor } = req.body;
+    if (!req.file && !mediaUrl) {
+      return res.status(400).json({ success: false, message: 'A story file or media URL is required' });
+    }
+    const uploadedType = req.file?.mimetype.startsWith('video/') ? 'video' : 'image';
+    const resolvedMediaUrl = req.file ? `/uploads/stories/${req.file.filename}` : mediaUrl;
+    const resolvedMediaType = req.file ? uploadedType : mediaType;
 
     try {
       const story = await prisma.story.create({
         data: {
           authorId: req.user.id,
-          mediaUrl,
-          mediaType,
+          mediaUrl: resolvedMediaUrl,
+          mediaType: resolvedMediaType,
           text: text || '',
           backgroundColor: backgroundColor || '#1B5E20',
           expiresAt: new Date(Date.now() + STORY_TTL_MS),
