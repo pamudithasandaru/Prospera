@@ -24,9 +24,12 @@ import {
 import { resolveAvatar } from '../../../utils/avatarUtils';
 import { neuRaised, neuInset, raised } from '../../../neumorphic';
 import api from '../../../services/api';
+import useRequireAuth from '../../../hooks/useRequireAuth';
 
 const FarmerProfileModal = ({ open, onClose, user, currentUserId }) => {
   const navigate = useNavigate();
+  // Guests can open a profile from the public feed; connecting needs an account.
+  const requireAuth = useRequireAuth();
   const [connectionStatus, setConnectionStatus] = useState('none');
   const [connecting, setConnecting] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -35,7 +38,8 @@ const FarmerProfileModal = ({ open, onClose, user, currentUserId }) => {
   const isSelf = currentUserId && targetId && String(currentUserId) === String(targetId);
 
   useEffect(() => {
-    if (!open || !targetId || isSelf) return;
+    // No token, no connection state to read — skip the guaranteed 401.
+    if (!open || !targetId || isSelf || !currentUserId) return;
 
     setLoadingStatus(true);
     api.get(`/social/connection-status/${targetId}`)
@@ -48,7 +52,7 @@ const FarmerProfileModal = ({ open, onClose, user, currentUserId }) => {
       .finally(() => {
         setLoadingStatus(false);
       });
-  }, [open, targetId, isSelf]);
+  }, [open, targetId, isSelf, currentUserId]);
 
   if (!user) return null;
 
@@ -207,7 +211,7 @@ const FarmerProfileModal = ({ open, onClose, user, currentUserId }) => {
                     <PersonAdd />
                   )
                 }
-                onClick={handleConnect}
+                onClick={requireAuth(handleConnect)}
                 disabled={connecting || loadingStatus || connectionStatus === 'sent'}
                 sx={{ textTransform: 'none', borderRadius: 50, fontWeight: 600 }}
               >

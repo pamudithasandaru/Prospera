@@ -26,9 +26,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { neuColors } from '../../neumorphic';
+import { useAuth } from '../../context/AuthContext';
+import useRequireAuth from '../../hooks/useRequireAuth';
 
 const GovernmentSchemes = () => {
   const navigate = useNavigate();
+  const { isGuest } = useAuth();
+  const requireAuth = useRequireAuth();
+
   const [schemes, setSchemes] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +41,9 @@ const GovernmentSchemes = () => {
 
   useEffect(() => {
     fetchSchemes();
-    fetchApplications();
-  }, []);
+    // Guests can read the scheme list; "my applications" needs an account.
+    if (!isGuest) fetchApplications();
+  }, [isGuest]);
 
   const fetchSchemes = async () => {
     try {
@@ -255,7 +261,7 @@ const GovernmentSchemes = () => {
                     <Button
                       variant="contained"
                       fullWidth
-                      onClick={() => navigate(`/government/schemes/${scheme._id}/apply`)}
+                      onClick={requireAuth(() => navigate(`/government/schemes/${scheme._id}/apply`))}
                     >
                       Apply Now
                     </Button>

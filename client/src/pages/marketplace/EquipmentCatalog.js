@@ -28,9 +28,12 @@ import {
 import { neuRaised } from '../../neumorphic';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import useRequireAuth from '../../hooks/useRequireAuth';
 
 const EquipmentCatalog = () => {
   const navigate = useNavigate();
+  const requireAuth = useRequireAuth();
+
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -232,7 +235,7 @@ const EquipmentCatalog = () => {
                   fullWidth
                   variant="contained"
                   startIcon={<ShoppingCart />}
-                  onClick={() => handleAddToCart(product._id)}
+                  onClick={requireAuth(() => handleAddToCart(product._id))}
                   disabled={product.stock === 0}
                 >
                   Add to Cart

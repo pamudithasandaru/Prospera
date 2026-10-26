@@ -46,6 +46,19 @@ function serializeUser(u) {
   };
 }
 
+/**
+ * Profile of *someone else*, for the publicly reachable GET /auth/user/:id.
+ *
+ * Same shape as serializeUser minus `email`: that route needs no token, so
+ * returning the address turned the whole user table into a scrapable mailing
+ * list the moment the app stopped requiring a login to browse.
+ */
+function serializePublicUser(u) {
+  if (!u) return null;
+  const { email, ...rest } = serializeUser(u);
+  return rest;
+}
+
 /** Compact author stub embedded in posts, comments and stories. */
 function serializeUserStub(u) {
   if (!u) return null;
@@ -374,6 +387,7 @@ module.exports = {
   iso,
   avatarOf,
   serializeUser,
+  serializePublicUser,
   serializeUserStub,
   serializePost,
   serializeComment,

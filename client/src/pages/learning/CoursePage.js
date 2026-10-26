@@ -97,17 +97,9 @@ const CoursePage = () => {
     const fetchCourse = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/learning/courses/${courseId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
+        // Public route — see the note on the same call in CourseCatalog.
+        const res = await api.get(`/learning/courses/${courseId}`);
+        const json = res.data;
         if (cancelled) return;
 
         if (json.success && json.data) {

@@ -349,19 +349,12 @@ const CourseCatalog = () => {
     let cancelled = false;
     const fetchCourses = async () => {
       try {
-        // Use a plain fetch so the axios 401-redirect interceptor can't interfere
-        const res = await fetch(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/learning/courses`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const apiCourses = json.data || [];
+        // The catalogue is public. This used to bypass the axios client
+        // because its 401 handler redirected to /login indiscriminately;
+        // that handler now only evicts a session that actually existed, so
+        // the shared client is safe here again.
+        const res = await api.get('/learning/courses');
+        const apiCourses = res.data.data || [];
         if (cancelled) return;
         // Normalise API shape to match our local data shape
         const normalised = apiCourses.map((c) => ({
