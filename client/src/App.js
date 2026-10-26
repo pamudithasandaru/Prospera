@@ -7,6 +7,7 @@ import { neuColors } from './neumorphic';
 import ScrollReveal from './motion/ScrollReveal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { CartProvider } from './context/CartContext';
 import { accessFor } from './config/access';
 
 // Components
@@ -45,6 +46,10 @@ import DiseaseDetection from './pages/ai/DiseaseDetection';
 
 // Marketplace
 import EquipmentCatalog from './pages/marketplace/EquipmentCatalog';
+import CartPage from './pages/marketplace/CartPage';
+import CheckoutPage from './pages/marketplace/CheckoutPage';
+import OrderConfirmation from './pages/marketplace/OrderConfirmation';
+import OrdersPage from './pages/marketplace/OrdersPage';
 
 // Government
 import GovernmentSchemes from './pages/government/GovernmentSchemes';
@@ -104,6 +109,10 @@ function AppContent() {
           {Guarded({ path: '/learning/course/:courseId', element: <CoursePage /> })}
           {Guarded({ path: '/learning/courses/:id', element: <CourseCatalog /> })}
           {Guarded({ path: '/marketplace', element: <EquipmentCatalog /> })}
+          {Guarded({ path: '/marketplace/cart', element: <CartPage /> })}
+          {Guarded({ path: '/marketplace/checkout', element: <CheckoutPage /> })}
+          {Guarded({ path: '/marketplace/orders', element: <OrdersPage /> })}
+          {Guarded({ path: '/marketplace/orders/:orderId', element: <OrderConfirmation /> })}
           {Guarded({ path: '/government', element: <GovernmentSchemes /> })}
           {Guarded({ path: '/weather', element: <WeatherDashboard /> })}
 
@@ -142,7 +151,9 @@ function App() {
       <Router>
         <AuthProvider>
           <SocketProvider>
-            <AppContent />
+            <CartProvider>
+              <AppContent />
+            </CartProvider>
           </SocketProvider>
         </AuthProvider>
       </Router>
