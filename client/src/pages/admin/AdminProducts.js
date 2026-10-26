@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { Add, Delete, Edit } from '@mui/icons-material';
 import api from '../../services/api';
-import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, errMsg, money } from './adminCommon';
+import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, ActionCell, errMsg, money } from './adminCommon';
 
 const FIELDS = [
   { name: 'name', label: 'Name', required: true },
@@ -91,10 +91,10 @@ const AdminProducts = () => {
                   <Chip size="small" label={p.stock} color={p.stock === 0 ? 'error' : p.stock < 5 ? 'warning' : 'default'} />
                 </TableCell>
                 <TableCell>{p.freeShipping ? 'Free' : '—'}</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                <ActionCell>
                   <Tooltip title="Edit"><IconButton onClick={() => setForm({ product: p })}><Edit /></IconButton></Tooltip>
                   <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(p)}><Delete /></IconButton></Tooltip>
-                </TableCell>
+                </ActionCell>
               </TableRow>
             ))}
             <EmptyRow show={!list.loading && list.rows.length === 0} cols={5}>No products found</EmptyRow>

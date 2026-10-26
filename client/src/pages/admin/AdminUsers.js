@@ -8,7 +8,7 @@ import { Delete, PauseCircle, Block, CheckCircle } from '@mui/icons-material';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, errMsg } from './adminCommon';
+import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, ActionCell, errMsg } from './adminCommon';
 
 const ROLES = ['farmer', 'buyer', 'consultant', 'expert', 'admin'];
 const STATUS_COLOR = { active: 'success', suspended: 'warning', banned: 'error' };
@@ -123,7 +123,7 @@ const AdminUsers = () => {
                   </TableCell>
                   <TableCell align="right">{u.postsCount}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(u.createdAt), 'dd MMM yyyy')}</TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  <ActionCell>
                     {u.status === 'active' ? (
                       <>
                         <Tooltip title={isMe || isAdmin ? 'Admins must be demoted first' : 'Suspend'}>
@@ -147,7 +147,7 @@ const AdminUsers = () => {
                         <IconButton color="error" disabled={isMe} onClick={() => setConfirmDelete(u)}><Delete /></IconButton>
                       </span>
                     </Tooltip>
-                  </TableCell>
+                  </ActionCell>
                 </TableRow>
               );
             })}
