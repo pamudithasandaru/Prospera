@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     chat_api_key: str = ""
     cors_origins: str = "http://localhost:5173,http://localhost:3001"
 
-    top_k: int = 5
+    # Folder of starter/guide documents. Empty = the repo's sprout/knowledge folder.
+    knowledge_dir: str = ""
+
+    top_k: int = 6
     score_threshold: float = 0.25
     chunk_size: int = 900
     chunk_overlap: int = 150
