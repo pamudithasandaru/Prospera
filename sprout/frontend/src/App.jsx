@@ -17,11 +17,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden="true">🌱</span>
-          <div>
-            <h1>Sprout</h1>
-            <p>Prospera farming assistant</p>
-          </div>
+          <img className="brand-logo" src="/haritha-bhoomi-logo.png" alt="හරිත භූමි — Haritha Bhoomi" />
         </div>
         <nav>
           <button className={tab === 'chat' ? 'active' : ''} onClick={() => setTab('chat')}>Chat</button>
