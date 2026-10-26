@@ -5,13 +5,13 @@ import {
 } from '@mui/material';
 import { Add, Delete, Edit } from '@mui/icons-material';
 import api from '../../services/api';
-import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, errMsg, money } from './adminCommon';
+import { useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, errMsg, usd } from './adminCommon';
 
 const FIELDS = [
   { name: 'name', label: 'Name', required: true },
   { name: 'category', label: 'Category', required: true },
   { name: 'description', label: 'Description', type: 'textarea' },
-  { name: 'price', label: 'Price (LKR)', type: 'number', required: true },
+  { name: 'price', label: 'Price ($)', type: 'number', required: true },
   { name: 'originalPrice', label: 'Original price (optional, shows a discount)', type: 'number' },
   { name: 'stock', label: 'Stock', type: 'number', required: true, step: 1 },
   { name: 'image', label: 'Image URL (optional)' },
@@ -80,10 +80,10 @@ const AdminProducts = () => {
                   </Box>
                 </TableCell>
                 <TableCell align="right">
-                  {money(p.price)}
+                  {usd(p.price)}
                   {p.originalPrice ? (
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ textDecoration: 'line-through' }}>
-                      {money(p.originalPrice)}
+                      {usd(p.originalPrice)}
                     </Typography>
                   ) : null}
                 </TableCell>
