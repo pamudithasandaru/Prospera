@@ -304,4 +304,7 @@ router.delete('/posts/:id', async (req, res) => {
 // Courses, listings, products, schemes, tickets and loans
 router.use(require('./adminContent'));
 
+// Sprout chatbot knowledge: status and sync
+router.use('/chatbot', require('./adminChatbot'));
+
 module.exports = router;

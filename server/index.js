@@ -113,6 +113,7 @@ const storiesRoutes = require('./routes/stories');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
 const adminRoutes = require('./routes/admin');
+const chatbotSync = require('./services/chatbotSync');
 
 const { predictPlantDisease } = require('./controllers/predictionController');
 const upload = require('./middleware/upload');
@@ -218,6 +219,7 @@ const startServer = async () => {
       console.log(`🚀 API server listening on port ${PORT}`);
       console.log(`🔌 Socket.IO ready`);
       console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
+      chatbotSync.startAutoSync();
     });
   } catch (err) {
     console.error('Failed to start server:', err.message);

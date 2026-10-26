@@ -9,6 +9,7 @@ const express = require('express');
 const { prisma } = require('../services/prisma');
 const { pageParams, paginationOf, str, num, dec, isPrismaCode, searchOr } = require('../services/adminHelpers');
 const { normalizeVideos, normalizeMaterials, youtubeId } = require('../services/courseHelpers');
+const chatbotSync = require('../services/chatbotSync');
 
 const router = express.Router();
 
@@ -151,6 +152,7 @@ router.post('/courses', async (req, res) => {
       },
       include: COURSE_FULL,
     });
+    chatbotSync.notify('course', c.id);
     return res.status(201).json({ success: true, data: serializeCourseFull(c) });
   } catch (err) {
     return fail(res, 'create course', err, 'Failed to create course');
@@ -177,11 +179,13 @@ router.patch('/courses/:id', guard('update course', 'Course', 'Failed to update 
     }
     return tx.course.findUnique({ where: { id: courseId }, include: COURSE_FULL });
   });
+  chatbotSync.notify('course', courseId);
   return res.json({ success: true, data: serializeCourseFull(c) });
 }));
 
 router.delete('/courses/:id', guard('delete course', 'Course', 'Failed to delete course', async (req, res) => {
   await prisma.course.delete({ where: { id: req.params.id } });
+  chatbotSync.notify('course', req.params.id, 'delete');
   return res.json({ success: true, message: 'Course deleted' });
 }));
 
@@ -233,11 +237,13 @@ router.get('/listings', async (req, res) => {
 router.patch('/listings/:id', guard('update listing', 'Listing', 'Failed to update listing', async (req, res) => {
   if (typeof req.body.sellerVerified !== 'boolean') return bad(res, 'sellerVerified must be true or false');
   const l = await prisma.marketListing.update({ where: { id: req.params.id }, data: { sellerVerified: req.body.sellerVerified } });
+  chatbotSync.notify('listing', l.id);
   return res.json({ success: true, data: { _id: l.id, sellerVerified: l.sellerVerified } });
 }));
 
 router.delete('/listings/:id', guard('delete listing', 'Listing', 'Failed to delete listing', async (req, res) => {
   await prisma.marketListing.delete({ where: { id: req.params.id } });
+  chatbotSync.notify('listing', req.params.id, 'delete');
   return res.json({ success: true, message: 'Listing deleted' });
 }));
 
@@ -308,6 +314,7 @@ router.post('/products', async (req, res) => {
   if (error) return bad(res, error);
   try {
     const p = await prisma.marketplaceProduct.create({ data });
+    chatbotSync.notify('product', p.id);
     return res.status(201).json({ success: true, data: serializeProduct(p) });
   } catch (err) {
     return fail(res, 'create product', err, 'Failed to create product');
@@ -318,11 +325,13 @@ router.patch('/products/:id', guard('update product', 'Product', 'Failed to upda
   const { data, error } = productFields(req.body, { partial: true });
   if (error) return bad(res, error);
   const p = await prisma.marketplaceProduct.update({ where: { id: req.params.id }, data });
+  chatbotSync.notify('product', p.id);
   return res.json({ success: true, data: serializeProduct(p) });
 }));
 
 router.delete('/products/:id', guard('delete product', 'Product', 'Failed to delete product', async (req, res) => {
   await prisma.marketplaceProduct.delete({ where: { id: req.params.id } });
+  chatbotSync.notify('product', req.params.id, 'delete');
   return res.json({ success: true, message: 'Product deleted' });
 }));
 
@@ -395,6 +404,7 @@ router.post('/schemes', async (req, res) => {
   if (error) return bad(res, error);
   try {
     const s = await prisma.scheme.create({ data });
+    chatbotSync.notify('scheme', s.id);
     return res.status(201).json({ success: true, data: serializeScheme(s) });
   } catch (err) {
     return fail(res, 'create scheme', err, 'Failed to create scheme');
@@ -405,11 +415,13 @@ router.patch('/schemes/:id', guard('update scheme', 'Scheme', 'Failed to update 
   const { data, error } = schemeFields(req.body, { partial: true });
   if (error) return bad(res, error);
   const s = await prisma.scheme.update({ where: { id: req.params.id }, data });
+  chatbotSync.notify('scheme', s.id);
   return res.json({ success: true, data: serializeScheme(s) });
 }));
 
 router.delete('/schemes/:id', guard('delete scheme', 'Scheme', 'Failed to delete scheme', async (req, res) => {
   await prisma.scheme.delete({ where: { id: req.params.id } });
+  chatbotSync.notify('scheme', req.params.id, 'delete');
   return res.json({ success: true, message: 'Scheme deleted' });
 }));
 

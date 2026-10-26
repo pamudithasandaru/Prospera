@@ -3,6 +3,7 @@ const { prisma } = require('../services/prisma');
 const { authenticate } = require('../middleware/auth');
 const { serializeCourse } = require('../services/serializers');
 const { normalizeVideos, normalizeMaterials } = require('../services/courseHelpers');
+const chatbotSync = require('../services/chatbotSync');
 
 const router = express.Router();
 
@@ -92,6 +93,7 @@ router.post('/courses', authenticate, async (req, res) => {
       include: COURSE_INCLUDE,
     });
 
+    chatbotSync.notify('course', course.id);
     return res.status(201).json({
       success: true,
       message: 'Course created successfully',
@@ -178,6 +180,7 @@ router.put('/courses/:id', authenticate, async (req, res) => {
       return tx.course.findUnique({ where: { id: courseId }, include: COURSE_INCLUDE });
     });
 
+    chatbotSync.notify('course', courseId);
     return res.json({
       success: true,
       message: 'Course updated successfully',
@@ -208,6 +211,7 @@ router.delete('/courses/:id', authenticate, async (req, res) => {
     }
 
     await prisma.course.delete({ where: { id: req.params.id } });
+    chatbotSync.notify('course', req.params.id, 'delete');
     return res.json({ success: true, message: 'Course deleted successfully' });
   } catch (err) {
     console.error('Error deleting course:', err.message);
