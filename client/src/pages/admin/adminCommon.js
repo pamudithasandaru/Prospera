@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  FormControlLabel, InputAdornment, MenuItem, Pagination, Select, Snackbar, Switch, TextField, Typography,
+  FormControlLabel, InputAdornment, MenuItem, Pagination, Select, Snackbar, Switch, TableCell, TextField, Typography,
 } from '@mui/material';
 import { Search } from '@mui/icons-material';
 import api from '../../services/api';
@@ -182,6 +182,13 @@ export const FormDialog = ({ open, title, fields, initial, submitLabel = 'Save',
     </Dialog>
   );
 };
+
+/** Right-aligned cell for row actions — spaces the icon buttons so their soft shadows don't merge. */
+export const ActionCell = ({ children }) => (
+  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>{children}</Box>
+  </TableCell>
+);
 
 export const options = (list) => list.map((v) => ({ value: v, label: v }));
 

@@ -278,12 +278,14 @@ const FarmDashboard = () => {
                             />
                           </TableCell>
                           <TableCell align="right">
-                            <IconButton size="small" onClick={() => setCropDialog({ open: true, crop, index: idx })}>
-                              <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => handleDeleteCrop(idx)}>
-                              <Delete fontSize="small" />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                              <IconButton size="small" onClick={() => setCropDialog({ open: true, crop, index: idx })}>
+                                <Edit fontSize="small" />
+                              </IconButton>
+                              <IconButton size="small" color="error" onClick={() => handleDeleteCrop(idx)}>
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))}

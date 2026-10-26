@@ -317,7 +317,9 @@ function serializeListing(l) {
       images: l.images || [],
       description: l.productDescription,
     },
-    seller: { verified: l.sellerVerified, _id: l.sellerId || null },
+    // `verified` is a flag on the listing itself, not on the account, so it
+    // is merged onto the seller stub rather than read off the user row.
+    seller: { _id: l.sellerId || null, name: '', avatar: '', ...(serializeUserStub(l.seller) || {}), verified: l.sellerVerified },
     pricing: { pricePerUnit: num(l.pricePerUnit) },
     quantity: { amount: num(l.quantityAmount), unit: l.quantityUnit },
     quality: { grade: l.qualityGrade || '' },

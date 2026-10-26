@@ -7,7 +7,7 @@ import { Add, Delete, Edit, VideoLibrary, LibraryBooks } from '@mui/icons-materi
 import api from '../../services/api';
 import CourseFormDialog from '../learning/CourseFormDialog';
 import {
-  useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, EmptyRow, errMsg,
+  useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, EmptyRow, ActionCell, errMsg,
 } from './adminCommon';
 
 const AdminCourses = () => {
@@ -115,12 +115,12 @@ const AdminCourses = () => {
                   <Chip size="small" icon={<LibraryBooks />} label={c.materialsCount} variant={c.materialsCount ? 'filled' : 'outlined'} />
                 </TableCell>
                 <TableCell align="right">{c.enrolledStudents}</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                <ActionCell>
                   <Tooltip title="Edit course, videos and materials">
                     <IconButton onClick={() => openEdit(c)} disabled={opening}><Edit /></IconButton>
                   </Tooltip>
                   <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(c)}><Delete /></IconButton></Tooltip>
-                </TableCell>
+                </ActionCell>
               </TableRow>
             ))}
             <EmptyRow show={!list.loading && list.rows.length === 0} cols={8}>No courses found</EmptyRow>
