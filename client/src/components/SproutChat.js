@@ -5,9 +5,35 @@ import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
 import { neuColors, raised, inset } from '../neumorphic';
 import { streamSproutChat } from '../services/sproutApi';
 import { BRAND_NAME } from '../brand';
+
+// Friendly names for the pages Sprout can point to.
+const PAGE_LABELS = {
+  '/marketplace': 'Marketplace',
+  '/market': 'Wholesale Market',
+  '/government': 'Government Portal',
+  '/learning': 'Learning Hub',
+};
+
+/** Links for the sources an answer actually cites ([1], [2]...), deduplicated, at most three. */
+function citedLinks(message) {
+  const cited = new Set([...(message.content || '').matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
+  const seen = new Set();
+  const links = [];
+  for (const src of message.sources || []) {
+    if (!src.url || !cited.has(src.id)) continue;
+    const isCourse = src.url.startsWith('/learning/course/');
+    const label = isCourse ? `Course: ${src.source}` : PAGE_LABELS[src.url] || 'Open page';
+    const key = `${src.url}|${label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({ url: src.url, label: label.length > 40 ? `${label.slice(0, 37)}…` : label });
+  }
+  return links.slice(0, 3);
+}
 
 const SUGGESTIONS = [
   'What courses do you offer on irrigation?',
@@ -22,6 +48,7 @@ export default function SproutChat() {
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
   const abortRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,7 +75,8 @@ export default function SproutChat() {
         history,
         signal: ctrl.signal,
         onEvent: (e) => {
-          if (e.type === 'token') patchLast((l) => ({ ...l, content: l.content + e.text }));
+          if (e.type === 'sources') patchLast((l) => ({ ...l, sources: e.sources }));
+          else if (e.type === 'token') patchLast((l) => ({ ...l, content: l.content + e.text }));
           else if (e.type === 'error') patchLast((l) => ({ ...l, error: true, content: e.message }));
         },
       });
@@ -132,7 +160,23 @@ export default function SproutChat() {
                 {m.role === 'assistant' && !m.content && !m.error ? (
                   <Typography variant="body2" sx={{ color: neuColors.textMuted }}>Thinking…</Typography>
                 ) : m.role === 'assistant' && !m.error ? (
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                  <>
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                    {citedLinks(m).length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 1 }}>
+                        {citedLinks(m).map((l) => (
+                          <Chip
+                            key={`${l.url}${l.label}`}
+                            size="small"
+                            clickable
+                            label={`Open: ${l.label}`}
+                            onClick={() => { navigate(l.url); setOpen(false); }}
+                            sx={{ boxShadow: raised('xs'), color: neuColors.primary, fontWeight: 600 }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                  </>
                 ) : (
                   m.content
                 )}
