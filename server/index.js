@@ -133,6 +133,10 @@ const allowedOrigins = [...new Set([CLIENT_URL, CLIENT_URL_DEV])];
 
 app.use(helmet());
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+// Stripe signs its webhook over the exact bytes it sent, so this one path
+// keeps its raw body. It has to come before express.json(), which would
+// otherwise consume the stream.
+app.use('/api/marketplace/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));

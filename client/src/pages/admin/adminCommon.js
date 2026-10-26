@@ -8,7 +8,7 @@ import api from '../../services/api';
 
 export const errMsg = (err, fallback) => err?.response?.data?.message || fallback;
 
-export const money = (n) => `LKR ${Number(n || 0).toLocaleString()}`;
+export { money } from '../../utils/catalogue';
 
 // Marketplace products are shown to customers in US dollars.
 export const usd = (n) => `$${Number(n || 0).toLocaleString()}`;

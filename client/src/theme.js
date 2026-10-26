@@ -305,13 +305,41 @@ const theme = createTheme({
     MuiCircularProgress: { defaultProps: { thickness: 4 } },
     MuiAlert: {
       styleOverrides: {
-        root: { ...surface, borderRadius: 18, boxShadow: raised('sm'), border: 'none' },
+        // The surface colour belongs to the inline variants only. Putting it on
+        // `root` also painted over the filled variant's semantic background,
+        // leaving MUI's white filled text on a near-white surface.
+        root: { borderRadius: 18, boxShadow: raised('sm'), border: 'none', backgroundImage: 'none' },
+        standard: { backgroundColor: c.base },
         standardSuccess: { backgroundColor: c.base, color: c.success },
         standardInfo: { backgroundColor: c.base, color: c.info },
         standardWarning: { backgroundColor: c.base, color: c.warning },
         standardError: { backgroundColor: c.base, color: c.error },
-        filled: { boxShadow: raised('sm') },
-        outlined: { border: 'none' },
+        outlined: { border: 'none', backgroundColor: c.base },
+        // A toast floats over the page rather than sitting in it, so it keeps a
+        // solid fill and a cast shadow instead of the neumorphic pair.
+        filled: {
+          color: '#fff',
+          boxShadow: floating('sm'),
+          '& .MuiAlert-icon': { color: '#fff' },
+          // Actions inherit the fill, so the neumorphic raised pair would draw
+          // a light smudge on a dark panel.
+          '& .MuiButton-root': {
+            color: '#fff',
+            boxShadow: 'none',
+            border: `1px solid ${alpha('#fff', 0.5)}`,
+            '&:hover': { boxShadow: 'none', backgroundColor: alpha('#fff', 0.14) },
+          },
+          '& .MuiIconButton-root': {
+            color: '#fff',
+            backgroundColor: 'transparent',
+            boxShadow: 'none',
+            '&:hover': { backgroundColor: alpha('#fff', 0.14), boxShadow: 'none' },
+          },
+        },
+        filledSuccess: { backgroundColor: c.success },
+        filledInfo: { backgroundColor: c.info },
+        filledWarning: { backgroundColor: c.warning },
+        filledError: { backgroundColor: c.error },
       },
     },
     MuiSnackbarContent: { styleOverrides: { root: { ...surface, color: c.text, boxShadow: floating('md') } } },
