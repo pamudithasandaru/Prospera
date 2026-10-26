@@ -26,4 +26,4 @@ Drip suits row crops, vegetables, fruit trees and plantation crops, especially w
 
 Check for leaks and blocked emitters every week. Clean filters, flush lines at the end of each cycle, and protect pipes from sunlight and rodents.
 
-For detailed design of drip and sprinkler systems, see the "Smart Irrigation Design" course on Prospera. A solar pumping option is available in the Marketplace: the Solar Powered Irrigation Kit.
+For detailed design of drip and sprinkler systems, see the "Smart Irrigation Design" course in the Haritha Bhoomi Learning Hub. A solar pumping option is available in the Marketplace: the Solar Powered Irrigation Kit.
