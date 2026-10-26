@@ -20,19 +20,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Stop services before file sync
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+        run: |
+          foreach ($name in "ProsperaAPI", "ProsperaML") {
+            $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
+            if ($null -ne $svc -and $svc.Status -ne "Stopped") {
+              Write-Host "Stopping service: $name"
+              Stop-Service -Name $name -Force
+              $svc.WaitForStatus("Stopped", "00:00:30")
+            }
+          }
+
       - name: Copy source to deployment directory
         shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $source = "${{ github.workspace }}"
           $destination = "C:\Prospera"
 
-          robocopy $source $destination /MIR `
-            /XD .git node_modules client\node_modules client\build `
-            /XF .env client\.env.production
+          robocopy $source $destination /MIR /R:2 /W:5 `
+            /XD .git node_modules client\node_modules client\build ml-service\.venv logs `
+            /XF .env client\.env.production client\.env
 
           if ($LASTEXITCODE -gt 7) {
             exit $LASTEXITCODE
           }
+          $global:LASTEXITCODE = 0
 
       - name: Install root dependencies
         shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
@@ -48,8 +61,10 @@ jobs:
 
       - name: Build frontend
         shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+        env:
+          CI: "false"
         run: |
-          Set-Location C:\Prospera
+          Set-Location C:\Prospera\client
           npm run build
 
       - name: Generate Prisma Client
@@ -64,23 +79,28 @@ jobs:
           Set-Location C:\Prospera
           npx prisma migrate deploy
 
-      - name: Restart API service
+      - name: Update ML dependencies
         shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          Restart-Service -Name "ProsperaAPI"
-          Start-Sleep -Seconds 5
-
-      - name: Restart ML service
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
-        run: |
-          $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
-
-          if ($null -ne $service) {
-            Restart-Service -Name "ProsperaML"
-            Start-Sleep -Seconds 5
+          $ml = "C:\Prospera\ml-service"
+          if (Test-Path "$ml\.venv\Scripts\python.exe") {
+            & "$ml\.venv\Scripts\python.exe" -m pip install -r "$ml\requirements.txt" --quiet
           } else {
-            Write-Host "ProsperaML service is not installed; skipping."
+            Write-Host "No ML venv found; skipping."
           }
+
+      - name: Start services
+        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+        run: |
+          foreach ($name in "ProsperaML", "ProsperaAPI") {
+            $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
+            if ($null -ne $svc) {
+              Write-Host "Starting service: $name"
+              Start-Service -Name $name
+              $svc.WaitForStatus("Running", "00:00:30")
+            }
+          }
+          Start-Sleep -Seconds 5
 
       - name: Check API health
         shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
