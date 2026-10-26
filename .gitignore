@@ -42,6 +42,3 @@ service-account.json
 *-firebase-adminsdk-*.json
 
 *.keras
-
-# Claude Code personal overrides (team settings in .claude/settings.json are committed)
-.claude/settings.local.json

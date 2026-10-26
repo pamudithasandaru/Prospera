@@ -71,13 +71,13 @@ Prospera is organized into ten visible functional domains in the UI and API stru
 ### 7.1 High-Level Architecture
 - Frontend: React single-page application
 - API layer: Express server with route-per-domain modularization
-- Data layer: PostgreSQL (Neon) accessed through Prisma ORM, with a normalised relational schema
+- Data layer: Firestore-first when credentials are present, in-memory sample data fallback when unavailable
 - AI service: FastAPI service with TensorFlow model endpoint for plant disease prediction
 
 ### 7.2 Service Interaction Pattern
 1. Client sends authenticated requests to API.
 2. API validates JWT and resolves user context.
-3. API reads and writes PostgreSQL through Prisma, then maps rows to the public JSON shape.
+3. API reads from Firestore if configured, otherwise uses in-memory sample datasets.
 4. For disease detection, API proxies uploaded image data to the Python ML endpoint.
 5. API returns normalized success and error response envelopes.
 
@@ -95,6 +95,7 @@ Prospera is organized into ten visible functional domains in the UI and API stru
 - Axios for API communication
 - Recharts for visualization support
 - Socket.io client dependency present for real-time expansion
+- Firebase client SDK dependency available
 
 ### 8.2 Backend Technologies
 - Node.js runtime
@@ -109,9 +110,9 @@ Prospera is organized into ten visible functional domains in the UI and API stru
 - Socket.io dependency available for real-time capabilities
 
 ### 8.3 Data and Platform Services
-- PostgreSQL on Neon, with pooled runtime connections and a direct endpoint for migrations
-- Prisma ORM for schema, migrations and typed queries
-- Idempotent seed script for demonstration data
+- Firebase Admin SDK and Cloud Firestore integration support
+- Local in-memory sample data fallback layer for operational continuity
+- MongoDB and Mongoose dependencies present in package manifest for broader persistence strategy
 
 ### 8.4 AI and Machine Learning Stack
 - Python FastAPI service
@@ -135,18 +136,16 @@ Prospera is organized into ten visible functional domains in the UI and API stru
 - Upload constraints for image MIME type and file size
 
 ### 9.2 Operational Security Notes
-- The API refuses to start without DATABASE_URL rather than running in a degraded mode
-- Database credentials are supplied purely via environment variables; no credential files in the repository
-- Per-user scoping enforced on loans, tickets, scheme applications and credit scores
+- Firestore is disabled safely when credentials are absent
+- Service account discovery supports environment variable and secure file options
 - Production hardening opportunities include secret rotation strategy, centralized auth policy enforcement, and structured audit logging
 
 ## 10. Data Model and Persistence Approach
-Persistence is a single normalised PostgreSQL schema (31 tables) defined in
-`prisma/schema.prisma`. Collections that were previously embedded arrays are
-modelled as their own tables with foreign keys and cascade rules, so
-uniqueness and ownership are enforced by the database.
+Current code supports two runtime modes:
+1. Firestore-backed mode for persistent records
+2. In-memory sample mode for rapid development and demonstration
 
-Covered domains:
+In-memory datasets currently cover:
 - Users
 - Farms
 - Social posts
@@ -158,7 +157,7 @@ Covered domains:
 - Loans and credit score
 - Weather and alerts
 
-Demonstration data is loaded by `npm run db:seed`, which upserts on fixed ids and is safe to re-run.
+This dual-mode architecture reduces setup friction while preserving a path to persistent deployment.
 
 ## 11. API Surface Snapshot
 Current active route modules expose around two dozen route handlers across:
@@ -201,7 +200,7 @@ Some legacy documentation references broader endpoint counts and model structure
 ### 13.2 Environment and Configuration
 - Environment-driven service URLs, auth secret, and cloud credentials
 - Flexible client origin handling for local port variations
-- Database schema and seed managed through Prisma CLI scripts (`db:migrate`, `db:seed`)
+- Optional Firebase credential bootstrap scripts included
 
 ## 14. User Value Proposition
 Prospera creates measurable user value by:
