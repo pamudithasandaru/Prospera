@@ -89,7 +89,33 @@ export default function ScrollReveal() {
     if (main) tag(main);
     mo.observe(document.body, { childList: true, subtree: true });
 
+    // An IntersectionObserver reports the geometry it saw at observe() time.
+    // On mount that is before the browser has finished laying the page out,
+    // so elements that really are on screen come back as non-intersecting,
+    // get left at `hidden`, and never recover — nothing moves them again, so
+    // no second callback ever fires. It showed up as page headings, stat
+    // tiles and filter bars rendering invisible until the user scrolled.
+    //
+    // Re-observing after layout has settled makes the observer re-deliver
+    // with correct geometry, reusing the callback above rather than
+    // duplicating its logic. Elements added later (feed items, search
+    // results) already arrive this way via the MutationObserver.
+    //
+    // Tagging still happens synchronously above: deferring it would let the
+    // content paint at full opacity and then snap to hidden.
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        document.querySelectorAll('[data-reveal="hidden"]').forEach((el) => {
+          io.unobserve(el);
+          io.observe(el);
+        });
+      });
+    });
+
     return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
       mo.disconnect();
       io.disconnect();
     };
