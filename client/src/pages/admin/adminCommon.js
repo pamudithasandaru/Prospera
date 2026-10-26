@@ -10,6 +10,9 @@ export const errMsg = (err, fallback) => err?.response?.data?.message || fallbac
 
 export const money = (n) => `LKR ${Number(n || 0).toLocaleString()}`;
 
+// Marketplace products are shown to customers in US dollars.
+export const usd = (n) => `$${Number(n || 0).toLocaleString()}`;
+
 export const useDebounced = (value, ms = 350) => {
   const [v, setV] = useState(value);
   useEffect(() => {
