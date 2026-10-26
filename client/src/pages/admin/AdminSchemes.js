@@ -7,7 +7,7 @@ import { Add, Delete, Edit } from '@mui/icons-material';
 import { format } from 'date-fns';
 import api from '../../services/api';
 import {
-  useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, StatusSelect, errMsg, money, options,
+  useAdminList, useToast, SearchBar, ListFooter, ConfirmDialog, FormDialog, EmptyRow, StatusSelect, ActionCell, errMsg, money, options,
 } from './adminCommon';
 
 const FIELDS = [
@@ -81,10 +81,10 @@ const SchemesTable = () => {
                 <TableCell><Chip size="small" label={s.type} sx={{ textTransform: 'capitalize' }} /></TableCell>
                 <TableCell align="right">{s.benefitAmount != null ? money(s.benefitAmount) : '—'}</TableCell>
                 <TableCell align="right">{s.applicationsCount}</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                <ActionCell>
                   <Tooltip title="Edit"><IconButton onClick={() => setForm({ scheme: { ...s, eligibility: s.eligibility.join('\n') } })}><Edit /></IconButton></Tooltip>
                   <Tooltip title="Delete"><IconButton color="error" onClick={() => setConfirm(s)}><Delete /></IconButton></Tooltip>
-                </TableCell>
+                </ActionCell>
               </TableRow>
             ))}
             <EmptyRow show={!list.loading && list.rows.length === 0} cols={5}>No schemes found</EmptyRow>
