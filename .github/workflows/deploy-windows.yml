@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Copy source to deployment directory
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $source = "${{ github.workspace }}"
           $destination = "C:\Prospera"
@@ -35,43 +35,43 @@ jobs:
           }
 
       - name: Install root dependencies
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Set-Location C:\Prospera
           npm ci
 
       - name: Install frontend dependencies
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Set-Location C:\Prospera\client
           npm ci
 
       - name: Build frontend
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Set-Location C:\Prospera
           npm run build
 
       - name: Generate Prisma Client
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Set-Location C:\Prospera
           npx prisma generate
 
       - name: Apply database migrations
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Set-Location C:\Prospera
           npx prisma migrate deploy
 
       - name: Restart API service
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Restart-Service -Name "ProsperaAPI"
           Start-Sleep -Seconds 5
 
       - name: Restart ML service
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
 
@@ -83,7 +83,7 @@ jobs:
           }
 
       - name: Check API health
-        shell: powershell
+        shell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $response = Invoke-WebRequest `
             -Uri "http://localhost:5000/api/health" `
