@@ -1,0 +1,117 @@
+name: Deploy Prospera to Windows Server
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy source to deployment directory
+        shell: powershell
+        run: |
+          $source = "${{ github.workspace }}"
+          $destination = "C:\Prospera"
+
+          robocopy $source $destination /MIR `
+            /XD .git node_modules client\node_modules client\build `
+            /XF .env client\.env.production
+
+          if ($LASTEXITCODE -gt 7) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Install root dependencies
+        shell: powershell
+        run: |
+          Set-Location C:\Prospera
+          npm ci
+
+      - name: Install frontend dependencies
+        shell: powershell
+        run: |
+          Set-Location C:\Prospera\client
+          npm ci
+
+      - name: Build frontend
+        shell: powershell
+        run: |
+          Set-Location C:\Prospera
+          npm run build
+
+      - name: Generate Prisma Client
+        shell: powershell
+        run: |
+          Set-Location C:\Prospera
+          npx prisma generate
+
+      - name: Apply database migrations
+        shell: powershell
+        run: |
+          Set-Location C:\Prospera
+          npx prisma migrate deploy
+
+      - name: Restart API service
+        shell: powershell
+        run: |
+          Restart-Service -Name "ProsperaAPI"
+          Start-Sleep -Seconds 5
+
+      - name: Restart ML service
+        shell: powershell
+        run: |
+          $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
+
+          if ($null -ne $service) {
+            Restart-Service -Name "ProsperaML"
+            Start-Sleep -Seconds 5
+          } else {
+            Write-Host "ProsperaML service is not installed; skipping."
+          }
+
+      - name: Check API health
+        shell: powershell
+        run: |
+          $response = Invoke-WebRequest `
+            -Uri "http://localhost:5000/api/health" `
+            -UseBasicParsing `
+            -TimeoutSec 30
+
+          if ($response.StatusCode -ne 200) {
+            throw "API health check failed with HTTP $($response.StatusCode)"
+          }
+
+          Write-Host $response.Content
+
+      - name: Check ML health
+        shell: powershell
+        run: |
+          $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
+
+          if ($null -ne $service) {
+            $response = Invoke-WebRequest `
+              -Uri "http://localhost:8000/health" `
+              -UseBasicParsing `
+              -TimeoutSec 30
+
+            if ($response.StatusCode -ne 200) {
+              throw "ML health check failed with HTTP $($response.StatusCode)"
+            }
+
+            Write-Host $response.Content
+          } else {
+            Write-Host "ProsperaML service is not installed; skipping."
+          }
