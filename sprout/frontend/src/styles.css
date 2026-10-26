@@ -68,9 +68,7 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
 .app { max-width: 880px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; padding: 0 20px; }
 .topbar { display: flex; align-items: center; gap: 18px; padding: 20px 0; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
-.logo { font-size: 26px; background: var(--surface); border-radius: var(--r-sm); padding: 8px 12px; box-shadow: var(--raised-sm); }
-.brand h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 600; color: var(--green); }
-.brand p { margin: 0; font-size: 12px; color: var(--muted); }
+.brand-logo { display: block; height: 60px; width: auto; max-width: 100%; }
 nav { display: flex; gap: 12px; padding: 8px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--inset-sm); }
 nav button { box-shadow: var(--raised-xs); padding: 8px 18px; }
 nav button:hover:not(:disabled) { box-shadow: var(--raised-sm); }
@@ -131,6 +129,7 @@ tbody td:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 @media (max-width: 520px) {
   .bubble { max-width: 94%; }
   .topbar { gap: 12px; }
+  .brand-logo { height: 48px; }
   .app { padding: 0 16px; }
 }
 
