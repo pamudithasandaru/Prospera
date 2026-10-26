@@ -35,6 +35,18 @@ export const inset = (size = 'md') => {
   return `inset ${d}px ${d}px ${d * 2}px ${dark}, inset -${d}px -${d}px ${d * 2}px ${light}`;
 };
 
+/**
+ * Cast shadow for surfaces that float ABOVE the page — dialogs, menus, drawers,
+ * tooltips. Neumorphism needs the light highlight to read against the SAME
+ * surface; over a dimmed backdrop that white edge has nothing to sit on and
+ * just reads as glare, so overlays get a plain directional shadow instead.
+ */
+export const floating = (size = 'md') => {
+  const d = px(size);
+  const shade = (a) => `rgba(43, 52, 69, ${a})`;
+  return `0 ${d * 2}px ${d * 4}px -${d}px ${shade(0.26)}, 0 ${Math.round(d / 2)}px ${d}px -${Math.round(d / 2)}px ${shade(0.14)}`;
+};
+
 /** Flat shadow-free surface. */
 export const flat = { backgroundColor: neuColors.base, boxShadow: 'none' };
 

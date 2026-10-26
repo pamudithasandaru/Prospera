@@ -6,7 +6,7 @@ import SendIcon from '@mui/icons-material/Send';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
-import { neuColors, raised, inset } from '../neumorphic';
+import { neuColors, raised, inset, floating } from '../neumorphic';
 import { streamSproutChat } from '../services/sproutApi';
 import { BRAND_NAME } from '../brand';
 
@@ -106,7 +106,7 @@ export default function SproutChat() {
             flexDirection: 'column',
             borderRadius: '24px',
             bgcolor: neuColors.base,
-            boxShadow: raised('lg'),
+            boxShadow: floating('md'),
             zIndex: 1300,
             overflow: 'hidden',
           }}

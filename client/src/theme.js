@@ -1,6 +1,6 @@
 import { createTheme, alpha } from '@mui/material/styles';
 import { Grow } from '@mui/material';
-import { neuColors as c, raised, inset } from './neumorphic';
+import { neuColors as c, raised, inset, floating } from './neumorphic';
 
 const font = [
   'Poppins',
@@ -95,7 +95,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           ...surface,
-          boxShadow: raised('xl'),
+          boxShadow: floating('lg'),
           borderRadius: 28,
           // Keep dialogs inside the viewport on phones.
           '@media (max-width:600px)': { margin: 12, width: 'calc(100% - 24px)', maxWidth: 'calc(100% - 24px)', maxHeight: 'calc(100% - 24px)' },
@@ -103,7 +103,7 @@ const theme = createTheme({
       },
     },
     MuiDrawer: {
-      styleOverrides: { paper: { ...surface, boxShadow: raised('lg'), border: 'none' } },
+      styleOverrides: { paper: { ...surface, boxShadow: floating('md'), border: 'none' } },
     },
     MuiBackdrop: {
       styleOverrides: { root: { backgroundColor: alpha('#1f2735', 0.35) } },
@@ -198,6 +198,30 @@ const theme = createTheme({
         },
       },
     },
+    // These fields drop MUI's fieldset border for a neumorphic well, so the
+    // notched legend that normally carves a gap for a floating label never
+    // opens: the focus ring and the well's inset edge ran straight through the
+    // label, which read as text cut in half. Carve the notch ourselves with a
+    // surface-coloured pad behind the shrunk label.
+    MuiInputLabel: {
+      styleOverrides: {
+        outlined: {
+          '&.MuiInputLabel-shrink': {
+            backgroundColor: c.base,
+            borderRadius: 8,
+            // Offsets keep the text on the input's own 14px padding once the
+            // 0.75 shrink scale is applied, and centre the pad on the edge.
+            padding: '0 7px',
+            transform: 'translate(9px, -10px) scale(0.75)',
+            // Same text capacity as MUI's 'calc(133% - 32px)', plus the pad.
+            maxWidth: 'calc(133% - 18px)',
+            // Extra leading so tall glyphs and inline icons are not clipped by
+            // the label's own overflow: hidden.
+            lineHeight: '1.6em',
+          },
+        },
+      },
+    },
     MuiFilledInput: {
       defaultProps: { disableUnderline: true },
       styleOverrides: { root: { backgroundColor: c.base, borderRadius: 16, boxShadow: inset('sm'), '&:hover, &.Mui-focused': { backgroundColor: c.base } } },
@@ -230,10 +254,10 @@ const theme = createTheme({
     },
     MuiMenu: {
       defaultProps: { transitionDuration: { enter: 280, exit: 180 } },
-      styleOverrides: { paper: { ...surface, borderRadius: 20, border: 'none', boxShadow: raised('lg') } },
+      styleOverrides: { paper: { ...surface, borderRadius: 20, border: 'none', boxShadow: floating('md') } },
     },
     MuiPopover: {
-      styleOverrides: { paper: { ...surface, border: 'none', boxShadow: raised('lg') } },
+      styleOverrides: { paper: { ...surface, border: 'none', boxShadow: floating('md') } },
     },
     MuiMenuItem: {
       styleOverrides: { root: { borderRadius: 12, transition: `box-shadow ${fast}, color ${fast}, padding-left ${fast}`, marginInline: 6, '&:hover': { backgroundColor: 'transparent', boxShadow: inset('xs') }, '&.Mui-selected': { backgroundColor: 'transparent', boxShadow: inset('xs'), color: c.primary } } },
@@ -290,10 +314,10 @@ const theme = createTheme({
         outlined: { border: 'none' },
       },
     },
-    MuiSnackbarContent: { styleOverrides: { root: { ...surface, color: c.text, boxShadow: raised('md') } } },
+    MuiSnackbarContent: { styleOverrides: { root: { ...surface, color: c.text, boxShadow: floating('md') } } },
     MuiTooltip: {
       defaultProps: { enterDelay: 250, TransitionProps: { timeout: 250 } },
-      styleOverrides: { tooltip: { backgroundColor: c.base, color: c.text, boxShadow: raised('sm'), fontWeight: 500 }, arrow: { color: c.base } },
+      styleOverrides: { tooltip: { backgroundColor: c.base, color: c.text, boxShadow: floating('xs'), fontWeight: 500 }, arrow: { color: c.base } },
     },
     MuiAccordion: {
       styleOverrides: { root: { ...surface, boxShadow: raised('md'), borderRadius: '20px !important', transition: `box-shadow ${smooth}, margin ${smooth}`, '&:hover': { boxShadow: raised('lg') }, '&:before': { display: 'none' }, '&.Mui-expanded': { margin: '8px 0' } } },

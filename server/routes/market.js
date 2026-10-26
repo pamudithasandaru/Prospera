@@ -16,6 +16,9 @@ router.get('/listings', async (req, res) => {
         ...(type === 'export' || type === 'domestic' ? { type } : {}),
         ...(category ? { productCategory: category } : {}),
       },
+      // The card shows who is selling and "Inquire" opens a DM with them,
+      // so the seller row travels with the listing.
+      include: { seller: true },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
