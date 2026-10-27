@@ -23,15 +23,21 @@ jobs:
       - name: Stop services before file sync
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          $nssm = "C:\Tools\nssm\win64\nssm.exe"
+          # Stop-Service (not nssm) — the runner has PowerShell service perms
+          # but not direct nssm OpenService() access.
           foreach ($name in "ProsperaAPI", "ProsperaML") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc -and $svc.Status -ne "Stopped") {
               Write-Host "Stopping service: $name"
-              & $nssm stop $name
+              Stop-Service -Name $name -Force
               $svc.WaitForStatus("Stopped", "00:00:45")
+              Write-Host "$name stopped."
+            } else {
+              Write-Host "$name already stopped or not found."
             }
           }
+          # Give the processes a moment to fully release file handles
+          Start-Sleep -Seconds 5
 
       - name: Copy source to deployment directory
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
@@ -93,19 +99,20 @@ jobs:
       - name: Start services
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          $nssm = "C:\Tools\nssm\win64\nssm.exe"
           foreach ($name in "ProsperaML", "ProsperaAPI") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc) {
-              Write-Host "Restarting service: $name"
-              # nssm restart guarantees a full stop+start so the process
-              # always loads the newly deployed code. Plain Start-Service is
-              # a no-op when the old process is still alive.
-              & $nssm restart $name
-              Start-Sleep -Seconds 3
-              $svc.Refresh()
+              Write-Host "Starting service: $name (current status: $($svc.Status))"
+              # If paused/running from a crash loop, stop first then start fresh
+              if ($svc.Status -ne "Stopped") {
+                Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
+                $svc.WaitForStatus("Stopped", "00:00:20")
+              }
+              Start-Service -Name $name
               $svc.WaitForStatus("Running", "00:00:30")
               Write-Host "$name is now $($svc.Status)"
+            } else {
+              Write-Host "$name service not found; skipping."
             }
           }
           Start-Sleep -Seconds 10
