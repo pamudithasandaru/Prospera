@@ -1,156 +1,184 @@
-# Prospera
-<img width="1024" height="289" alt="logo" src="https://github.com/user-attachments/assets/dcefe31b-895f-4b2b-9114-9e1134efdc7b" />
+<div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="client/public/images/haritha-bhoomi-horizontal-dark.png">
+  <img src="client/public/images/haritha-bhoomi-horizontal_1.png" alt="Haritha Bhoomi (හරිත භූමි) - Grow · Learn · Share" width="560">
+</picture>
 
-Comprehensive agriculture platform with a React + Express web app backed by PostgreSQL (Neon), plus an optional Python ML service for plant disease prediction.
+**Haritha Bhoomi (හරිත භූමි)** is an AgriTech platform for farmers: manage your farm, trade at wholesale, buy equipment, learn, get help from AI and connect with the community.
 
-## Current Modules
+The repository is called **Prospera**.
 
-- Farm management (`/api/farm`)
-- Wholesale market (`/api/market`)
-- Social feed (`/api/social`)
-- Learning portal (`/api/learning`)
-- AI tools (`/api/ai` and `/api/ml/predict`)
-- Marketplace (`/api/marketplace`)
-- Government schemes (`/api/government`)
-- Weather dashboard (`/api/weather`)
-- Support center (`/api/support`)
-- FinTech (`/api/fintech`)
+</div>
 
-## Tech Stack
+---
 
-- Frontend: React 19, MUI, React Router, Axios
-- Backend: Node.js, Express, JWT auth, Socket.io
-- Data: PostgreSQL on Neon, accessed through Prisma ORM
-- Optional ML: FastAPI + TensorFlow (`ml-service`)
+## What is in the project
 
-## Repository Structure
+| Part | Folder | Tech | Port |
+|---|---|---|---|
+| Website | `client/` | React 19, MUI, React Router, Axios, Socket.io client | 3001 |
+| API | `server/` | Node.js, Express, JWT auth, Socket.io | 5000 |
+| Database | `prisma/` | PostgreSQL on Neon, Prisma ORM | - |
+| AI plant-disease service (optional) | `ml-service/` | FastAPI + ONNX Runtime | 8000 |
+| Sprout chatbot (optional) | `sprout/` | FastAPI + OpenAI + Qdrant, React/Vite admin site | 8001 / 5173 |
+
+## Features
+
+| Module | API | What it does |
+|---|---|---|
+| Farm management | `/api/farm` | Farms, crops, expenses and revenue, insights |
+| Wholesale market | `/api/market` | Farmers list produce, buyers browse and inquire |
+| Marketplace | `/api/marketplace` | Equipment and product catalogue |
+| Social feed | `/api/social`, `/api/stories` | Posts, stories, community |
+| Messages and notifications | `/api/messages`, `/api/notifications` | Real-time chat and alerts (Socket.io) |
+| Search | `/api/search` | Search across the platform |
+| Learning hub | `/api/learning` | Courses and lessons |
+| Government schemes | `/api/government` | Schemes and how to apply |
+| Weather | `/api/weather` | Weather dashboard |
+| Support center | `/api/support` | Support tickets and help |
+| AgriFinTech | `/api/fintech` | Loans and financial tools |
+| AI tools | `/api/ai`, `/api/ml/predict` | Plant disease detection |
+| Admin panel | `/api/admin` | Users, listings, products, courses, schemes, posts, loans, tickets, chatbot sync (admin role only) |
+| Sprout chatbot | `sprout/` (port 8001) | Answers farming and "how do I use the site" questions with cited sources and links to the pages it mentions |
+
+## Repository structure
 
 ```text
 Prospera/
-├── client/                 # React frontend
-├── server/                 # Express API
-├── ml-service/             # Optional Python ML service
-├── prisma/                 # Prisma schema, migrations and seed script
+├── client/                 # React website (public/images holds the logos)
+├── server/                 # Express API (routes, controllers, services)
+├── prisma/                 # Prisma schema, migrations, seed script
+├── ml-service/             # Plant-disease prediction service (FastAPI)
+├── sprout/                 # Sprout chatbot: backend, frontend, knowledge/ guides
 ├── scripts/                # Utility scripts
-├── docs/                   # Additional setup docs
+├── docs/                   # Additional docs
+├── OverView/               # Project overview
 ├── API_DOCUMENTATION.md
 ├── INSTALLATION.md
 ├── QUICKSTART.md
+├── RUN_LOCALLY.md          # Full Windows guide: website, API, ML and chatbot
+├── ML_MODELS_DOCUMENTATION.md
+├── PROJECT_SUMMARY.md
 └── README.md
 ```
 
 ## Prerequisites
 
-- Node.js 18+
-- npm 9+
-- A Neon PostgreSQL database (free tier is fine) — https://neon.tech
-- Python 3.10+ (only if using `ml-service`)
+- Node.js 18+ and npm 9+
+- A Neon PostgreSQL database (free tier is fine): https://neon.tech
+- Python 3.10+ (only for `ml-service` and `sprout`)
+- Docker Desktop (only for the chatbot's Qdrant)
+- An OpenAI API key (only for the chatbot)
 
-## Environment Setup
-
-1. Create `.env` in the project root from `.env.example`.
-2. Set safe values for your local environment (do not commit secrets).
-3. Recommended local defaults:
-   - `PORT=5000`
-   - `CLIENT_URL=http://localhost:3001`
-4. Add your Neon connection strings (Neon console → your project → Connection Details):
-   - `DATABASE_URL` — the **pooled** endpoint (host contains `-pooler`), used at runtime
-   - `DIRECT_URL` — the **direct** endpoint, used by Prisma Migrate to run DDL
-5. Copy `client/.env.example` to `client/.env`.
-
-## Install Dependencies
-
-From the project root:
+## Quick start
 
 ```bash
-npm run install-all
+npm run install-all     # root + client dependencies
+npx prisma generate     # build the database client
 ```
 
-This installs both root and `client` dependencies.
-
-## Set Up the Database
-
-With `DATABASE_URL` and `DIRECT_URL` set in `.env`:
+1. Copy `.env.example` to `.env` in the project root and `client/.env.example` to `client/.env`. Do not commit secrets.
+2. In `.env` set at least:
+   - `PORT=5000`, `CLIENT_URL=http://localhost:3001`
+   - `DATABASE_URL`: Neon **pooled** endpoint (host contains `-pooler`, ends with `?sslmode=require`)
+   - `DIRECT_URL`: Neon **direct** endpoint, used by Prisma Migrate
+   - `JWT_SECRET`
+3. Create the tables and demo data:
 
 ```bash
-npm run db:migrate    # create the tables
-npm run db:seed       # load demo users, posts, farms, courses, listings
+npm run db:migrate
+npm run db:seed
 ```
 
-Browse the data any time with `npm run db:studio`.
-
-## Run in VS Code (Recommended)
-
-1. Open folder in VS Code: `D:\Prospera`
-2. Open terminal (`Ctrl+``)
-3. Run:
+4. Start the API and website together:
 
 ```bash
 npm run dev
 ```
 
-What starts:
+- Website: http://localhost:3001
+- API: http://localhost:5000 (health check: `/api/health`)
 
-- Backend API: `http://localhost:5000`
-- Frontend UI: `http://localhost:3001`
+Run them separately with `npm run server` and `npm run client`.
 
-Health check:
+Use a separate Neon branch or database for local work so test data never reaches production. See [RUN_LOCALLY.md](RUN_LOCALLY.md).
 
-- `http://localhost:5000/api/health`
+### Other environment variables
 
-### If you want separate terminals in VS Code
+Optional features read these from `.env`: `CLOUDINARY_*` (image uploads), `EMAIL_*` (mail), `STRIPE_*` (payments), `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` (first admin), `DEMO_LOGIN_ENABLED`, `ML_SERVICE_URL` (AI service), `SPROUT_URL`, `SPROUT_ADMIN_KEY` and `CHATBOT_SYNC_INTERVAL_HOURS` (chatbot sync).
 
-Terminal 1 (backend):
-
-```bash
-npm run server
-```
-
-Terminal 2 (frontend):
-
-```bash
-npm run client
-```
-
-## Optional: Run Python ML Service
-
-From a new terminal:python
+## Optional: AI plant-disease service
 
 ```bash
 cd ml-service
 pip install -r requirements.txt
-python app.py
+python app_optimized.py     # or: npm run ml  (from the root)
 ```
 
-Use this only when testing Python-based disease prediction flow.
+`npm run dev:all` starts the API, website and ML service together. Details: [ML_MODELS_DOCUMENTATION.md](ML_MODELS_DOCUMENTATION.md).
 
-## Available Root Scripts
+## Optional: Sprout chatbot
 
-- `npm run dev` - run backend + frontend together
-- `npm run server` - run backend with nodemon
-- `npm run client` - run frontend on port 3001
-- `npm run build` - build frontend production bundle
-- `npm start` - start backend in production mode
-- `npm run install-all` - install all dependencies
+```bash
+cd sprout
+docker compose up -d                         # Qdrant on 6333
+cd backend
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env                       # set OPENAI_API_KEY and ADMIN_API_KEY
+python -m app.cli ../knowledge               # load the guides
+uvicorn app.main:app --port 8001 --reload
+```
 
-### Database scripts
+Optional admin site (upload documents, test chat): `cd sprout/frontend && npm install && npm run dev` (http://localhost:5173).
+The platform syncs products, listings, courses and schemes into Sprout, and admins can trigger a sync from the Admin Panel's **Chatbot** tab. See [sprout/README.md](sprout/README.md).
 
-- `npm run db:migrate` - create and apply a migration in development
-- `npm run db:deploy` - apply existing migrations (production)
-- `npm run db:push` - sync the schema without creating a migration
-- `npm run db:seed` - load demo data (idempotent, safe to re-run)
-- `npm run db:studio` - browse the database in Prisma Studio
-- `npm run db:reset` - drop, re-migrate and re-seed
+## Root scripts
 
-## Notes
+| Script | Purpose |
+|---|---|
+| `npm run dev` | API + website |
+| `npm run dev:all` | API + website + ML service |
+| `npm run server` | API with nodemon |
+| `npm run client` | Website on port 3001 |
+| `npm run ml` | ML service |
+| `npm run build` | Production build of the website |
+| `npm start` | API in production mode |
+| `npm run install-all` | Install all Node dependencies |
+| `npm run db:migrate` | Create and apply a migration (development) |
+| `npm run db:deploy` | Apply existing migrations (production) |
+| `npm run db:push` | Sync the schema without a migration |
+| `npm run db:seed` | Load demo data (safe to re-run) |
+| `npm run db:studio` | Browse the database in Prisma Studio |
+| `npm run db:reset` | Drop, re-migrate and re-seed |
+| `npm run db:generate` | Regenerate the Prisma client |
 
-- Keep `.env` and credential files private.
-- For API details, see `API_DOCUMENTATION.md`.
+## Branding
 
-## Quick Troubleshooting
+Logos live in `client/public/images/` (light, dark, square and icon variants, PNG and SVG). The app name and logo paths are set in `client/src/brand.js`.
 
-- Port conflict: close conflicting process or change ports in `.env`
-- CORS issue: ensure `CLIENT_URL` matches frontend URL (`http://localhost:3001`)
-- API connection issue: verify frontend API base URL (`REACT_APP_API_URL`) if you changed backend port
-- Database connection issue: confirm `DATABASE_URL` uses the pooled Neon host and ends with `?sslmode=require`
+<div align="center">
+  <img src="client/public/images/haritha-bhoomi-square.png" alt="Haritha Bhoomi square logo" width="140">
+  <img src="client/public/images/haritha-bhoomi-icon.png" alt="Haritha Bhoomi icon" width="140">
+</div>
+
+## Documentation
+
+- [QUICKSTART.md](QUICKSTART.md) and [INSTALLATION.md](INSTALLATION.md): setup
+- [RUN_LOCALLY.md](RUN_LOCALLY.md): run every part on Windows
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md): API reference
+- [ML_MODELS_DOCUMENTATION.md](ML_MODELS_DOCUMENTATION.md): disease model
+- [sprout/README.md](sprout/README.md): chatbot
+
+## Troubleshooting
+
+- **Port conflict:** close the other process or change the ports in `.env`.
+- **CORS error:** `CLIENT_URL` must match the website URL (`http://localhost:3001`).
+- **Website cannot reach the API:** check `REACT_APP_API_URL` in `client/.env`.
+- **Database connection fails:** `DATABASE_URL` must use the pooled Neon host and end with `?sslmode=require`.
+- **API crashes on start:** run `npx prisma generate`.
+
+## License
+
+MIT
