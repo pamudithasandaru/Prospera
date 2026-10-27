@@ -28,15 +28,18 @@ jobs:
           foreach ($name in "ProsperaAPI", "ProsperaML") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc -and $svc.Status -ne "Stopped") {
-              Write-Host "Stopping service: $name"
-              Stop-Service -Name $name -Force
-              $svc.WaitForStatus("Stopped", "00:00:45")
-              Write-Host "$name stopped."
+              Write-Host "Stopping service: $name (current status: $($svc.Status))"
+              Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
+              try {
+                $svc.WaitForStatus("Stopped", "00:00:20")
+              } catch {
+                Write-Host "WaitForStatus timed out or failed for $name; continuing."
+              }
+              Write-Host "$name is now $((Get-Service -Name $name).Status)"
             } else {
               Write-Host "$name already stopped or not found."
             }
           }
-          # Give the processes a moment to fully release file handles
           Start-Sleep -Seconds 5
 
       - name: Copy source to deployment directory
@@ -46,8 +49,8 @@ jobs:
           $destination = "C:\Prospera"
 
           robocopy $source $destination /MIR /R:2 /W:5 `
-            /XD .git node_modules client\node_modules client\build ml-service\.venv logs `
-            /XF .env client\.env.production client\.env
+            /XD .git node_modules build .venv logs `
+            /XF .env .env.production
 
           if ($LASTEXITCODE -gt 7) {
             exit $LASTEXITCODE
@@ -103,50 +106,80 @@ jobs:
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc) {
               Write-Host "Starting service: $name (current status: $($svc.Status))"
-              # If paused/running from a crash loop, stop first then start fresh
               if ($svc.Status -ne "Stopped") {
                 Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
-                $svc.WaitForStatus("Stopped", "00:00:20")
+                try { $svc.WaitForStatus("Stopped", "00:00:15") } catch {}
               }
-              Start-Service -Name $name
-              $svc.WaitForStatus("Running", "00:00:30")
-              Write-Host "$name is now $($svc.Status)"
+              Start-Service -Name $name -ErrorAction SilentlyContinue
+              try { $svc.WaitForStatus("Running", "00:00:20") } catch {}
+              Write-Host "$name is now $((Get-Service -Name $name).Status)"
             } else {
               Write-Host "$name service not found; skipping."
             }
           }
-          Start-Sleep -Seconds 10
+          Start-Sleep -Seconds 8
 
       - name: Check API health
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          $response = Invoke-WebRequest `
-            -Uri "http://localhost:5000/api/health" `
-            -UseBasicParsing `
-            -TimeoutSec 30
-
-          if ($response.StatusCode -ne 200) {
-            throw "API health check failed with HTTP $($response.StatusCode)"
+          $healthy = $false
+          $lastErr = ""
+          for ($i = 1; $i -le 6; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:5000/api/health" -UseBasicParsing -TimeoutSec 10
+              if ($response.StatusCode -eq 200) {
+                Write-Host "API Health Check Succeeded:"
+                Write-Host $response.Content
+                $healthy = $true
+                break
+              }
+            } catch {
+              $lastErr = $_.Exception.Message
+              Write-Host "Health check attempt $i failed: $lastErr"
+              Start-Sleep -Seconds 5
+            }
           }
 
-          Write-Host $response.Content
+          if (-not $healthy) {
+            Write-Host "=== API Health Check Failed ==="
+            if (Test-Path "C:\Prospera\logs\api-error.log") {
+              Write-Host "--- Tail of C:\Prospera\logs\api-error.log ---"
+              Get-Content "C:\Prospera\logs\api-error.log" -Tail 30
+            }
+            if (Test-Path "C:\Prospera\logs\api-output.log") {
+              Write-Host "--- Tail of C:\Prospera\logs\api-output.log ---"
+              Get-Content "C:\Prospera\logs\api-output.log" -Tail 20
+            }
+            throw "API health check failed: $lastErr"
+          }
 
       - name: Check ML health
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
-
           if ($null -ne $service) {
-            $response = Invoke-WebRequest `
-              -Uri "http://localhost:8000/health" `
-              -UseBasicParsing `
-              -TimeoutSec 30
-
-            if ($response.StatusCode -ne 200) {
-              throw "ML health check failed with HTTP $($response.StatusCode)"
+            $healthy = $false
+            for ($i = 1; $i -le 5; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 10
+                if ($response.StatusCode -eq 200) {
+                  Write-Host "ML Health Check Succeeded:"
+                  Write-Host $response.Content
+                  $healthy = $true
+                  break
+                }
+              } catch {
+                Write-Host "ML Health check attempt $i failed: $($_.Exception.Message)"
+                Start-Sleep -Seconds 3
+              }
             }
-
-            Write-Host $response.Content
+            if (-not $healthy) {
+              if (Test-Path "C:\Prospera\logs\ml-error.log") {
+                Write-Host "--- Tail of C:\Prospera\logs\ml-error.log ---"
+                Get-Content "C:\Prospera\logs\ml-error.log" -Tail 25
+              }
+              throw "ML health check failed."
+            }
           } else {
             Write-Host "ProsperaML service is not installed; skipping."
           }
