@@ -82,6 +82,7 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,                   // 50 login attempts per 15 min
   skip: skipLocalhost,
+  keyGenerator: clientKey,   // avoids ERR_ERL_INVALID_IP_ADDRESS behind IIS proxy
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many auth attempts, please try again later.' },
@@ -91,6 +92,7 @@ const writeLimiter = rateLimit({
   windowMs: 60 * 1000,       // 1 minute
   max: 100,                  // 100 writes/min
   skip: skipLocalhost,
+  keyGenerator: clientKey,   // avoids ERR_ERL_INVALID_IP_ADDRESS behind IIS proxy
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many write operations, please slow down.' },
@@ -133,6 +135,10 @@ const allowedOrigins = [...new Set([CLIENT_URL, CLIENT_URL_DEV])];
 
 app.use(helmet());
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+// Stripe signs its webhook over the exact bytes it sent, so this one path
+// keeps its raw body. It has to come before express.json(), which would
+// otherwise consume the stream.
+app.use('/api/marketplace/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
@@ -206,7 +212,11 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: status === 400 ? (err.message || 'Invalid request body') : 'Internal server error',
+  });
 });
 
 // ── Start Server ──────────────────────────────────────────────────────────────

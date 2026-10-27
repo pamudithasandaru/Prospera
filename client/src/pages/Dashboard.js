@@ -11,6 +11,7 @@ import {
   Card,
   CardContent,
   Avatar,
+  Chip,
 } from '@mui/material';
 import {
   Terrain,
@@ -22,8 +23,10 @@ import {
   AdminPanelSettings,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import Hero3D from '../components/Hero3D';
 import { neuColors, neuRaised, neuInset } from '../neumorphic';
 import { accessFor, canAccess } from '../config/access';
+import { AgriDashboardBannerArt } from '../components/common/AgriSvgArts';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -59,20 +62,78 @@ const Dashboard = () => {
 
   return (
     <>
+      {/* Hero slideshow — outside Container so it matches navbar width
+          exactly, the same treatment the landing page gives it, so a signed-in
+          member opens on the same view a guest does. Everything below it
+          starts off-screen by design; ScrollReveal brings it in on scroll. */}
+      <Box sx={{ width: '100%', height: '100vh' }}>
+        <Hero3D height="92vh" />
+      </Box>
+
     <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
-        {/* A full-height hero slideshow used to sit here, which pushed every
-            stat, action and notification below the fold — a signed-in farmer
-            opened their dashboard to a stock photo. The slideshow now greets
-            signed-out visitors on the landing page, where it belongs, and the
-            dashboard opens on the user's own data. */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight="bold" sx={{ color: neuColors.text }}>
-            {greeting}, {user?.name?.split(' ')[0] || 'there'}
-          </Typography>
-          <Typography variant="body1" sx={{ color: neuColors.text, opacity: 0.7, mt: 0.5 }}>
-            Here's what's happening on your farm today.
-          </Typography>
-        </Box>
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 4,
+            p: { xs: 3, md: 3.5 },
+            borderRadius: '24px',
+            ...neuRaised('md'),
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid rgba(255, 255, 255, 0.75)',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(227, 232, 240, 0.95) 100%)',
+          }}
+        >
+          {/* Top Emerald/Gold Bar */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              background: 'linear-gradient(90deg, #1B5E20 0%, #4CAF50 50%, #F59E0B 100%)',
+            }}
+          />
+
+          {/* Background SVG Agricultural Banner */}
+          <AgriDashboardBannerArt />
+
+          <Box sx={{ position: 'relative', zIndex: 1, maxWidth: { xs: '100%', md: '70%' } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Chip
+                label={user?.role ? `${user.role.toUpperCase()} HUB` : 'SMART AGRI HUB'}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(27, 94, 32, 0.12)',
+                  color: '#1B5E20',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  border: '1px solid rgba(27, 94, 32, 0.25)',
+                }}
+              />
+              <Typography variant="caption" sx={{ color: '#5b667a', fontWeight: 600 }}>
+                {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+              </Typography>
+            </Box>
+
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                color: '#1B5E20',
+                fontSize: { xs: '1.5rem', md: '1.95rem' },
+                lineHeight: 1.2,
+                mb: 0.6,
+              }}
+            >
+              {greeting}, {user?.name?.split(' ')[0] || 'there'}!
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#5b667a', fontSize: '0.92rem', lineHeight: 1.5 }}>
+              Here's what's happening on your farm today. Telemetry, market listings, and community feeds are all synced.
+            </Typography>
+          </Box>
+        </Paper>
 
         {/* Quick Actions */}
           <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>

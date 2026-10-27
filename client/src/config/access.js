@@ -49,6 +49,11 @@ export const ROUTES = [
   { path: '/social',      access: PUBLIC,                 nav: true, title: 'AgriLink Social',   icon: 'social' },
   { path: '/learning',    access: PUBLIC,                 nav: true, title: 'Learning Hub',      icon: 'learning' },
   { path: '/marketplace', access: PUBLIC,                 nav: true, title: 'Marketplace',       icon: 'marketplace' },
+  // Browsing the catalogue is open; owning a cart and an order is not.
+  { path: '/marketplace/cart',             access: AUTH },
+  { path: '/marketplace/checkout',         access: AUTH },
+  { path: '/marketplace/orders',           access: AUTH },
+  { path: '/marketplace/orders/:orderId',  access: AUTH },
   { path: '/government',  access: PUBLIC,                 nav: true, title: 'Government Portal', icon: 'government' },
   { path: '/weather',     access: PUBLIC,                 nav: true, title: 'Weather',           icon: 'weather' },
   { path: '/learning/course/:courseId', access: PUBLIC },

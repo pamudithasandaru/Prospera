@@ -8,79 +8,119 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+
 jobs:
-  deploy:
+  # ── Card 1: Environment & Service Preparation ──────────────────────────────
+  prepare_environment:
+    name: "1. Prepare Environment"
     runs-on:
       - self-hosted
       - Windows
       - X64
       - prospera-production
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Stop services before file sync
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           foreach ($name in "ProsperaAPI", "ProsperaML") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc -and $svc.Status -ne "Stopped") {
-              Write-Host "Stopping service: $name"
-              Stop-Service -Name $name -Force
-              $svc.WaitForStatus("Stopped", "00:00:30")
+              Write-Host "Stopping service: $name (current status: $($svc.Status))"
+              Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
+              try {
+                $svc.WaitForStatus("Stopped", "00:00:20")
+              } catch {
+                Write-Host "WaitForStatus timed out or failed for $name; continuing."
+              }
+              Write-Host "$name is now $((Get-Service -Name $name).Status)"
+            } else {
+              Write-Host "$name already stopped or not found."
             }
           }
+          Start-Sleep -Seconds 5
+
+  # ── Card 2: Source Code Synchronization ────────────────────────────────────
+  sync_source:
+    name: "2. Sync Source Code"
+    needs: prepare_environment
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Copy source to deployment directory
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $source = "${{ github.workspace }}"
           $destination = "C:\Prospera"
 
           robocopy $source $destination /MIR /R:2 /W:5 `
-            /XD .git node_modules client\node_modules client\build ml-service\.venv logs `
-            /XF .env client\.env.production client\.env
+            /XD .git node_modules build .venv logs `
+            /XF .env
 
           if ($LASTEXITCODE -gt 7) {
             exit $LASTEXITCODE
           }
           $global:LASTEXITCODE = 0
 
-      - name: Install root dependencies
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
-        run: |
-          Set-Location C:\Prospera
-          npm ci
-
+  # ── Card 3: Frontend Compilation ───────────────────────────────────────────
+  build_frontend:
+    name: "3. Build Frontend"
+    needs: sync_source
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
       - name: Install frontend dependencies
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera\client
           npm ci
 
-      - name: Build frontend
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+      - name: Build frontend production bundle
         env:
           CI: "false"
+          REACT_APP_API_URL: "/api"
+          REACT_APP_SOCKET_URL: "/"
         run: |
           Set-Location C:\Prospera\client
           npm run build
 
+  # ── Card 4: Database & Backend Dependencies ────────────────────────────────
+  database_and_backend:
+    name: "4. Database & Backend"
+    needs: build_frontend
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
+      - name: Install root dependencies
+        run: |
+          Set-Location C:\Prospera
+          npm ci
+
       - name: Generate Prisma Client
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera
           npx prisma generate
 
       - name: Apply database migrations
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera
           npx prisma migrate deploy
 
       - name: Update ML dependencies
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $ml = "C:\Prospera\ml-service"
           if (Test-Path "$ml\.venv\Scripts\python.exe") {
@@ -89,49 +129,94 @@ jobs:
             Write-Host "No ML venv found; skipping."
           }
 
+  # ── Card 5: Service Deployment & Automated Verification ─────────────────────
+  deploy_and_verify:
+    name: "5. Deploy & Verify Health"
+    needs: database_and_backend
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
       - name: Start services
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           foreach ($name in "ProsperaML", "ProsperaAPI") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc) {
-              Write-Host "Starting service: $name"
-              Start-Service -Name $name
-              $svc.WaitForStatus("Running", "00:00:30")
+              Write-Host "Starting service: $name (current status: $($svc.Status))"
+              if ($svc.Status -ne "Stopped") {
+                Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
+                try { $svc.WaitForStatus("Stopped", "00:00:15") } catch {}
+              }
+              Start-Service -Name $name -ErrorAction SilentlyContinue
+              try { $svc.WaitForStatus("Running", "00:00:20") } catch {}
+              Write-Host "$name is now $((Get-Service -Name $name).Status)"
+            } else {
+              Write-Host "$name service not found; skipping."
             }
           }
-          Start-Sleep -Seconds 5
+          Start-Sleep -Seconds 8
 
       - name: Check API health
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          $response = Invoke-WebRequest `
-            -Uri "http://localhost:5000/api/health" `
-            -UseBasicParsing `
-            -TimeoutSec 30
-
-          if ($response.StatusCode -ne 200) {
-            throw "API health check failed with HTTP $($response.StatusCode)"
+          $healthy = $false
+          $lastErr = ""
+          for ($i = 1; $i -le 6; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:5000/api/health" -UseBasicParsing -TimeoutSec 10
+              if ($response.StatusCode -eq 200) {
+                Write-Host "API Health Check Succeeded:"
+                Write-Host $response.Content
+                $healthy = $true
+                break
+              }
+            } catch {
+              $lastErr = $_.Exception.Message
+              Write-Host "Health check attempt $i failed: $lastErr"
+              Start-Sleep -Seconds 5
+            }
           }
 
-          Write-Host $response.Content
+          if (-not $healthy) {
+            Write-Host "=== API Health Check Failed ==="
+            if (Test-Path "C:\Prospera\logs\api-error.log") {
+              Write-Host "--- Tail of C:\Prospera\logs\api-error.log ---"
+              Get-Content "C:\Prospera\logs\api-error.log" -Tail 30
+            }
+            if (Test-Path "C:\Prospera\logs\api-output.log") {
+              Write-Host "--- Tail of C:\Prospera\logs\api-output.log ---"
+              Get-Content "C:\Prospera\logs\api-output.log" -Tail 20
+            }
+            throw "API health check failed: $lastErr"
+          }
 
       - name: Check ML health
-        shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
-
           if ($null -ne $service) {
-            $response = Invoke-WebRequest `
-              -Uri "http://localhost:8000/health" `
-              -UseBasicParsing `
-              -TimeoutSec 30
-
-            if ($response.StatusCode -ne 200) {
-              throw "ML health check failed with HTTP $($response.StatusCode)"
+            $healthy = $false
+            for ($i = 1; $i -le 5; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 10
+                if ($response.StatusCode -eq 200) {
+                  Write-Host "ML Health Check Succeeded:"
+                  Write-Host $response.Content
+                  $healthy = $true
+                  break
+                }
+              } catch {
+                Write-Host "ML Health check attempt $i failed: $($_.Exception.Message)"
+                Start-Sleep -Seconds 3
+              }
             }
-
-            Write-Host $response.Content
+            if (-not $healthy) {
+              if (Test-Path "C:\Prospera\logs\ml-error.log") {
+                Write-Host "--- Tail of C:\Prospera\logs\ml-error.log ---"
+                Get-Content "C:\Prospera\logs\ml-error.log" -Tail 25
+              }
+              throw "ML health check failed."
+            }
           } else {
             Write-Host "ProsperaML service is not installed; skipping."
           }
