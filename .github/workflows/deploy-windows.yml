@@ -50,7 +50,7 @@ jobs:
 
           robocopy $source $destination /MIR /R:2 /W:5 `
             /XD .git node_modules build .venv logs `
-            /XF .env .env.production
+            /XF .env
 
           if ($LASTEXITCODE -gt 7) {
             exit $LASTEXITCODE
@@ -73,6 +73,8 @@ jobs:
         shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         env:
           CI: "false"
+          REACT_APP_API_URL: "/api"
+          REACT_APP_SOCKET_URL: "/"
         run: |
           Set-Location C:\Prospera\client
           npm run build
