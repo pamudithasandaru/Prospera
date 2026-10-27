@@ -8,23 +8,25 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+
 jobs:
-  deploy:
+  # ── Card 1: Environment & Service Preparation ──────────────────────────────
+  prepare_environment:
+    name: "1. Prepare Environment"
     runs-on:
       - self-hosted
       - Windows
       - X64
       - prospera-production
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Stop services before file sync
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
-          # Stop-Service (not nssm) — the runner has PowerShell service perms
-          # but not direct nssm OpenService() access.
           foreach ($name in "ProsperaAPI", "ProsperaML") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
             if ($null -ne $svc -and $svc.Status -ne "Stopped") {
@@ -42,8 +44,20 @@ jobs:
           }
           Start-Sleep -Seconds 5
 
+  # ── Card 2: Source Code Synchronization ────────────────────────────────────
+  sync_source:
+    name: "2. Sync Source Code"
+    needs: prepare_environment
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Copy source to deployment directory
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $source = "${{ github.workspace }}"
           $destination = "C:\Prospera"
@@ -57,20 +71,22 @@ jobs:
           }
           $global:LASTEXITCODE = 0
 
-      - name: Install root dependencies
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
-        run: |
-          Set-Location C:\Prospera
-          npm ci
-
+  # ── Card 3: Frontend Compilation ───────────────────────────────────────────
+  build_frontend:
+    name: "3. Build Frontend"
+    needs: sync_source
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
       - name: Install frontend dependencies
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera\client
           npm ci
 
-      - name: Build frontend
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
+      - name: Build frontend production bundle
         env:
           CI: "false"
           REACT_APP_API_URL: "/api"
@@ -79,20 +95,32 @@ jobs:
           Set-Location C:\Prospera\client
           npm run build
 
+  # ── Card 4: Database & Backend Dependencies ────────────────────────────────
+  database_and_backend:
+    name: "4. Database & Backend"
+    needs: build_frontend
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
+      - name: Install root dependencies
+        run: |
+          Set-Location C:\Prospera
+          npm ci
+
       - name: Generate Prisma Client
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera
           npx prisma generate
 
       - name: Apply database migrations
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           Set-Location C:\Prospera
           npx prisma migrate deploy
 
       - name: Update ML dependencies
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $ml = "C:\Prospera\ml-service"
           if (Test-Path "$ml\.venv\Scripts\python.exe") {
@@ -101,8 +129,17 @@ jobs:
             Write-Host "No ML venv found; skipping."
           }
 
+  # ── Card 5: Service Deployment & Automated Verification ─────────────────────
+  deploy_and_verify:
+    name: "5. Deploy & Verify Health"
+    needs: database_and_backend
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - prospera-production
+    steps:
       - name: Start services
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           foreach ($name in "ProsperaML", "ProsperaAPI") {
             $svc = Get-Service -Name $name -ErrorAction SilentlyContinue
@@ -122,7 +159,6 @@ jobs:
           Start-Sleep -Seconds 8
 
       - name: Check API health
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $healthy = $false
           $lastErr = ""
@@ -156,7 +192,6 @@ jobs:
           }
 
       - name: Check ML health
-        shell: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -Raw -LiteralPath '{0}' | Invoke-Expression"
         run: |
           $service = Get-Service -Name "ProsperaML" -ErrorAction SilentlyContinue
           if ($null -ne $service) {
