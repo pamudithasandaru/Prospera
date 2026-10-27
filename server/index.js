@@ -212,7 +212,11 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: status === 400 ? (err.message || 'Invalid request body') : 'Internal server error',
+  });
 });
 
 // ── Start Server ──────────────────────────────────────────────────────────────
