@@ -23,6 +23,7 @@ import Hero3D from '../components/Hero3D';
 import { useAuth } from '../context/AuthContext';
 import { BRAND_NAME, brandTextSx } from '../brand';
 import { neuColors, neuRaised, neuInteractive } from '../neumorphic';
+import { AgriSectionDivider, AgriSproutBadge } from '../components/common/AgriSvgArts';
 
 /**
  * The public landing page.
@@ -88,11 +89,15 @@ const Home = () => {
   if (!loading && !isGuest) return <Navigate to="/dashboard" replace />;
 
   return (
-    <Box sx={{ bgcolor: neuColors.base }}>
+    <Box sx={{ bgcolor: neuColors.base, position: 'relative', overflow: 'hidden' }}>
       <Hero3D height="92vh" />
+      <AgriSectionDivider height={50} />
 
-      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 }, position: 'relative', zIndex: 1 }}>
         <Stack spacing={1.5} alignItems="center" textAlign="center" sx={{ mb: { xs: 4, md: 6 } }}>
+          <Box sx={{ mb: 0.5 }}>
+            <AgriSproutBadge size={52} />
+          </Box>
           <Typography variant="h4" sx={{ ...brandTextSx, color: neuColors.text }}>
             {BRAND_NAME}
           </Typography>
