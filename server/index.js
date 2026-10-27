@@ -82,6 +82,7 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,                   // 50 login attempts per 15 min
   skip: skipLocalhost,
+  keyGenerator: clientKey,   // avoids ERR_ERL_INVALID_IP_ADDRESS behind IIS proxy
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many auth attempts, please try again later.' },
@@ -91,6 +92,7 @@ const writeLimiter = rateLimit({
   windowMs: 60 * 1000,       // 1 minute
   max: 100,                  // 100 writes/min
   skip: skipLocalhost,
+  keyGenerator: clientKey,   // avoids ERR_ERL_INVALID_IP_ADDRESS behind IIS proxy
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many write operations, please slow down.' },
