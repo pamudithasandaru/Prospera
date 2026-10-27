@@ -42,25 +42,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { neuColors } from '../../neumorphic';
-
-/**
- * Inline fallback for a listing with no usable photo.
- *
- * This used to point at via.placeholder.com, which no longer resolves — so a
- * listing without an image rendered as a broken-image icon and raw alt text.
- * A data URI cannot fail, and `onError` catches the other case: a product
- * whose stored image URL is itself dead.
- */
-const NO_IMAGE =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180">
-      <rect width="300" height="180" fill="#d8dee9"/>
-      <path d="M110 108l22-26 18 21 14-16 26 31z" fill="#a9b4c8"/>
-      <circle cx="118" cy="74" r="10" fill="#a9b4c8"/>
-      <text x="150" y="150" font-family="sans-serif" font-size="13" fill="#5b667a" text-anchor="middle">No image</text>
-    </svg>`
-  );
+import { money, NO_IMAGE, onImageError } from '../../utils/catalogue';
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
@@ -80,8 +62,6 @@ const SORTS = [
 
 /** Everything "More Filters" controls, so one spread resets the panel. */
 const BLANK_FILTERS = { type: 'all', district: 'all', grade: 'all', minPrice: '', maxPrice: '', sort: 'newest' };
-
-const money = (n) => `LKR ${Number(n || 0).toLocaleString()}`;
 
 const listedOn = (d) => (d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
@@ -377,7 +357,7 @@ const MarketListings = () => {
                 height="180"
                 image={listing.product?.images?.[0] || NO_IMAGE}
                 alt={listing.product?.name}
-                onError={(e) => { e.currentTarget.src = NO_IMAGE; }}
+                onError={onImageError}
                 sx={{ objectFit: 'cover', bgcolor: neuColors.baseDeep }}
               />
               <CardContent sx={{ flexGrow: 1 }}>
@@ -480,7 +460,7 @@ const MarketListings = () => {
                   component="img"
                   src={selectedListing.product?.images?.[0] || NO_IMAGE}
                   alt={selectedListing.product?.name}
-                  onError={(e) => { e.currentTarget.src = NO_IMAGE; }}
+                  onError={onImageError}
                   sx={{
                     width: '100%',
                     height: { xs: 200, sm: 240 },
