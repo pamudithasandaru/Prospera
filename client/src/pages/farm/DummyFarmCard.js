@@ -14,7 +14,7 @@ import {
   Terrain,
   Agriculture,
   TrendingUp,
-  Eco,
+  Spa,
   Visibility,
   AddCircleOutline,
   WaterDrop,
@@ -147,7 +147,7 @@ const DummyFarmCard = ({
             {farm.badges.map((badge, idx) => (
               <Chip
                 key={idx}
-                icon={<Eco sx={{ fontSize: '13px !important', color: 'rgba(255,255,255,0.9) !important' }} />}
+                icon={<Spa sx={{ fontSize: '13px !important', color: 'rgba(255,255,255,0.9) !important' }} />}
                 label={badge}
                 size="small"
                 sx={{

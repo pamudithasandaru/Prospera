@@ -94,6 +94,7 @@ jobs:
         run: |
           Set-Location C:\Prospera\client
           npm run build
+          if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
           Copy-Item -Path "C:\Prospera\client\public\web.config" -Destination "C:\Prospera\client\build\web.config" -Force
 
   # ── Card 4: Database & Backend Dependencies ────────────────────────────────
